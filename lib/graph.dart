@@ -42,7 +42,17 @@ Color _level(int periods) => switch (periods) {
   _ => Paper.accent,
 };
 
-/// Contribution graph của tháng hiện tại: mỗi ô một ngày, đậm theo số tiết.
+/// Năm học / học kỳ của một tháng. HK01 tháng 8-1, HK02 tháng 2-6, HK03 tháng 7.
+// ponytail: suy từ lịch chung của trường; nếu trường đổi mốc học kỳ thì sửa ở đây.
+(String, String) yearTermFor(DateTime m) {
+  final start = m.month >= 8 ? m.year : m.year - 1;
+  final term = (m.month >= 8 || m.month == 1)
+      ? 'HK01'
+      : (m.month == 7 ? 'HK03' : 'HK02');
+  return ('$start-${start + 1}', term);
+}
+
+/// Contribution graph của một tháng: mỗi ô một ngày, đậm theo số tiết.
 class MonthGraph extends StatefulWidget {
   const MonthGraph({
     super.key,
@@ -62,6 +72,7 @@ class _MonthGraphState extends State<MonthGraph> {
   Map<int, List<dynamic>>? _days;
   String? _error;
   int? _pick; // ngày đang xem, null = hôm nay
+  late DateTime _month = DateTime(widget.now.year, widget.now.month);
 
   @override
   void initState() {
@@ -69,13 +80,23 @@ class _MonthGraphState extends State<MonthGraph> {
     _load();
   }
 
+  void _goto(DateTime m) {
+    setState(() {
+      _month = m;
+      _days = null;
+      _error = null;
+      _pick = null;
+    });
+    _load();
+  }
+
   Future<void> _load() async {
     final portal = widget.portal ?? Portal();
     final token = widget.session.token;
-    final month = DateTime(widget.now.year, widget.now.month);
+    final month = _month;
     final last = DateTime(month.year, month.month + 1, 0);
     try {
-      final (year, term) = await portal.yearAndTerm(token);
+      final (year, term) = yearTermFor(month);
       final weeks = {
         for (
           var d = month;
@@ -90,6 +111,7 @@ class _MonthGraphState extends State<MonthGraph> {
         ),
       );
       if (mounted) {
+        if (month != _month) return; // đã đổi tháng, bỏ kết quả cũ
         setState(() => _days = itemsByDay(fetched.expand((e) => e), month));
       }
     } on PortalError catch (e) {
@@ -99,10 +121,12 @@ class _MonthGraphState extends State<MonthGraph> {
 
   @override
   Widget build(BuildContext context) {
-    final month = DateTime(widget.now.year, widget.now.month);
+    final month = _month;
+    final thisMonth =
+        month.year == widget.now.year && month.month == widget.now.month;
     final days = DateTime(month.year, month.month + 1, 0).day;
     final lead = month.weekday - 1; // ô trống trước ngày 1
-    final pick = _pick ?? widget.now.day;
+    final pick = _pick ?? (thisMonth ? widget.now.day : 1);
     return Column(
       children: [
         PaperBox(
@@ -111,17 +135,44 @@ class _MonthGraphState extends State<MonthGraph> {
             children: [
               Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      'Tháng ${month.month}/${month.year}',
-                      style: const TextStyle(
-                        fontFamily: 'Baloo',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                        color: Paper.ink,
-                      ),
+                  _Arrow(
+                    icon: Icons.chevron_left_rounded,
+                    onTap: () => _goto(DateTime(month.year, month.month - 1)),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final m = await showDialog<DateTime>(
+                        context: context,
+                        builder: (_) => _MonthPicker(month: month),
+                      );
+                      if (m != null) _goto(m);
+                    },
+                    child: Row(
+                      children: [
+                        Text(
+                          'Tháng ${month.month}/${month.year}',
+                          style: const TextStyle(
+                            fontFamily: 'Baloo',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                            color: Paper.ink,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.expand_more_rounded,
+                          size: 20,
+                          color: Paper.ink2,
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  _Arrow(
+                    icon: Icons.chevron_right_rounded,
+                    onTap: () => _goto(DateTime(month.year, month.month + 1)),
+                  ),
+                  const Spacer(),
                   if (_error != null)
                     Text(
                       _error!,
@@ -152,8 +203,8 @@ class _MonthGraphState extends State<MonthGraph> {
                     _Cell(
                       day: d,
                       periods: periods(_days?[d] ?? const []),
-                      today: d == widget.now.day,
-                      picked: d == (_pick ?? widget.now.day),
+                      today: thisMonth && d == widget.now.day,
+                      picked: d == pick,
                       onTap: () => setState(() => _pick = d),
                     ),
                 ],
@@ -192,9 +243,9 @@ class _MonthGraphState extends State<MonthGraph> {
           day: DateTime(month.year, month.month, pick),
           items: _days?[pick] ?? const [],
           loading: _days == null && _error == null,
-          onToday: pick == widget.now.day
+          onToday: thisMonth && pick == widget.now.day
               ? null
-              : () => setState(() => _pick = null),
+              : () => _goto(DateTime(widget.now.year, widget.now.month)),
         ),
       ],
     );
@@ -329,6 +380,121 @@ class _Cell extends StatelessWidget {
           color: Paper.ink,
           fontWeight: today ? FontWeight.w800 : FontWeight.w600,
         ),
+      ),
+    ),
+  );
+}
+
+class _Arrow extends StatelessWidget {
+  const _Arrow({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Paper.card,
+        border: Paper.border,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: Paper.shadow(2),
+      ),
+      child: Icon(icon, size: 20, color: Paper.ink),
+    ),
+  );
+}
+
+/// Chọn tháng / năm: một tờ giấy với 12 ô tháng và năm đổi bằng mũi tên.
+class _MonthPicker extends StatefulWidget {
+  const _MonthPicker({required this.month});
+  final DateTime month;
+
+  @override
+  State<_MonthPicker> createState() => _MonthPickerState();
+}
+
+class _MonthPickerState extends State<_MonthPicker> {
+  late int _year = widget.month.year;
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+    backgroundColor: Colors.transparent,
+    child: Container(
+      constraints: const BoxConstraints(maxWidth: 380),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Paper.paper,
+        border: Paper.border,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: Paper.shadow(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _Arrow(
+                icon: Icons.chevron_left_rounded,
+                onTap: () => setState(() => _year--),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  '$_year',
+                  style: const TextStyle(
+                    fontFamily: 'Baloo',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 22,
+                    color: Paper.ink,
+                  ),
+                ),
+              ),
+              _Arrow(
+                icon: Icons.chevron_right_rounded,
+                onTap: () => setState(() => _year++),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 1.6,
+            children: [
+              for (var m = 1; m <= 12; m++)
+                GestureDetector(
+                  onTap: () => Navigator.pop(context, DateTime(_year, m)),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color:
+                          m == widget.month.month && _year == widget.month.year
+                          ? Paper.sun
+                          : Paper.card,
+                      border: Paper.border,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: Paper.shadow(2),
+                    ),
+                    child: Text(
+                      'Th $m',
+                      style: const TextStyle(
+                        fontFamily: 'Baloo',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Paper.ink,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     ),
   );

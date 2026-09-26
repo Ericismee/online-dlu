@@ -6,9 +6,12 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 http.Client stub(int status, Object body) => MockClient(
-      (_) async => http.Response.bytes(utf8.encode(jsonEncode(body)), status,
-          headers: {'content-type': 'application/json'}),
-    );
+  (_) async => http.Response.bytes(
+    utf8.encode(jsonEncode(body)),
+    status,
+    headers: {'content-type': 'application/json'},
+  ),
+);
 
 void main() {
   test('reads the session out of a successful login', () async {
@@ -35,33 +38,59 @@ void main() {
       client: stub(200, {'IsLogin': false, 'Message': 'Mật khẩu không đúng'}),
     ).login('2312577', 'sai');
 
-    expect(call, throwsA(isA<PortalError>()
-        .having((e) => e.message, 'message', 'Mật khẩu không đúng')));
+    expect(
+      call,
+      throwsA(
+        isA<PortalError>().having(
+          (e) => e.message,
+          'message',
+          'Mật khẩu không đúng',
+        ),
+      ),
+    );
   });
 
   test('falls back to a readable message when the portal says nothing', () {
-    expect(Portal(client: stub(200, {'IsLogin': false})).login('a', 'b'),
-        throwsA(isA<PortalError>()
-            .having((e) => e.message, 'message', contains('Sai tài khoản'))));
+    expect(
+      Portal(client: stub(200, {'IsLogin': false})).login('a', 'b'),
+      throwsA(
+        isA<PortalError>().having(
+          (e) => e.message,
+          'message',
+          contains('Sai tài khoản'),
+        ),
+      ),
+    );
   });
 
   test('reports HTTP failures instead of crashing', () {
-    expect(Portal(client: stub(500, {})).login('a', 'b'),
-        throwsA(isA<PortalError>()
-            .having((e) => e.message, 'message', contains('500'))));
+    expect(
+      Portal(client: stub(500, {})).login('a', 'b'),
+      throwsA(
+        isA<PortalError>().having((e) => e.message, 'message', contains('500')),
+      ),
+    );
   });
 
   test('studentInfo sends the token and unwraps sinhVien', () async {
     String? auth;
-    final info = await Portal(client: MockClient((req) async {
-      auth = req.headers['authorization'];
-      return http.Response.bytes(
-          utf8.encode(jsonEncode({
-            'sinhVien': {'MaSinhVien': '2312577', 'HoTen': 'Trần Nguyễn Tuấn Anh'},
-            'IsUpdate': {'Result': 1},
-          })),
-          200);
-    })).studentInfo('tok');
+    final info = await Portal(
+      client: MockClient((req) async {
+        auth = req.headers['authorization'];
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode({
+              'sinhVien': {
+                'MaSinhVien': '2312577',
+                'HoTen': 'Trần Nguyễn Tuấn Anh',
+              },
+              'IsUpdate': {'Result': 1},
+            }),
+          ),
+          200,
+        );
+      }),
+    ).studentInfo('tok');
 
     expect(auth, 'Bearer tok');
     expect(info['HoTen'], 'Trần Nguyễn Tuấn Anh');

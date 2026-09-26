@@ -4,6 +4,7 @@ import 'data.dart';
 import 'graph.dart';
 import 'info.dart';
 import 'login.dart';
+import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -240,7 +241,7 @@ class _HomeTabState extends State<HomeTab> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
           children: [
-            _Header(now: now),
+            _Header(now: now, session: widget.session),
             const SizedBox(height: 16),
             _Me(session: widget.session, lop: _lop),
             const SizedBox(height: 16),
@@ -253,27 +254,40 @@ class _HomeTabState extends State<HomeTab> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.now});
+  const _Header({required this.now, required this.session});
   final DateTime now;
+  final Session session;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
-        'Đại Học Đà Lạt',
-        style: TextStyle(
-          fontFamily: 'Baloo',
-          fontWeight: FontWeight.w800,
-          fontSize: 34,
-          height: 1.1,
-          color: Paper.ink,
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Đại Học Đà Lạt',
+              style: TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                fontSize: 34,
+                height: 1.1,
+                color: Paper.ink,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${dayNames[now.weekday]}, ${now.day}/${now.month}/${now.year}',
+              style: const TextStyle(color: Paper.ink2, fontSize: 14),
+            ),
+          ],
         ),
       ),
-      const SizedBox(height: 4),
-      Text(
-        '${dayNames[now.weekday]}, ${now.day}/${now.month}/${now.year}',
-        style: const TextStyle(color: Paper.ink2, fontSize: 14),
+      const SizedBox(width: 12),
+      Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Bell(session: session),
       ),
     ],
   );

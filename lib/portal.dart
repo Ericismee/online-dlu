@@ -76,12 +76,6 @@ class Portal {
         (throw PortalError('Portal không trả về thông tin sinh viên'));
   }
 
-  /// Năm học / học kỳ hiện tại theo portal.
-  Future<(String, String)> yearAndTerm(String token) async {
-    final r = await _get('/api/student/yearandterm', token);
-    return (r['CurrentYear'] as String, r['CurrentTerm'] as String);
-  }
-
   /// Lịch học một tuần ISO. Mỗi phần tử có DayOfWeek (1 = thứ 2),
   /// NumberOfPeriods và StartDate (dd/MM/yyyy) của thứ 2 trong tuần.
   Future<List<dynamic>> weekSchedule(
@@ -96,6 +90,10 @@ class Portal {
     );
     return (r['ResultDataSchedule'] as List?) ?? const [];
   }
+
+  /// Hộp thư của sinh viên, mới nhất trước.
+  Future<List<dynamic>> messages(String token) async =>
+      (await _getList('/api/student/GetMessagesByReceiverID', token));
 
   Future<Map<String, dynamic>> _get(String path, String token) => _send(
     () => _client.get(
@@ -112,9 +110,19 @@ class Portal {
     ),
   );
 
+  Future<List<dynamic>> _getList(String path, String token) async =>
+      (await _raw(
+        () => _client.get(
+          Uri.parse('$_base$path'),
+          headers: {..._keys, 'authorization': 'Bearer $token'},
+        ),
+      )) as List;
+
   Future<Map<String, dynamic>> _send(
     Future<http.Response> Function() request,
-  ) async {
+  ) async => (await _raw(request)) as Map<String, dynamic>;
+
+  Future<dynamic> _raw(Future<http.Response> Function() request) async {
     final http.Response res;
     try {
       res = await request().timeout(const Duration(seconds: 20));
@@ -124,7 +132,7 @@ class Portal {
     if (res.statusCode != 200) {
       throw PortalError('Portal trả về lỗi ${res.statusCode}');
     }
-    return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    return jsonDecode(utf8.decode(res.bodyBytes));
   }
 }
 
