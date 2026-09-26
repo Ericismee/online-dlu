@@ -44,10 +44,10 @@ class _BellState extends State<Bell> {
               borderRadius: BorderRadius.circular(14),
               boxShadow: Paper.shadow(3),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.notifications_rounded,
               size: 22,
-              color: Paper.ink,
+              color: _msgs == null ? Paper.ink3 : Paper.ink,
             ),
           ),
           if (n > 0)

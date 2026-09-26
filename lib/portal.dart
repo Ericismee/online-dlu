@@ -95,6 +95,10 @@ class Portal {
   Future<List<dynamic>> messages(String token) async =>
       (await _getList('/api/student/GetMessagesByReceiverID', token));
 
+  /// Lịch thi của sinh viên, tất cả các kỳ.
+  Future<List<dynamic>> exams(String token) =>
+      _getList('/api/student/showexambytime', token);
+
   Future<Map<String, dynamic>> _get(String path, String token) => _send(
     () => _client.get(
       Uri.parse('$_base$path'),

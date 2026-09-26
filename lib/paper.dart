@@ -197,3 +197,50 @@ class _Dots extends CustomPainter {
   @override
   bool shouldRepaint(covariant _Dots _) => false;
 }
+
+/// Mẩu giấy xám nhấp nháy nhẹ, dùng làm chỗ chờ khi API chưa về.
+class Skeleton extends StatefulWidget {
+  const Skeleton({
+    super.key,
+    this.width,
+    this.height = 14,
+    this.radius = 8,
+    this.ink = false,
+  });
+  final double? width;
+  final double height, radius;
+
+  /// true = có viền mực, dùng cho các ô to như ô lịch.
+  final bool ink;
+
+  @override
+  State<Skeleton> createState() => _SkeletonState();
+}
+
+class _SkeletonState extends State<Skeleton>
+    with SingleTickerProviderStateMixin {
+  late final _a = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _a.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: _a.drive(Tween(begin: 0.45, end: 0.9)),
+    child: Container(
+      width: widget.width,
+      height: widget.height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE7DCC4),
+        border: widget.ink ? Paper.border : null,
+        borderRadius: BorderRadius.circular(widget.radius),
+      ),
+    ),
+  );
+}

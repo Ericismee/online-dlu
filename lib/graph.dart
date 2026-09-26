@@ -69,54 +69,74 @@ class MonthGraph extends StatefulWidget {
 }
 
 class _MonthGraphState extends State<MonthGraph> {
-  Map<int, List<dynamic>>? _days;
+  /// Lịch đã tải, key là 'năm-tháng'. Tháng trước/sau được nạp sẵn nên bấm
+  /// mũi tên là có ngay.
+  final _cache = <String, Map<int, List<dynamic>>>{};
   String? _error;
   int? _pick; // ngày đang xem, null = hôm nay
   late DateTime _month = DateTime(widget.now.year, widget.now.month);
 
+  Map<int, List<dynamic>>? get _days => _cache[_key(_month)];
+  static String _key(DateTime m) => '${m.year}-${m.month}';
+
   @override
   void initState() {
     super.initState();
-    _load();
+    _show(_month);
   }
 
   void _goto(DateTime m) {
     setState(() {
       _month = m;
-      _days = null;
       _error = null;
       _pick = null;
     });
-    _load();
+    _show(m);
   }
 
-  Future<void> _load() async {
-    final portal = widget.portal ?? Portal();
-    final token = widget.session.token;
-    final month = _month;
-    final last = DateTime(month.year, month.month + 1, 0);
-    try {
-      final (year, term) = yearTermFor(month);
-      final weeks = {
-        for (
-          var d = month;
-          !d.isAfter(last);
-          d = d.add(const Duration(days: 1))
-        )
-          isoWeek(d),
-      };
-      final fetched = await Future.wait(
-        weeks.map(
-          (w) => portal.weekSchedule(token, year: year, term: term, week: w),
-        ),
-      );
-      if (mounted) {
-        if (month != _month) return; // đã đổi tháng, bỏ kết quả cũ
-        setState(() => _days = itemsByDay(fetched.expand((e) => e), month));
-      }
-    } on PortalError catch (e) {
-      if (mounted) setState(() => _error = e.message);
+  Future<void> _show(DateTime m) async {
+    if (!await _grab(m)) return;
+    for (final n in [
+      DateTime(m.year, m.month + 1),
+      DateTime(m.year, m.month - 1),
+    ]) {
+      await _grab(n, quiet: true);
     }
+  }
+
+  /// Tải một tháng vào cache, trả về false khi lỗi hoặc widget đã đóng.
+  Future<bool> _grab(DateTime m, {bool quiet = false}) async {
+    if (_cache.containsKey(_key(m))) return true;
+    try {
+      final days = await _fetch(m);
+      if (!mounted) return false;
+      setState(() => _cache[_key(m)] = days);
+      return true;
+    } on PortalError catch (e) {
+      if (mounted && !quiet) setState(() => _error = e.message);
+      return false;
+    }
+  }
+
+  Future<Map<int, List<dynamic>>> _fetch(DateTime month) async {
+    final portal = widget.portal ?? Portal();
+    final last = DateTime(month.year, month.month + 1, 0);
+    final (year, term) = yearTermFor(month);
+    final weeks = {
+      for (var d = month; !d.isAfter(last); d = d.add(const Duration(days: 1)))
+        isoWeek(d),
+    };
+    final fetched = await Future.wait(
+      weeks.map(
+        (w) => portal.weekSchedule(
+          widget.session.token,
+          year: year,
+          term: term,
+          week: w,
+        ),
+      ),
+    );
+    return itemsByDay(fetched.expand((e) => e), month);
   }
 
   @override
@@ -140,31 +160,38 @@ class _MonthGraphState extends State<MonthGraph> {
                     onTap: () => _goto(DateTime(month.year, month.month - 1)),
                   ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () async {
-                      final m = await showDialog<DateTime>(
-                        context: context,
-                        builder: (_) => _MonthPicker(month: month),
-                      );
-                      if (m != null) _goto(m);
-                    },
-                    child: Row(
-                      children: [
-                        Text(
-                          'Tháng ${month.month}/${month.year}',
-                          style: const TextStyle(
-                            fontFamily: 'Baloo',
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                            color: Paper.ink,
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        final m = await showDialog<DateTime>(
+                          context: context,
+                          builder: (_) => _MonthPicker(month: month),
+                        );
+                        if (m != null) _goto(m);
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              'Tháng ${month.month}/${month.year}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Baloo',
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18,
+                                color: Paper.ink,
+                              ),
+                            ),
                           ),
-                        ),
-                        const Icon(
-                          Icons.expand_more_rounded,
-                          size: 20,
-                          color: Paper.ink2,
-                        ),
-                      ],
+                          const Icon(
+                            Icons.expand_more_rounded,
+                            size: 20,
+                            color: Paper.ink2,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -172,20 +199,19 @@ class _MonthGraphState extends State<MonthGraph> {
                     icon: Icons.chevron_right_rounded,
                     onTap: () => _goto(DateTime(month.year, month.month + 1)),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   if (_error != null)
                     Text(
                       _error!,
                       style: const TextStyle(color: Paper.ink3, fontSize: 12),
                     )
                   else if (_days == null)
-                    const Text(
-                      'Đang tải…',
-                      style: TextStyle(color: Paper.ink3, fontSize: 12),
-                    )
+                    const Skeleton(width: 48, height: 12)
                   else
                     Text(
                       '${periods(_days!.values.expand((e) => e))} tiết',
+                      maxLines: 1,
+                      softWrap: false,
                       style: const TextStyle(color: Paper.ink3, fontSize: 12),
                     ),
                 ],
@@ -199,14 +225,18 @@ class _MonthGraphState extends State<MonthGraph> {
                 mainAxisSpacing: 6,
                 children: [
                   for (var i = 0; i < lead; i++) const SizedBox(),
-                  for (var d = 1; d <= days; d++)
-                    _Cell(
-                      day: d,
-                      periods: periods(_days?[d] ?? const []),
-                      today: thisMonth && d == widget.now.day,
-                      picked: d == pick,
-                      onTap: () => setState(() => _pick = d),
-                    ),
+                  if (_days == null)
+                    for (var d = 1; d <= days; d++)
+                      const Skeleton(height: 44, radius: 6, ink: true)
+                  else
+                    for (var d = 1; d <= days; d++)
+                      _Cell(
+                        day: d,
+                        periods: periods(_days?[d] ?? const []),
+                        today: thisMonth && d == widget.now.day,
+                        picked: d == pick,
+                        onTap: () => setState(() => _pick = d),
+                      ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -293,14 +323,30 @@ class _DayCard extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         if (loading)
-          const Text(
-            'Đang tải…',
-            style: TextStyle(color: Paper.ink3, fontSize: 14),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Skeleton(width: 190, height: 16),
+              SizedBox(height: 10),
+              Skeleton(width: 240, height: 24, radius: 12),
+              SizedBox(height: 10),
+              Skeleton(width: 130, height: 12),
+            ],
           )
         else if (items.isEmpty)
-          const Text(
-            'Nghỉ 🎉',
-            style: TextStyle(color: Paper.ink2, fontSize: 15),
+          Container(
+            color: Paper.sun,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            child: const Text(
+              'Không có tiết',
+              style: TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                fontSize: 30,
+                height: 1.25,
+                color: Paper.ink,
+              ),
+            ),
           )
         else
           for (final i in items) _Lesson(i),

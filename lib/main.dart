@@ -1,6 +1,9 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import 'data.dart';
+import 'exams.dart';
 import 'graph.dart';
 import 'info.dart';
 import 'login.dart';
@@ -57,9 +60,21 @@ class _RootState extends State<Root> {
   @override
   Widget build(BuildContext context) {
     if (_checking) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: CircularProgressIndicator(color: Paper.accent, strokeWidth: 3),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 940),
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: const [
+                Skeleton(width: 220, height: 34, radius: 10),
+                SizedBox(height: 20),
+                Skeleton(height: 120, radius: 16, ink: true),
+                SizedBox(height: 16),
+                Skeleton(height: 320, radius: 16, ink: true),
+              ],
+            ),
+          ),
         ),
       );
     }
@@ -100,15 +115,16 @@ class _ShellState extends State<Shell> {
     body: DotBackground(
       child: Stack(
         children: [
-          SafeArea(
-            child: IndexedStack(
-              index: _tab,
-              children: [
-                HomeTab(session: widget.session),
-                InfoScreen(session: widget.session, onLogout: widget.onLogout),
-              ],
-            ),
+          IndexedStack(
+            index: _tab,
+            children: [
+              HomeTab(session: widget.session),
+              ExamsTab(session: widget.session),
+              InfoScreen(session: widget.session, onLogout: widget.onLogout),
+            ],
           ),
+          // nội dung cuộn xuống dưới status bar, làm mờ cho mượt
+          const _TopBlur(),
           Align(
             alignment: Alignment.bottomCenter,
             child: PaperBar(
@@ -117,6 +133,34 @@ class _ShellState extends State<Shell> {
             ),
           ),
         ],
+      ),
+    ),
+  );
+}
+
+/// Dải mờ dưới status bar để chữ cuộn qua không đè lên giờ / pin.
+class _TopBlur extends StatelessWidget {
+  const _TopBlur();
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.topCenter,
+    child: ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          height: MediaQuery.paddingOf(context).top,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Paper.paper.withValues(alpha: 0.92),
+                Paper.paper.withValues(alpha: 0.55),
+              ],
+            ),
+          ),
+        ),
       ),
     ),
   );
@@ -131,6 +175,7 @@ class PaperBar extends StatelessWidget {
 
   static const _items = [
     (Icons.calendar_month_rounded, 'Lịch', Paper.sun, -0.06),
+    (Icons.edit_note_rounded, 'Thi', Paper.rose, 0.04),
     (Icons.badge_rounded, 'Hồ sơ', Paper.sky, 0.05),
   ];
 
@@ -239,7 +284,12 @@ class _HomeTabState extends State<HomeTab> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            MediaQuery.paddingOf(context).top + 20,
+            20,
+            120,
+          ),
           children: [
             _Header(now: now, session: widget.session),
             const SizedBox(height: 16),

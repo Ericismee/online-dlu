@@ -68,7 +68,12 @@ class _InfoScreenState extends State<InfoScreen> {
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 940),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          MediaQuery.paddingOf(context).top + 20,
+          20,
+          120,
+        ),
         children: [
           Row(
             children: [
@@ -99,8 +104,22 @@ class _InfoScreenState extends State<InfoScreen> {
               child: Text(_error!, style: const TextStyle(color: Paper.ink)),
             )
           else if (_info == null)
-            const PaperBox(
-              child: Text('Đang tải…', style: TextStyle(color: Paper.ink2)),
+            PaperBox(
+              child: Column(
+                children: [
+                  for (var i = 0; i < 8; i++)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: [
+                          Skeleton(width: 110, height: 13),
+                          SizedBox(width: 20),
+                          Expanded(child: Skeleton(height: 15)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             )
           else
             PaperBox(
