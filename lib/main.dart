@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'data.dart';
+import 'info.dart';
 import 'login.dart';
 import 'paper.dart';
 import 'portal.dart';
@@ -128,6 +129,11 @@ class _HomeState extends State<Home> {
                   _Header(
                       now: now,
                       name: widget.session.fullName,
+                      onInfo: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  InfoScreen(session: widget.session))),
                       onLogout: widget.onLogout),
                   const SizedBox(height: 16),
                   _NextUp(store: store, now: now),
@@ -179,9 +185,14 @@ class _HomeState extends State<Home> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.now, required this.name, required this.onLogout});
+  const _Header(
+      {required this.now,
+      required this.name,
+      required this.onInfo,
+      required this.onLogout});
   final DateTime now;
   final String name;
+  final VoidCallback onInfo;
   final VoidCallback onLogout;
 
   @override
@@ -210,11 +221,22 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 12),
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: PaperButton(
-                label: 'Thoát',
-                color: Paper.card,
-                onColor: Paper.ink,
-                onPressed: onLogout),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                PaperButton(
+                    label: 'Hồ sơ',
+                    color: Paper.sky,
+                    onColor: Paper.ink,
+                    onPressed: onInfo),
+                const SizedBox(height: 8),
+                PaperButton(
+                    label: 'Thoát',
+                    color: Paper.card,
+                    onColor: Paper.ink,
+                    onPressed: onLogout),
+              ],
+            ),
           ),
         ],
       );

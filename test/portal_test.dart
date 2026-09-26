@@ -50,4 +50,20 @@ void main() {
         throwsA(isA<PortalError>()
             .having((e) => e.message, 'message', contains('500'))));
   });
+
+  test('studentInfo sends the token and unwraps sinhVien', () async {
+    String? auth;
+    final info = await Portal(client: MockClient((req) async {
+      auth = req.headers['authorization'];
+      return http.Response.bytes(
+          utf8.encode(jsonEncode({
+            'sinhVien': {'MaSinhVien': '2312577', 'HoTen': 'Trần Nguyễn Tuấn Anh'},
+            'IsUpdate': {'Result': 1},
+          })),
+          200);
+    })).studentInfo('tok');
+
+    expect(auth, 'Bearer tok');
+    expect(info['HoTen'], 'Trần Nguyễn Tuấn Anh');
+  });
 }

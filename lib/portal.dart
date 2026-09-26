@@ -66,14 +66,28 @@ class Portal {
     return Session.fromJson(res);
   }
 
-  Future<Map<String, dynamic>> _post(String path, Object body) async {
+  /// `/api/student/info` returns `{sinhVien: {...}, IsUpdate: {...}}` —
+  /// only the student map is interesting.
+  Future<Map<String, dynamic>> studentInfo(String token) async {
+    final res = await _get('/api/student/info', token);
+    return (res['sinhVien'] as Map<String, dynamic>?) ??
+        (throw PortalError('Portal không trả về thông tin sinh viên'));
+  }
+
+  Future<Map<String, dynamic>> _get(String path, String token) =>
+      _send(() => _client.get(Uri.parse('$_base$path'),
+          headers: {..._keys, 'authorization': 'Bearer $token'}));
+
+  Future<Map<String, dynamic>> _post(String path, Object body) =>
+      _send(() => _client.post(Uri.parse('$_base$path'),
+          headers: {..._keys, 'content-type': 'application/json'},
+          body: jsonEncode(body)));
+
+  Future<Map<String, dynamic>> _send(
+      Future<http.Response> Function() request) async {
     final http.Response res;
     try {
-      res = await _client
-          .post(Uri.parse('$_base$path'),
-              headers: {..._keys, 'content-type': 'application/json'},
-              body: jsonEncode(body))
-          .timeout(const Duration(seconds: 20));
+      res = await request().timeout(const Duration(seconds: 20));
     } catch (e) {
       throw PortalError('Không kết nối được portal. Kiểm tra mạng.');
     }
