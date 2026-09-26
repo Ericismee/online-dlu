@@ -1,4 +1,4 @@
-import 'package:dlu_tkb/info.dart';
+import 'package:dlu_tkb/behavior.dart';
 import 'package:dlu_tkb/paper.dart';
 import 'package:flutter_test/flutter_test.dart';
 

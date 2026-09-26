@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import 'behavior.dart';
 import 'courses.dart';
 import 'data.dart';
 import 'exams.dart';
@@ -312,7 +313,7 @@ class _HomeTabState extends State<HomeTab> {
             const SizedBox(height: 20),
             TodayLessons(session: widget.session),
             _NextExam(session: widget.session, now: now),
-            _Menu(onGo: widget.onGo),
+            _Menu(onGo: widget.onGo, session: widget.session),
           ],
         ),
       ),
@@ -489,13 +490,16 @@ class _NextExamState extends State<_NextExam> {
 
 /// Thẻ menu: bấm là nhảy qua tab tương ứng.
 class _Menu extends StatelessWidget {
-  const _Menu({required this.onGo});
+  const _Menu({required this.onGo, required this.session});
   final ValueChanged<int> onGo;
+  final Session session;
 
+  /// tab -1 = mở trang riêng thay vì chuyển tab.
   static const _items = [
     (0, Icons.calendar_month_rounded, 'Thời khoá biểu', Paper.sun),
     (1, Icons.edit_note_rounded, 'Lịch thi', Paper.rose),
     (3, Icons.menu_book_rounded, 'Học phần', Paper.mint),
+    (-1, Icons.emoji_events_rounded, 'Điểm rèn luyện', Paper.peach),
     (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
   ];
 
@@ -506,7 +510,14 @@ class _Menu extends StatelessWidget {
         for (final (tab, icon, label, color) in _items)
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () => onGo(tab),
+            onTap: () => tab >= 0
+                ? onGo(tab)
+                : Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => BehaviorScreen(session: session),
+                    ),
+                  ),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
