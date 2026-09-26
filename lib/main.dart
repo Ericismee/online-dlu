@@ -138,9 +138,9 @@ class _HomeState extends State<Home> {
                       onInfo: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) =>
-                                  InfoScreen(session: widget.session))),
-                      onLogout: widget.onLogout),
+                              builder: (_) => InfoScreen(
+                                  session: widget.session,
+                                  onLogout: widget.onLogout)))),
                   const SizedBox(height: 16),
                   _Me(session: widget.session, lop: _lop),
                   const SizedBox(height: 16),
@@ -193,11 +193,9 @@ class _HomeState extends State<Home> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header(
-      {required this.now, required this.onInfo, required this.onLogout});
+  const _Header({required this.now, required this.onInfo});
   final DateTime now;
   final VoidCallback onInfo;
-  final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -207,7 +205,7 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Thời khoá biểu',
+                const Text('Đại Học Đà Lạt',
                     style: TextStyle(
                         fontFamily: 'Baloo',
                         fontWeight: FontWeight.w800,
@@ -225,22 +223,11 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 12),
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                PaperButton(
-                    label: 'Hồ sơ',
-                    color: Paper.sky,
-                    onColor: Paper.ink,
-                    onPressed: onInfo),
-                const SizedBox(height: 8),
-                PaperButton(
-                    label: 'Thoát',
-                    color: Paper.card,
-                    onColor: Paper.ink,
-                    onPressed: onLogout),
-              ],
-            ),
+            child: PaperButton(
+                label: 'Hồ sơ',
+                color: Paper.sky,
+                onColor: Paper.ink,
+                onPressed: onInfo),
           ),
         ],
       );

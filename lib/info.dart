@@ -5,8 +5,10 @@ import 'portal.dart';
 
 /// Hồ sơ sinh viên, đọc từ `/api/student/info`.
 class InfoScreen extends StatefulWidget {
-  const InfoScreen({super.key, required this.session, this.portal});
+  const InfoScreen(
+      {super.key, required this.session, required this.onLogout, this.portal});
   final Session session;
+  final VoidCallback onLogout;
   final Portal? portal;
 
   @override
@@ -103,6 +105,13 @@ class _InfoScreenState extends State<InfoScreen> {
                           ],
                         ),
                       ),
+                    const SizedBox(height: 20),
+                    PaperButton(
+                        label: 'Đăng xuất',
+                        onPressed: () {
+                          Navigator.pop(context);
+                          widget.onLogout();
+                        }),
                     const SizedBox(height: 40),
                   ],
                 ),
