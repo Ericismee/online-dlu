@@ -108,10 +108,17 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   Store get store => widget.store;
 
+  /// Lớp sinh viên chỉ có ở /api/student/info, nạp một lần khi mở Home.
+  String? _lop;
+
   @override
   void initState() {
     super.initState();
     store.addListener(() => setState(() {}));
+    Portal()
+        .studentInfo(widget.session.token)
+        .then((i) => mounted ? setState(() => _lop = i['LopSinhVien'] as String?) : null)
+        .catchError((_) => null);
   }
 
   @override
@@ -128,13 +135,14 @@ class _HomeState extends State<Home> {
                 children: [
                   _Header(
                       now: now,
-                      name: widget.session.fullName,
                       onInfo: () => Navigator.push(
                           context,
                           MaterialPageRoute(
                               builder: (_) =>
                                   InfoScreen(session: widget.session))),
                       onLogout: widget.onLogout),
+                  const SizedBox(height: 16),
+                  _Me(session: widget.session, lop: _lop),
                   const SizedBox(height: 16),
                   _NextUp(store: store, now: now),
                   const SizedBox(height: 20),
@@ -186,12 +194,8 @@ class _HomeState extends State<Home> {
 
 class _Header extends StatelessWidget {
   const _Header(
-      {required this.now,
-      required this.name,
-      required this.onInfo,
-      required this.onLogout});
+      {required this.now, required this.onInfo, required this.onLogout});
   final DateTime now;
-  final String name;
   final VoidCallback onInfo;
   final VoidCallback onLogout;
 
@@ -212,7 +216,7 @@ class _Header extends StatelessWidget {
                         color: Paper.ink)),
                 const SizedBox(height: 4),
                 Text(
-                    '$name · ${dayNames[now.weekday]}, '
+                    '${dayNames[now.weekday]}, '
                     '${now.day}/${now.month}/${now.year}',
                     style: const TextStyle(color: Paper.ink2, fontSize: 14)),
               ],
@@ -239,6 +243,35 @@ class _Header extends StatelessWidget {
             ),
           ),
         ],
+      );
+}
+
+class _Me extends StatelessWidget {
+  const _Me({required this.session, required this.lop});
+  final Session session;
+  final String? lop;
+
+  @override
+  Widget build(BuildContext context) => PaperBox(
+        color: Paper.sun,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(session.fullName,
+                style: const TextStyle(
+                    fontFamily: 'Baloo',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 22,
+                    height: 1.2,
+                    color: Paper.ink)),
+            const SizedBox(height: 4),
+            Text('MSSV ${session.id}',
+                style: Paper.mono.copyWith(fontSize: 15, color: Paper.ink)),
+            const SizedBox(height: 2),
+            Text('Lớp ${lop ?? '…'}',
+                style: const TextStyle(fontSize: 15, color: Paper.ink2)),
+          ],
+        ),
       );
 }
 
