@@ -96,6 +96,16 @@ class Portal {
       (await _getList('/api/student/GetMessagesByReceiverID', token));
 
   /// Lịch thi của sinh viên, tất cả các kỳ.
+  /// Kết quả đăng ký học phần của một học kỳ.
+  Future<List<dynamic>> registrations(
+    String token, {
+    required String year,
+    required String term,
+  }) => _getList(
+    '/api/student/XemKetQuaDangKyHP?namhoc=$year&hocky=$term',
+    token,
+  );
+
   Future<List<dynamic>> exams(String token) =>
       _getList('/api/student/showexambytime', token);
 

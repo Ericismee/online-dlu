@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import 'courses.dart';
 import 'data.dart';
 import 'exams.dart';
 import 'graph.dart';
@@ -120,6 +121,7 @@ class _ShellState extends State<Shell> {
             children: [
               HomeTab(session: widget.session),
               ExamsTab(session: widget.session),
+              CoursesTab(session: widget.session),
               InfoScreen(session: widget.session, onLogout: widget.onLogout),
             ],
           ),
@@ -176,6 +178,7 @@ class PaperBar extends StatelessWidget {
   static const _items = [
     (Icons.calendar_month_rounded, 'Lịch', Paper.sun, -0.06),
     (Icons.edit_note_rounded, 'Thi', Paper.rose, 0.04),
+    (Icons.menu_book_rounded, 'Học phần', Paper.mint, -0.04),
     (Icons.badge_rounded, 'Hồ sơ', Paper.sky, 0.05),
   ];
 
@@ -215,7 +218,7 @@ class _Tab extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -101,19 +101,19 @@ class _ExamsTabState extends State<ExamsTab> {
             const SizedBox(height: 12),
             Row(
               children: [
-                _Choice(
+                Choice(
                   label: _pick.$1,
                   onTap: () async {
-                    final y = await _choose(context, years, _pick.$1);
+                    final y = await chooseOption(context, years, _pick.$1);
                     if (y != null) setState(() => _pick = (y, _pick.$2));
                   },
                 ),
                 const SizedBox(width: 8),
-                _Choice(
+                Choice(
                   label: _pick.$2,
                   color: Paper.mint,
                   onTap: () async {
-                    final t = await _choose(context, const [
+                    final t = await chooseOption(context, const [
                       'HK01',
                       'HK02',
                       'HK03',
@@ -212,96 +212,3 @@ class _Exam extends StatelessWidget {
     );
   }
 }
-
-class _Choice extends StatelessWidget {
-  const _Choice({
-    required this.label,
-    required this.onTap,
-    this.color = Paper.sun,
-  });
-  final String label;
-  final VoidCallback onTap;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: color,
-        border: Paper.border,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: Paper.shadow(3),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Baloo',
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: Paper.ink,
-            ),
-          ),
-          const Icon(Icons.expand_more_rounded, size: 18, color: Paper.ink2),
-        ],
-      ),
-    ),
-  );
-}
-
-Future<String?> _choose(
-  BuildContext context,
-  List<String> options,
-  String current,
-) => showDialog<String>(
-  context: context,
-  builder: (_) => Dialog(
-    backgroundColor: Colors.transparent,
-    child: Container(
-      constraints: const BoxConstraints(maxWidth: 280),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Paper.paper,
-        border: Paper.border,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: Paper.shadow(6),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final o in options)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context, o),
-                child: Container(
-                  width: double.infinity,
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: o == current ? Paper.sun : Paper.card,
-                    border: Paper.border,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: Paper.shadow(2),
-                  ),
-                  child: Text(
-                    o,
-                    style: const TextStyle(
-                      fontFamily: 'Baloo',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: Paper.ink,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    ),
-  ),
-);
