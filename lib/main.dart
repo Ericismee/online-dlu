@@ -121,7 +121,10 @@ class _ShellState extends State<Shell> {
             children: [
               ScheduleTab(session: widget.session),
               ExamsTab(session: widget.session),
-              HomeTab(session: widget.session),
+              HomeTab(
+                session: widget.session,
+                onGo: (i) => setState(() => _tab = i),
+              ),
               CoursesTab(session: widget.session),
               InfoScreen(session: widget.session, onLogout: widget.onLogout),
             ],
@@ -264,8 +267,9 @@ class _Tab extends StatelessWidget {
 }
 
 class HomeTab extends StatefulWidget {
-  const HomeTab({super.key, required this.session});
+  const HomeTab({super.key, required this.session, required this.onGo});
   final Session session;
+  final ValueChanged<int> onGo;
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -306,17 +310,9 @@ class _HomeTabState extends State<HomeTab> {
             const SizedBox(height: 16),
             _Me(session: widget.session, lop: _lop),
             const SizedBox(height: 20),
-            const Text(
-              'Sắp thi',
-              style: TextStyle(
-                fontFamily: 'Baloo',
-                fontWeight: FontWeight.w800,
-                fontSize: 22,
-                color: Paper.ink,
-              ),
-            ),
-            const SizedBox(height: 10),
+            TodayLessons(session: widget.session),
             _NextExam(session: widget.session, now: now),
+            _Menu(onGo: widget.onGo),
           ],
         ),
       ),
@@ -459,29 +455,90 @@ class _NextExamState extends State<_NextExam> {
   @override
   Widget build(BuildContext context) {
     if (_exams == null) {
-      return const Skeleton(height: 120, radius: 16, ink: true);
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 20),
+        child: Skeleton(height: 120, radius: 16, ink: true),
+      );
     }
     final today = DateTime(widget.now.year, widget.now.month, widget.now.day);
     final next = sortExams(_exams!, today)
         .where((e) => !parseDMY(e['NgayThi'] as String).isBefore(today))
         .firstOrNull;
-    if (next == null) {
-      return PaperBox(
-        child: Container(
-          color: Paper.sun,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          child: const Text(
-            'Chưa có lịch thi',
+    if (next == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Sắp thi',
             style: TextStyle(
               fontFamily: 'Baloo',
               fontWeight: FontWeight.w800,
-              fontSize: 30,
+              fontSize: 22,
               color: Paper.ink,
             ),
           ),
-        ),
-      );
-    }
-    return ExamCard(next, today: today);
+          const SizedBox(height: 10),
+          ExamCard(next, today: today),
+        ],
+      ),
+    );
   }
+}
+
+/// Thẻ menu: bấm là nhảy qua tab tương ứng.
+class _Menu extends StatelessWidget {
+  const _Menu({required this.onGo});
+  final ValueChanged<int> onGo;
+
+  static const _items = [
+    (0, Icons.calendar_month_rounded, 'Thời khoá biểu', Paper.sun),
+    (1, Icons.edit_note_rounded, 'Lịch thi', Paper.rose),
+    (3, Icons.menu_book_rounded, 'Học phần', Paper.mint),
+    (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
+  ];
+
+  @override
+  Widget build(BuildContext context) => PaperBox(
+    child: Column(
+      children: [
+        for (final (tab, icon, label, color) in _items)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => onGo(tab),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color,
+                      border: Paper.border,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: Paper.shadow(2),
+                    ),
+                    child: Icon(icon, size: 20, color: Paper.ink),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontFamily: 'Baloo',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: Paper.ink,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: Paper.ink3),
+                ],
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
 }

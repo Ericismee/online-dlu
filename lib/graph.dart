@@ -545,3 +545,75 @@ class _MonthPickerState extends State<_MonthPicker> {
     ),
   );
 }
+
+/// Tiết của hôm nay, tự ẩn nếu hôm nay nghỉ.
+class TodayLessons extends StatefulWidget {
+  const TodayLessons({super.key, required this.session, this.portal});
+  final Session session;
+  final Portal? portal;
+
+  @override
+  State<TodayLessons> createState() => _TodayLessonsState();
+}
+
+class _TodayLessonsState extends State<TodayLessons> {
+  List<dynamic>? _items;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final now = DateTime.now();
+    final (year, term) = yearTermFor(now);
+    try {
+      final week = await (widget.portal ?? Portal()).weekSchedule(
+        widget.session.token,
+        year: year,
+        term: term,
+        week: isoWeek(now),
+      );
+      final days = itemsByDay(week, DateTime(now.year, now.month));
+      if (mounted) setState(() => _items = days[now.day] ?? const []);
+    } on PortalError {
+      if (mounted) setState(() => _items = const []);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_items == null) {
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 20),
+        child: Skeleton(height: 120, radius: 16, ink: true),
+      );
+    }
+    if (_items!.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Hôm nay',
+            style: TextStyle(
+              fontFamily: 'Baloo',
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              color: Paper.ink,
+            ),
+          ),
+          const SizedBox(height: 10),
+          PaperBox(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [for (final i in _items!) _Lesson(i)],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
