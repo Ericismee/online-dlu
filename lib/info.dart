@@ -42,7 +42,10 @@ const _fields = [
   ('Cố vấn học tập', 'CoVanHocTap'),
 ];
 
-class _InfoScreenState extends State<InfoScreen> {
+class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
+  @override
+  Future<void> reload() => _load();
+
   Map<String, dynamic>? _info;
   String? _error;
 
@@ -68,16 +71,12 @@ class _InfoScreenState extends State<InfoScreen> {
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 940),
       child: PullRefresh(
-        onRefresh: () async {
-          setState(() => _info = null);
-          await _load();
-        },
         child: ListView(
           padding: EdgeInsets.fromLTRB(
             20,
             MediaQuery.paddingOf(context).top + 20,
             20,
-            120,
+            MediaQuery.paddingOf(context).bottom + 110,
           ),
           children: [
             Row(

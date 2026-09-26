@@ -16,16 +16,27 @@ class Bell extends StatefulWidget {
   State<Bell> createState() => _BellState();
 }
 
-class _BellState extends State<Bell> {
+class _BellState extends State<Bell> with Reloadable<Bell> {
+  @override
+  Future<void> reload() => _load();
+
   List<dynamic>? _msgs;
 
   @override
   void initState() {
     super.initState();
-    (widget.portal ?? Portal())
-        .messages(widget.session.token)
-        .then((m) => mounted ? setState(() => _msgs = m) : null)
-        .catchError((_) => null);
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final m = await (widget.portal ?? Portal()).messages(
+        widget.session.token,
+      );
+      if (mounted) setState(() => _msgs = m);
+    } on PortalError {
+      if (mounted) setState(() => _msgs ??= const []);
+    }
   }
 
   @override

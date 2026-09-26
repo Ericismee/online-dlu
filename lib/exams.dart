@@ -49,7 +49,10 @@ class ExamsTab extends StatefulWidget {
   State<ExamsTab> createState() => _ExamsTabState();
 }
 
-class _ExamsTabState extends State<ExamsTab> {
+class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
+  @override
+  Future<void> reload() => _load();
+
   List<dynamic>? _exams;
   String? _error;
   late (String, String) _pick = yearTermFor(DateTime.now());
@@ -85,16 +88,12 @@ class _ExamsTabState extends State<ExamsTab> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
         child: PullRefresh(
-          onRefresh: () async {
-            setState(() => _exams = null);
-            await _load();
-          },
           child: ListView(
             padding: EdgeInsets.fromLTRB(
               20,
               MediaQuery.paddingOf(context).top + 20,
               20,
-              120,
+              MediaQuery.paddingOf(context).bottom + 110,
             ),
             children: [
               const Text(

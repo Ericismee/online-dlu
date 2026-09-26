@@ -28,7 +28,11 @@ class CurriculumScreen extends StatefulWidget {
   State<CurriculumScreen> createState() => _CurriculumScreenState();
 }
 
-class _CurriculumScreenState extends State<CurriculumScreen> {
+class _CurriculumScreenState extends State<CurriculumScreen>
+    with Reloadable<CurriculumScreen> {
+  @override
+  Future<void> reload() => _load();
+
   List<dynamic>? _rows;
   String? _error;
 
@@ -58,10 +62,6 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 940),
             child: PullRefresh(
-              onRefresh: () async {
-                setState(() => _rows = null);
-                await _load();
-              },
               child: ListView(
                 padding: EdgeInsets.fromLTRB(
                   20,

@@ -10,6 +10,23 @@ class Cache {
 
   static Box<String>? _box;
 
+  /// Bật trong lúc kéo xuống làm mới: bỏ qua cache, gọi thẳng portal.
+  /// ponytail: cờ toàn cục vì mỗi lần chỉ có một lượt làm mới.
+  static bool bypass = false;
+
+  /// Màn hình đang mở tự đăng ký hàm nạp lại, kéo xuống là gọi hết.
+  static final refreshers = <Future<void> Function()>{};
+
+  /// Nạp lại mọi màn đang mở, data cũ vẫn hiện cho tới khi có data mới.
+  static Future<void> refreshAll() async {
+    bypass = true;
+    try {
+      await Future.wait(refreshers.map((f) => f()));
+    } finally {
+      bypass = false;
+    }
+  }
+
   static Future<void> init() async {
     await Hive.initFlutter();
     await open();
@@ -34,6 +51,6 @@ class Cache {
     jsonEncode({'at': DateTime.now().toIso8601String(), 'data': data}),
   );
 
-  /// Kéo xuống làm mới: bỏ hết cache để màn hình nạp lại từ portal.
+  /// Đăng xuất thì bỏ sạch.
   static Future<void> clear() async => _box?.clear();
 }

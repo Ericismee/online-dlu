@@ -20,7 +20,10 @@ class CoursesTab extends StatefulWidget {
   State<CoursesTab> createState() => _CoursesTabState();
 }
 
-class _CoursesTabState extends State<CoursesTab> {
+class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
+  @override
+  Future<void> reload() => _load();
+
   late (String, String) _pick = yearTermFor(DateTime.now());
   List<dynamic>? _list;
   String? _error;
@@ -31,10 +34,10 @@ class _CoursesTabState extends State<CoursesTab> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool blank = false}) async {
     final pick = _pick;
     setState(() {
-      _list = null;
+      if (blank) _list = null;
       _error = null;
     });
     try {
@@ -51,7 +54,7 @@ class _CoursesTabState extends State<CoursesTab> {
 
   void _set((String, String) p) {
     setState(() => _pick = p);
-    _load();
+    _load(blank: true);
   }
 
   @override
@@ -61,15 +64,12 @@ class _CoursesTabState extends State<CoursesTab> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
         child: PullRefresh(
-          onRefresh: () async {
-            await _load();
-          },
           child: ListView(
             padding: EdgeInsets.fromLTRB(
               20,
               MediaQuery.paddingOf(context).top + 20,
               20,
-              120,
+              MediaQuery.paddingOf(context).bottom + 110,
             ),
             children: [
               const Text(

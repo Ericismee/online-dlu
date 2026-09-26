@@ -21,7 +21,11 @@ class BehaviorScreen extends StatefulWidget {
   State<BehaviorScreen> createState() => _BehaviorScreenState();
 }
 
-class _BehaviorScreenState extends State<BehaviorScreen> {
+class _BehaviorScreenState extends State<BehaviorScreen>
+    with Reloadable<BehaviorScreen> {
+  @override
+  Future<void> reload() => _load();
+
   List<dynamic>? _scores;
   String? _error;
 
@@ -49,10 +53,6 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 940),
           child: PullRefresh(
-            onRefresh: () async {
-              setState(() => _scores = null);
-              await _load();
-            },
             child: ListView(
               padding: EdgeInsets.fromLTRB(
                 20,

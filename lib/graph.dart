@@ -68,7 +68,19 @@ class MonthGraph extends StatefulWidget {
   State<MonthGraph> createState() => _MonthGraphState();
 }
 
-class _MonthGraphState extends State<MonthGraph> {
+class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
+  /// Nạp lại tháng đang xem, ghi đè cache trong bộ nhớ.
+  @override
+  Future<void> reload() async {
+    final m = _month;
+    try {
+      final days = await _fetch(m);
+      if (mounted) setState(() => _cache[_key(m)] = days);
+    } on PortalError {
+      // giữ nguyên lịch cũ
+    }
+  }
+
   /// Lịch đã tải, key là 'năm-tháng'. Tháng trước/sau được nạp sẵn nên bấm
   /// mũi tên là có ngay.
   final _cache = <String, Map<int, List<dynamic>>>{};
@@ -556,7 +568,11 @@ class TodayLessons extends StatefulWidget {
   State<TodayLessons> createState() => _TodayLessonsState();
 }
 
-class _TodayLessonsState extends State<TodayLessons> {
+class _TodayLessonsState extends State<TodayLessons>
+    with Reloadable<TodayLessons> {
+  @override
+  Future<void> reload() => _load();
+
   List<dynamic>? _items;
 
   @override

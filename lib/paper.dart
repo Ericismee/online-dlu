@@ -343,20 +343,33 @@ Future<String?> chooseOption(
   ),
 );
 
-/// Kéo xuống làm mới: xoá cache rồi gọi lại hàm nạp của màn hình.
+/// Kéo xuống làm mới: gọi portal thật, data cũ vẫn nằm đó tới khi có data mới.
 class PullRefresh extends StatelessWidget {
-  const PullRefresh({super.key, required this.onRefresh, required this.child});
-  final Future<void> Function() onRefresh;
+  const PullRefresh({super.key, required this.child});
   final Widget child;
 
   @override
   Widget build(BuildContext context) => RefreshIndicator(
     color: Paper.ink,
     backgroundColor: Paper.sun,
-    onRefresh: () async {
-      await Cache.clear();
-      await onRefresh();
-    },
+    onRefresh: Cache.refreshAll,
     child: child,
   );
+}
+
+/// State tự nạp lại khi người dùng kéo xuống.
+mixin Reloadable<T extends StatefulWidget> on State<T> {
+  Future<void> reload();
+
+  @override
+  void initState() {
+    super.initState();
+    Cache.refreshers.add(reload);
+  }
+
+  @override
+  void dispose() {
+    Cache.refreshers.remove(reload);
+    super.dispose();
+  }
 }

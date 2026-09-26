@@ -50,7 +50,11 @@ class MarksScreen extends StatefulWidget {
   State<MarksScreen> createState() => _MarksScreenState();
 }
 
-class _MarksScreenState extends State<MarksScreen> {
+class _MarksScreenState extends State<MarksScreen>
+    with Reloadable<MarksScreen> {
+  @override
+  Future<void> reload() => _load();
+
   List<dynamic>? _years;
   (String, String)? _pick;
   String? _error;
@@ -89,10 +93,6 @@ class _MarksScreenState extends State<MarksScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 940),
             child: PullRefresh(
-              onRefresh: () async {
-                setState(() => _years = null);
-                await _load();
-              },
               child: ListView(
                 padding: EdgeInsets.fromLTRB(
                   20,
@@ -345,7 +345,11 @@ class TotalSummary extends StatefulWidget {
   State<TotalSummary> createState() => _TotalSummaryState();
 }
 
-class _TotalSummaryState extends State<TotalSummary> {
+class _TotalSummaryState extends State<TotalSummary>
+    with Reloadable<TotalSummary> {
+  @override
+  Future<void> reload() => _load();
+
   dynamic _record;
   bool _failed = false;
 

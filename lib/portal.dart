@@ -164,7 +164,7 @@ class Portal {
   /// gọi portal ngầm để lần mở sau đã mới.
   /// ponytail: màn hình đang mở không tự cập nhật, kéo xuống để làm mới.
   Future<dynamic> _cached(String path, String token) async {
-    final hit = Cache.read(path);
+    final hit = Cache.bypass ? null : Cache.read(path);
     if (hit != null) {
       if (Cache.stale(hit.$2)) unawaited(_fetch(path, token));
       return hit.$1;

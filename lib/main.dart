@@ -308,12 +308,12 @@ class HomeTab extends StatefulWidget {
   State<HomeTab> createState() => _HomeTabState();
 }
 
-class _HomeTabState extends State<HomeTab> {
+class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
+  @override
+  Future<void> reload() => _load();
+
   /// Lớp sinh viên chỉ có ở /api/student/info, nạp một lần khi mở app.
   String? _lop;
-
-  /// Đổi số này là cả cây con dựng lại, mỗi thẻ tự gọi portal lần nữa.
-  int _rev = 0;
 
   @override
   void initState() {
@@ -321,15 +321,13 @@ class _HomeTabState extends State<HomeTab> {
     _load();
   }
 
-  void _load() {
-    Portal()
-        .studentInfo(widget.session.token)
-        .then(
-          (i) => mounted
-              ? setState(() => _lop = i['LopSinhVien'] as String?)
-              : null,
-        )
-        .catchError((_) => null);
+  Future<void> _load() async {
+    try {
+      final i = await Portal().studentInfo(widget.session.token);
+      if (mounted) setState(() => _lop = i['LopSinhVien'] as String?);
+    } on PortalError {
+      // giữ lớp cũ
+    }
   }
 
   @override
@@ -339,17 +337,12 @@ class _HomeTabState extends State<HomeTab> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
         child: PullRefresh(
-          onRefresh: () async {
-            _load();
-            setState(() => _rev++);
-          },
           child: ListView(
-            key: ValueKey(_rev),
             padding: EdgeInsets.fromLTRB(
               20,
               MediaQuery.paddingOf(context).top + 20,
               20,
-              120,
+              MediaQuery.paddingOf(context).bottom + 110,
             ),
             children: [
               _Header(now: now, session: widget.session),
@@ -445,30 +438,21 @@ class _Me extends StatelessWidget {
 }
 
 /// Tab Lịch: chỉ có biểu đồ tháng.
-class ScheduleTab extends StatefulWidget {
+class ScheduleTab extends StatelessWidget {
   const ScheduleTab({super.key, required this.session});
   final Session session;
-
-  @override
-  State<ScheduleTab> createState() => _ScheduleTabState();
-}
-
-class _ScheduleTabState extends State<ScheduleTab> {
-  int _rev = 0;
 
   @override
   Widget build(BuildContext context) => Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 940),
       child: PullRefresh(
-        onRefresh: () async => setState(() => _rev++),
         child: ListView(
-          key: ValueKey(_rev),
           padding: EdgeInsets.fromLTRB(
             20,
             MediaQuery.paddingOf(context).top + 20,
             20,
-            120,
+            MediaQuery.paddingOf(context).bottom + 110,
           ),
           children: [
             const Text(
@@ -481,7 +465,7 @@ class _ScheduleTabState extends State<ScheduleTab> {
               ),
             ),
             const SizedBox(height: 12),
-            MonthGraph(session: widget.session, now: DateTime.now()),
+            MonthGraph(session: session, now: DateTime.now()),
           ],
         ),
       ),
@@ -499,16 +483,25 @@ class _NextExam extends StatefulWidget {
   State<_NextExam> createState() => _NextExamState();
 }
 
-class _NextExamState extends State<_NextExam> {
+class _NextExamState extends State<_NextExam> with Reloadable<_NextExam> {
   List<dynamic>? _exams;
 
   @override
   void initState() {
     super.initState();
-    Portal()
-        .exams(widget.session.token)
-        .then((e) => mounted ? setState(() => _exams = e) : null)
-        .catchError((_) => <dynamic>[]);
+    _load();
+  }
+
+  @override
+  Future<void> reload() => _load();
+
+  Future<void> _load() async {
+    try {
+      final e = await Portal().exams(widget.session.token);
+      if (mounted) setState(() => _exams = e);
+    } on PortalError {
+      if (mounted) setState(() => _exams ??= const []);
+    }
   }
 
   @override
