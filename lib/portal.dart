@@ -96,6 +96,18 @@ class Portal {
       (await _getList('/api/student/GetMessagesByReceiverID', token));
 
   /// Lịch thi của sinh viên, tất cả các kỳ.
+  /// Mã chương trình đào tạo, cần cho API điểm.
+  Future<String> studyProgram(String token) async {
+    final r = await _getList('/api/student/GetStudyProgram', token);
+    return r.isEmpty
+        ? throw PortalError('Không lấy được chương trình đào tạo')
+        : r.first['StudyProgramID'] as String;
+  }
+
+  /// Bảng điểm, nhóm theo năm học rồi học kỳ.
+  Future<List<dynamic>> marks(String token, String program) =>
+      _getList('/api/student/marks?ctdt=$program&&loai=SV', token);
+
   /// Điểm rèn luyện tất cả các kỳ.
   Future<List<dynamic>> behaviorScores(String token) =>
       _getList('/api/student/behaviorscoretotal', token);

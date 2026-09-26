@@ -9,6 +9,7 @@ import 'exams.dart';
 import 'graph.dart';
 import 'info.dart';
 import 'login.dart';
+import 'marks.dart';
 import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
@@ -499,7 +500,8 @@ class _Menu extends StatelessWidget {
     (0, Icons.calendar_month_rounded, 'Thời khoá biểu', Paper.sun),
     (1, Icons.edit_note_rounded, 'Lịch thi', Paper.rose),
     (3, Icons.menu_book_rounded, 'Học phần', Paper.mint),
-    (-1, Icons.emoji_events_rounded, 'Điểm rèn luyện', Paper.peach),
+    (-1, Icons.grade_rounded, 'Điểm', Paper.accent),
+    (-2, Icons.emoji_events_rounded, 'Điểm rèn luyện', Paper.peach),
     (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
   ];
 
@@ -515,7 +517,9 @@ class _Menu extends StatelessWidget {
                 : Navigator.push(
                     context,
                     MaterialPageRoute<void>(
-                      builder: (_) => BehaviorScreen(session: session),
+                      builder: (_) => tab == -1
+                          ? MarksScreen(session: session)
+                          : BehaviorScreen(session: session),
                     ),
                   ),
             child: Padding(
