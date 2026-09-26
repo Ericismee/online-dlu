@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'behavior.dart';
 import 'courses.dart';
+import 'curriculum.dart';
 import 'data.dart';
 import 'exams.dart';
 import 'graph.dart';
@@ -503,6 +504,7 @@ class _Menu extends StatelessWidget {
     (3, Icons.menu_book_rounded, 'Học phần', Paper.mint),
     (-1, Icons.grade_rounded, 'Điểm', Paper.accent),
     (-2, Icons.emoji_events_rounded, 'Điểm rèn luyện', Paper.peach),
+    (-3, Icons.school_rounded, 'Chương trình đào tạo', Paper.sky),
     (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
   ];
 
@@ -518,9 +520,11 @@ class _Menu extends StatelessWidget {
                 : Navigator.push(
                     context,
                     MaterialPageRoute<void>(
-                      builder: (_) => tab == -1
-                          ? MarksScreen(session: session)
-                          : BehaviorScreen(session: session),
+                      builder: (_) => switch (tab) {
+                        -1 => MarksScreen(session: session),
+                        -2 => BehaviorScreen(session: session),
+                        _ => CurriculumScreen(session: session),
+                      },
                     ),
                   ),
             child: Padding(

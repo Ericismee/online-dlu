@@ -104,6 +104,14 @@ class Portal {
         : r.first['StudyProgramID'] as String;
   }
 
+  /// Các học phần trong chương trình đào tạo.
+  Future<List<dynamic>> curriculum(String token, String program) async =>
+      (await _get(
+            '/api/student/studyProgram?StudyProgramID=$program',
+            token,
+          ))['tbStudyPrograms']
+          as List;
+
   /// Bảng điểm, nhóm theo năm học rồi học kỳ.
   Future<List<dynamic>> marks(String token, String program) =>
       _getList('/api/student/marks?ctdt=$program&&loai=SV', token);
