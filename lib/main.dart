@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'data.dart';
+import 'graph.dart';
 import 'info.dart';
 import 'login.dart';
 import 'paper.dart';
@@ -143,6 +144,8 @@ class _HomeState extends State<Home> {
                                   onLogout: widget.onLogout)))),
                   const SizedBox(height: 16),
                   _Me(session: widget.session, lop: _lop),
+                  const SizedBox(height: 16),
+                  MonthGraph(session: widget.session, now: now),
                   const SizedBox(height: 16),
                   _NextUp(store: store, now: now),
                   const SizedBox(height: 20),

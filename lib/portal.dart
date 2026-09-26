@@ -74,6 +74,22 @@ class Portal {
         (throw PortalError('Portal không trả về thông tin sinh viên'));
   }
 
+  /// Năm học / học kỳ hiện tại theo portal.
+  Future<(String, String)> yearAndTerm(String token) async {
+    final r = await _get('/api/student/yearandterm', token);
+    return (r['CurrentYear'] as String, r['CurrentTerm'] as String);
+  }
+
+  /// Lịch học một tuần ISO. Mỗi phần tử có DayOfWeek (1 = thứ 2),
+  /// NumberOfPeriods và StartDate (dd/MM/yyyy) của thứ 2 trong tuần.
+  Future<List<dynamic>> weekSchedule(String token,
+      {required String year, required String term, required int week}) async {
+    final r = await _get(
+        '/api/student/DrawingSchedules_v2?namhoc=$year&hocky=$term&tuan=$week',
+        token);
+    return (r['ResultDataSchedule'] as List?) ?? const [];
+  }
+
   Future<Map<String, dynamic>> _get(String path, String token) =>
       _send(() => _client.get(Uri.parse('$_base$path'),
           headers: {..._keys, 'authorization': 'Bearer $token'}));
