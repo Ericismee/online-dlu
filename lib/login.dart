@@ -71,8 +71,26 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Paper.card,
+                        border: Paper.border,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: Paper.shadow(4),
+                      ),
+                      child: Image.asset(
+                        'assets/logo_icon.png',
+                        width: 72,
+                        height: 72,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   const Text(
-                    'Thời khoá biểu',
+                    'Đại Học Đà Lạt',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'Baloo',
                       fontWeight: FontWeight.w800,
@@ -83,6 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 2),
                   const Text(
                     'Đăng nhập bằng tài khoản portal DLU',
+                    textAlign: TextAlign.center,
                     style: TextStyle(color: Paper.ink2),
                   ),
                   const SizedBox(height: 24),
