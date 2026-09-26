@@ -96,6 +96,10 @@ class Portal {
       (await _getList('/api/student/GetMessagesByReceiverID', token));
 
   /// Lịch thi của sinh viên, tất cả các kỳ.
+  /// Điểm rèn luyện tất cả các kỳ.
+  Future<List<dynamic>> behaviorScores(String token) =>
+      _getList('/api/student/behaviorscoretotal', token);
+
   /// Kết quả đăng ký học phần của một học kỳ.
   Future<List<dynamic>> registrations(
     String token, {

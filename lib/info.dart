@@ -42,8 +42,17 @@ const _fields = [
   ('Cố vấn học tập', 'CoVanHocTap'),
 ];
 
+/// Màu theo thang xếp loại rèn luyện của trường.
+Color scoreColor(num score) => switch (score) {
+  >= 90 => Paper.mint,
+  >= 80 => Paper.sun,
+  >= 65 => Paper.peach,
+  _ => Paper.rose,
+};
+
 class _InfoScreenState extends State<InfoScreen> {
   Map<String, dynamic>? _info;
+  List<dynamic>? _scores;
   String? _error;
 
   @override
@@ -58,6 +67,10 @@ class _InfoScreenState extends State<InfoScreen> {
         widget.session.token,
       );
       if (mounted) setState(() => _info = info);
+      final scores = await (widget.portal ?? Portal()).behaviorScores(
+        widget.session.token,
+      );
+      if (mounted) setState(() => _scores = scores);
     } on PortalError catch (e) {
       if (mounted) setState(() => _error = e.message);
     }
@@ -132,6 +145,25 @@ class _InfoScreenState extends State<InfoScreen> {
               ),
             ),
           const SizedBox(height: 20),
+          const Text(
+            'Điểm rèn luyện',
+            style: TextStyle(
+              fontFamily: 'Baloo',
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              color: Paper.ink,
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (_scores == null)
+            const Skeleton(height: 120, radius: 16, ink: true)
+          else
+            PaperBox(
+              child: Column(
+                children: [for (final s in _scores!.reversed) _Score(s)],
+              ),
+            ),
+          const SizedBox(height: 20),
           PaperButton(label: 'Đăng xuất', onPressed: widget.onLogout),
           const SizedBox(height: 40),
         ],
@@ -166,6 +198,34 @@ class _Row extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _Score extends StatelessWidget {
+  const _Score(this.s);
+  final dynamic s;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            '${s['YearStudy']} · ${s['TermID']}',
+            style: const TextStyle(
+              color: Paper.ink,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Pill(
+          '${s['LastScore']} · ${s['BehaviorScoreRank']}',
+          color: scoreColor(s['LastScore'] as num? ?? 0),
         ),
       ],
     ),
