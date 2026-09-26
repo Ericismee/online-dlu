@@ -19,7 +19,7 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'TKB',
+    title: 'DLU Online',
     debugShowCheckedModeBanner: false,
     theme: Paper.theme(),
     home: const Root(),

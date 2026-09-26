@@ -39,6 +39,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.14.4
   flutter_test:
     sdk: flutter
 
@@ -90,3 +91,14 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Logo trường, sinh icon bằng: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: assets/logo.png
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+  macos:
+    generate: true
