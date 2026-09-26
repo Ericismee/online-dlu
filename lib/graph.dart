@@ -35,16 +35,21 @@ String buoi(int periodID) =>
 
 /// Ô càng đậm càng nhiều tiết.
 Color _level(int periods) => switch (periods) {
-      0 => const Color(0xFFF2E7CE),
-      <= 4 => Paper.mint,
-      <= 8 => Paper.sun,
-      <= 12 => Paper.peach,
-      _ => Paper.accent,
-    };
+  0 => const Color(0xFFF2E7CE),
+  <= 4 => Paper.mint,
+  <= 8 => Paper.sun,
+  <= 12 => Paper.peach,
+  _ => Paper.accent,
+};
 
 /// Contribution graph của tháng hiện tại: mỗi ô một ngày, đậm theo số tiết.
 class MonthGraph extends StatefulWidget {
-  const MonthGraph({super.key, required this.session, required this.now, this.portal});
+  const MonthGraph({
+    super.key,
+    required this.session,
+    required this.now,
+    this.portal,
+  });
   final Session session;
   final DateTime now;
   final Portal? portal;
@@ -72,11 +77,18 @@ class _MonthGraphState extends State<MonthGraph> {
     try {
       final (year, term) = await portal.yearAndTerm(token);
       final weeks = {
-        for (var d = month; !d.isAfter(last); d = d.add(const Duration(days: 1)))
-          isoWeek(d)
+        for (
+          var d = month;
+          !d.isAfter(last);
+          d = d.add(const Duration(days: 1))
+        )
+          isoWeek(d),
       };
-      final fetched = await Future.wait(weeks.map((w) =>
-          portal.weekSchedule(token, year: year, term: term, week: w)));
+      final fetched = await Future.wait(
+        weeks.map(
+          (w) => portal.weekSchedule(token, year: year, term: term, week: w),
+        ),
+      );
       if (mounted) {
         setState(() => _days = itemsByDay(fetched.expand((e) => e), month));
       }
@@ -91,93 +103,111 @@ class _MonthGraphState extends State<MonthGraph> {
     final days = DateTime(month.year, month.month + 1, 0).day;
     final lead = month.weekday - 1; // ô trống trước ngày 1
     final pick = _pick ?? widget.now.day;
-    return Column(children: [
-      PaperBox(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      children: [
+        PaperBox(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text('Tháng ${month.month}/${month.year}',
-                    style: const TextStyle(
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Tháng ${month.month}/${month.year}',
+                      style: const TextStyle(
                         fontFamily: 'Baloo',
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
-                        color: Paper.ink)),
-              ),
-              if (_error != null)
-                Text(_error!,
-                    style: const TextStyle(color: Paper.ink3, fontSize: 12))
-              else if (_days == null)
-                const Text('Đang tải…',
-                    style: TextStyle(color: Paper.ink3, fontSize: 12))
-              else
-                Text('${periods(_days!.values.expand((e) => e))} tiết',
-                    style: const TextStyle(color: Paper.ink3, fontSize: 12)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          GridView.count(
-            crossAxisCount: 7,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 6,
-            mainAxisSpacing: 6,
-            children: [
-              for (var i = 0; i < lead; i++) const SizedBox(),
-              for (var d = 1; d <= days; d++)
-                _Cell(
-                    day: d,
-                    periods: periods(_days?[d] ?? const []),
-                    today: d == widget.now.day,
-                    picked: d == (_pick ?? widget.now.day),
-                    onTap: () => setState(() => _pick = d)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Text('Ít',
-                  style: TextStyle(color: Paper.ink3, fontSize: 12)),
-              for (final p in [0, 4, 8, 12, 16])
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: _level(p),
-                      border: Border.all(color: Paper.ink, width: 1.5),
-                      borderRadius: BorderRadius.circular(4),
+                        color: Paper.ink,
+                      ),
                     ),
                   ),
-                ),
-              const Text('Nhiều',
-                  style: TextStyle(color: Paper.ink3, fontSize: 12)),
+                  if (_error != null)
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Paper.ink3, fontSize: 12),
+                    )
+                  else if (_days == null)
+                    const Text(
+                      'Đang tải…',
+                      style: TextStyle(color: Paper.ink3, fontSize: 12),
+                    )
+                  else
+                    Text(
+                      '${periods(_days!.values.expand((e) => e))} tiết',
+                      style: const TextStyle(color: Paper.ink3, fontSize: 12),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              GridView.count(
+                crossAxisCount: 7,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
+                children: [
+                  for (var i = 0; i < lead; i++) const SizedBox(),
+                  for (var d = 1; d <= days; d++)
+                    _Cell(
+                      day: d,
+                      periods: periods(_days?[d] ?? const []),
+                      today: d == widget.now.day,
+                      picked: d == (_pick ?? widget.now.day),
+                      onTap: () => setState(() => _pick = d),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Text(
+                    'Ít',
+                    style: TextStyle(color: Paper.ink3, fontSize: 12),
+                  ),
+                  for (final p in [0, 4, 8, 12, 16])
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: _level(p),
+                          border: Border.all(color: Paper.ink, width: 1.5),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                  const Text(
+                    'Nhiều',
+                    style: TextStyle(color: Paper.ink3, fontSize: 12),
+                  ),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
-      ),
-      const SizedBox(height: 12),
-      _DayCard(
+        ),
+        const SizedBox(height: 12),
+        _DayCard(
           day: DateTime(month.year, month.month, pick),
           items: _days?[pick] ?? const [],
           loading: _days == null && _error == null,
           onToday: pick == widget.now.day
               ? null
-              : () => setState(() => _pick = null)),
-    ]);
+              : () => setState(() => _pick = null),
+        ),
+      ],
+    );
   }
 }
 
 class _DayCard extends StatelessWidget {
-  const _DayCard(
-      {required this.day,
-      required this.items,
-      required this.loading,
-      required this.onToday});
+  const _DayCard({
+    required this.day,
+    required this.items,
+    required this.loading,
+    required this.onToday,
+  });
   final DateTime day;
   final List<dynamic> items;
   final bool loading;
@@ -185,40 +215,47 @@ class _DayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => PaperBox(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                      '${dayNames[day.weekday]}, ${day.day}/${day.month}',
-                      style: const TextStyle(
-                          fontFamily: 'Baloo',
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                          color: Paper.ink)),
+            Expanded(
+              child: Text(
+                '${dayNames[day.weekday]}, ${day.day}/${day.month}',
+                style: const TextStyle(
+                  fontFamily: 'Baloo',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                  color: Paper.ink,
                 ),
-                if (onToday != null)
-                  PaperButton(
-                      label: 'Hôm nay',
-                      color: Paper.sky,
-                      onColor: Paper.ink,
-                      onPressed: onToday!),
-              ],
+              ),
             ),
-            const SizedBox(height: 10),
-            if (loading)
-              const Text('Đang tải…',
-                  style: TextStyle(color: Paper.ink3, fontSize: 14))
-            else if (items.isEmpty)
-              const Text('Nghỉ 🎉',
-                  style: TextStyle(color: Paper.ink2, fontSize: 15))
-            else
-              for (final i in items) _Lesson(i),
+            if (onToday != null)
+              PaperButton(
+                label: 'Hôm nay',
+                color: Paper.sky,
+                onColor: Paper.ink,
+                onPressed: onToday!,
+              ),
           ],
         ),
-      );
+        const SizedBox(height: 10),
+        if (loading)
+          const Text(
+            'Đang tải…',
+            style: TextStyle(color: Paper.ink3, fontSize: 14),
+          )
+        else if (items.isEmpty)
+          const Text(
+            'Nghỉ 🎉',
+            style: TextStyle(color: Paper.ink2, fontSize: 15),
+          )
+        else
+          for (final i in items) _Lesson(i),
+      ],
+    ),
+  );
 }
 
 class _Lesson extends StatelessWidget {
@@ -233,18 +270,29 @@ class _Lesson extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(i['CurriculumName'] as String? ?? '',
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700, color: Paper.ink)),
+          Text(
+            i['CurriculumName'] as String? ?? '',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Paper.ink,
+            ),
+          ),
           const SizedBox(height: 4),
-          Wrap(spacing: 6, runSpacing: 6, children: [
-            Pill('Tiết $tiet', color: Paper.sun),
-            Pill(buoi(i['PeriodID'] as int), color: Paper.mint),
-            Pill('Phòng ${i['RoomID']}', color: Paper.sky),
-          ]),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              Pill('Tiết $tiet', color: Paper.sun),
+              Pill(buoi(i['PeriodID'] as int), color: Paper.mint),
+              Pill('Phòng ${i['RoomID']}', color: Paper.sky),
+            ],
+          ),
           const SizedBox(height: 4),
-          Text('GV: ${i['FullName'] ?? '—'}',
-              style: const TextStyle(fontSize: 13, color: Paper.ink2)),
+          Text(
+            'GV: ${i['FullName'] ?? '—'}',
+            style: const TextStyle(fontSize: 13, color: Paper.ink2),
+          ),
         ],
       ),
     );
@@ -252,32 +300,36 @@ class _Lesson extends StatelessWidget {
 }
 
 class _Cell extends StatelessWidget {
-  const _Cell(
-      {required this.day,
-      required this.periods,
-      required this.today,
-      required this.picked,
-      required this.onTap});
+  const _Cell({
+    required this.day,
+    required this.periods,
+    required this.today,
+    required this.picked,
+    required this.onTap,
+  });
   final int day, periods;
   final bool today, picked;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: _level(periods),
-          border: Border.all(color: Paper.ink, width: picked ? 3 : 1.5),
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: picked ? Paper.shadow(2) : null,
+    onTap: onTap,
+    child: Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _level(periods),
+        border: Border.all(color: Paper.ink, width: picked ? 3 : 1.5),
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: picked ? Paper.shadow(2) : null,
+      ),
+      child: Text(
+        '$day',
+        style: TextStyle(
+          fontSize: 12,
+          color: Paper.ink,
+          fontWeight: today ? FontWeight.w800 : FontWeight.w600,
         ),
-        child: Text('$day',
-            style: TextStyle(
-                fontSize: 12,
-                color: Paper.ink,
-                fontWeight: today ? FontWeight.w800 : FontWeight.w600)),
-        ),
-      );
+      ),
+    ),
+  );
 }

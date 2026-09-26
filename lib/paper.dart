@@ -16,15 +16,17 @@ class Paper {
 
   /// 'monospace' resolves to nothing on macOS — name real families first.
   static const mono = TextStyle(
-      fontFamilyFallback: ['Menlo', 'SF Mono', 'Consolas', 'monospace'],
-      fontFeatures: [FontFeature.tabularFigures()]);
+    fontFamilyFallback: ['Menlo', 'SF Mono', 'Consolas', 'monospace'],
+    fontFeatures: [FontFeature.tabularFigures()],
+  );
 
   static const radius = Radius.circular(14);
   static final border = Border.all(color: ink, width: 2);
 
   /// Hard offset shadow, no blur — the whole look hangs on this.
-  static List<BoxShadow> shadow([double dy = 4]) =>
-      [BoxShadow(color: ink, offset: Offset(0, dy))];
+  static List<BoxShadow> shadow([double dy = 4]) => [
+    BoxShadow(color: ink, offset: Offset(0, dy)),
+  ];
 
   static ThemeData theme() {
     const display = 'Baloo';
@@ -40,9 +42,15 @@ class Paper {
           .apply(bodyColor: ink, displayColor: ink, fontFamily: display)
           .copyWith(
             titleLarge: const TextStyle(
-                fontFamily: display, fontWeight: FontWeight.w800, fontSize: 22),
+              fontFamily: display,
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+            ),
             titleMedium: const TextStyle(
-                fontFamily: display, fontWeight: FontWeight.w700, fontSize: 16),
+              fontFamily: display,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+            ),
           ),
       dividerColor: ink,
     );
@@ -86,7 +94,12 @@ class PaperBox extends StatelessWidget {
 }
 
 class Pill extends StatelessWidget {
-  const Pill(this.label, {super.key, this.color = Paper.sun, this.ink = Paper.ink});
+  const Pill(
+    this.label, {
+    super.key,
+    this.color = Paper.sun,
+    this.ink = Paper.ink,
+  });
   final String label;
   final Color color;
   final Color ink;
@@ -95,22 +108,28 @@ class Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: color,
-          border: Border.all(color: Paper.ink, width: 1.5),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w700, color: ink)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(
+      color: color,
+      border: Border.all(color: Paper.ink, width: 1.5),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ink),
+    ),
+  );
 }
 
 /// Chunky pressable button: shifts down onto its shadow when pressed.
 class PaperButton extends StatefulWidget {
-  const PaperButton(
-      {super.key, required this.label, required this.onPressed, this.color = Paper.accent, this.onColor = Paper.card});
+  const PaperButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.color = Paper.accent,
+    this.onColor = Paper.card,
+  });
   final String label;
   final VoidCallback onPressed;
   final Color color;
@@ -125,29 +144,32 @@ class _PaperButtonState extends State<PaperButton> {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTapDown: (_) => setState(() => _down = true),
-        onTapCancel: () => setState(() => _down = false),
-        onTapUp: (_) {
-          setState(() => _down = false);
-          widget.onPressed();
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 70),
-          transform: Matrix4.translationValues(0, _down ? 3 : 0, 0),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: widget.color,
-            border: Paper.border,
-            borderRadius: BorderRadius.circular(999),
-            boxShadow: Paper.shadow(_down ? 1 : 4),
-          ),
-          child: Text(widget.label,
-              style: TextStyle(
-                  fontFamily: 'Baloo',
-                  fontWeight: FontWeight.w800,
-                  color: widget.onColor)),
+    onTapDown: (_) => setState(() => _down = true),
+    onTapCancel: () => setState(() => _down = false),
+    onTapUp: (_) {
+      setState(() => _down = false);
+      widget.onPressed();
+    },
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 70),
+      transform: Matrix4.translationValues(0, _down ? 3 : 0, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: widget.color,
+        border: Paper.border,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: Paper.shadow(_down ? 1 : 4),
+      ),
+      child: Text(
+        widget.label,
+        style: TextStyle(
+          fontFamily: 'Baloo',
+          fontWeight: FontWeight.w800,
+          color: widget.onColor,
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// The dotted paper backdrop.
@@ -156,10 +178,8 @@ class DotBackground extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(
-        painter: _Dots(),
-        child: child,
-      );
+  Widget build(BuildContext context) =>
+      CustomPaint(painter: _Dots(), child: child);
 }
 
 class _Dots extends CustomPainter {

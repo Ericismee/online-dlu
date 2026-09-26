@@ -25,13 +25,15 @@ class Session {
     if (j['IsLogin'] != true || j['Token'] == null) {
       final msg = (j['Message'] as String?)?.trim();
       throw PortalError(
-          msg == null || msg.isEmpty ? 'Sai tài khoản hoặc mật khẩu' : msg);
+        msg == null || msg.isEmpty ? 'Sai tài khoản hoặc mật khẩu' : msg,
+      );
     }
     return Session(
       id: j['Id'] as String? ?? '',
       fullName: j['FullName'] as String? ?? '',
       token: j['Token'] as String,
-      expire: DateTime.tryParse(j['Expire'] as String? ?? '') ??
+      expire:
+          DateTime.tryParse(j['Expire'] as String? ?? '') ??
           DateTime.now().add(const Duration(hours: 2)),
     );
   }
@@ -82,25 +84,37 @@ class Portal {
 
   /// Lịch học một tuần ISO. Mỗi phần tử có DayOfWeek (1 = thứ 2),
   /// NumberOfPeriods và StartDate (dd/MM/yyyy) của thứ 2 trong tuần.
-  Future<List<dynamic>> weekSchedule(String token,
-      {required String year, required String term, required int week}) async {
+  Future<List<dynamic>> weekSchedule(
+    String token, {
+    required String year,
+    required String term,
+    required int week,
+  }) async {
     final r = await _get(
-        '/api/student/DrawingSchedules_v2?namhoc=$year&hocky=$term&tuan=$week',
-        token);
+      '/api/student/DrawingSchedules_v2?namhoc=$year&hocky=$term&tuan=$week',
+      token,
+    );
     return (r['ResultDataSchedule'] as List?) ?? const [];
   }
 
-  Future<Map<String, dynamic>> _get(String path, String token) =>
-      _send(() => _client.get(Uri.parse('$_base$path'),
-          headers: {..._keys, 'authorization': 'Bearer $token'}));
+  Future<Map<String, dynamic>> _get(String path, String token) => _send(
+    () => _client.get(
+      Uri.parse('$_base$path'),
+      headers: {..._keys, 'authorization': 'Bearer $token'},
+    ),
+  );
 
-  Future<Map<String, dynamic>> _post(String path, Object body) =>
-      _send(() => _client.post(Uri.parse('$_base$path'),
-          headers: {..._keys, 'content-type': 'application/json'},
-          body: jsonEncode(body)));
+  Future<Map<String, dynamic>> _post(String path, Object body) => _send(
+    () => _client.post(
+      Uri.parse('$_base$path'),
+      headers: {..._keys, 'content-type': 'application/json'},
+      body: jsonEncode(body),
+    ),
+  );
 
   Future<Map<String, dynamic>> _send(
-      Future<http.Response> Function() request) async {
+    Future<http.Response> Function() request,
+  ) async {
     final http.Response res;
     try {
       res = await request().timeout(const Duration(seconds: 20));
