@@ -157,7 +157,7 @@ class _ExamsTabState extends State<ExamsTab> {
               for (final e in list)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _Exam(e, today: today),
+                  child: ExamCard(e, today: today),
                 ),
           ],
         ),
@@ -166,8 +166,9 @@ class _ExamsTabState extends State<ExamsTab> {
   }
 }
 
-class _Exam extends StatelessWidget {
-  const _Exam(this.e, {required this.today});
+/// Thẻ một ca thi, dùng ở tab Thi và Trang chủ.
+class ExamCard extends StatelessWidget {
+  const ExamCard(this.e, {super.key, required this.today});
   final dynamic e;
   final DateTime today;
 

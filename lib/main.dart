@@ -109,7 +109,7 @@ class Shell extends StatefulWidget {
 }
 
 class _ShellState extends State<Shell> {
-  int _tab = 0;
+  int _tab = 2; // mở app là Trang chủ
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -119,8 +119,9 @@ class _ShellState extends State<Shell> {
           IndexedStack(
             index: _tab,
             children: [
-              HomeTab(session: widget.session),
+              ScheduleTab(session: widget.session),
               ExamsTab(session: widget.session),
+              HomeTab(session: widget.session),
               CoursesTab(session: widget.session),
               InfoScreen(session: widget.session, onLogout: widget.onLogout),
             ],
@@ -175,18 +176,20 @@ class PaperBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onTap;
 
-  static const _items = [
-    (Icons.calendar_month_rounded, 'Lịch', Paper.sun, -0.06),
-    (Icons.edit_note_rounded, 'Thi', Paper.rose, 0.04),
-    (Icons.menu_book_rounded, 'Học phần', Paper.mint, -0.04),
-    (Icons.badge_rounded, 'Hồ sơ', Paper.sky, 0.05),
+  /// icon, ảnh (nếu có), nhãn, màu giấy, độ nghiêng.
+  static const _items = <(IconData?, String?, String, Color, double)>[
+    (Icons.calendar_month_rounded, null, 'Lịch', Paper.sun, -0.06),
+    (Icons.edit_note_rounded, null, 'Thi', Paper.rose, 0.04),
+    (null, 'assets/logo_icon.png', 'Trang chủ', Paper.peach, 0.0),
+    (Icons.menu_book_rounded, null, 'Học phần', Paper.mint, -0.04),
+    (Icons.badge_rounded, null, 'Hồ sơ', Paper.sky, 0.05),
   ];
 
   @override
   Widget build(BuildContext context) => SafeArea(
     top: false,
     child: Container(
-      margin: const EdgeInsets.fromLTRB(28, 0, 28, 14),
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Paper.card,
@@ -207,18 +210,18 @@ class PaperBar extends StatelessWidget {
 
 class _Tab extends StatelessWidget {
   const _Tab({required this.item, required this.on, required this.onTap});
-  final (IconData, String, Color, double) item;
+  final (IconData?, String?, String, Color, double) item;
   final bool on;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, label, color, tilt) = item;
+    final (icon, asset, label, color, tilt) = item;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -235,7 +238,12 @@ class _Tab extends StatelessWidget {
                   borderRadius: const BorderRadius.all(Radius.circular(12)),
                   boxShadow: on ? Paper.shadow(3) : null,
                 ),
-                child: Icon(icon, size: 22, color: on ? Paper.ink : Paper.ink3),
+                child: asset != null
+                    ? Opacity(
+                        opacity: on ? 1 : 0.55,
+                        child: Image.asset(asset, width: 26, height: 26),
+                      )
+                    : Icon(icon, size: 22, color: on ? Paper.ink : Paper.ink3),
               ),
             ),
             const SizedBox(height: 5),
@@ -297,8 +305,18 @@ class _HomeTabState extends State<HomeTab> {
             _Header(now: now, session: widget.session),
             const SizedBox(height: 16),
             _Me(session: widget.session, lop: _lop),
-            const SizedBox(height: 16),
-            MonthGraph(session: widget.session, now: now),
+            const SizedBox(height: 20),
+            const Text(
+              'Sắp thi',
+              style: TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                fontSize: 22,
+                color: Paper.ink,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _NextExam(session: widget.session, now: now),
           ],
         ),
       ),
@@ -380,4 +398,90 @@ class _Me extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Tab Lịch: chỉ có biểu đồ tháng.
+class ScheduleTab extends StatelessWidget {
+  const ScheduleTab({super.key, required this.session});
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 940),
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          MediaQuery.paddingOf(context).top + 20,
+          20,
+          120,
+        ),
+        children: [
+          const Text(
+            'Thời khoá biểu',
+            style: TextStyle(
+              fontFamily: 'Baloo',
+              fontWeight: FontWeight.w800,
+              fontSize: 30,
+              color: Paper.ink,
+            ),
+          ),
+          const SizedBox(height: 12),
+          MonthGraph(session: session, now: DateTime.now()),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Ca thi gần nhất còn lại, lấy từ cùng API với tab Thi.
+class _NextExam extends StatefulWidget {
+  const _NextExam({required this.session, required this.now});
+  final Session session;
+  final DateTime now;
+
+  @override
+  State<_NextExam> createState() => _NextExamState();
+}
+
+class _NextExamState extends State<_NextExam> {
+  List<dynamic>? _exams;
+
+  @override
+  void initState() {
+    super.initState();
+    Portal()
+        .exams(widget.session.token)
+        .then((e) => mounted ? setState(() => _exams = e) : null)
+        .catchError((_) => <dynamic>[]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_exams == null) {
+      return const Skeleton(height: 120, radius: 16, ink: true);
+    }
+    final today = DateTime(widget.now.year, widget.now.month, widget.now.day);
+    final next = sortExams(_exams!, today)
+        .where((e) => !parseDMY(e['NgayThi'] as String).isBefore(today))
+        .firstOrNull;
+    if (next == null) {
+      return PaperBox(
+        child: Container(
+          color: Paper.sun,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: const Text(
+            'Chưa có lịch thi',
+            style: TextStyle(
+              fontFamily: 'Baloo',
+              fontWeight: FontWeight.w800,
+              fontSize: 30,
+              color: Paper.ink,
+            ),
+          ),
+        ),
+      );
+    }
+    return ExamCard(next, today: today);
+  }
 }
