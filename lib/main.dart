@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import 'behavior.dart';
+import 'cache.dart';
 import 'courses.dart';
 import 'curriculum.dart';
 import 'data.dart';
@@ -15,7 +16,11 @@ import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
 
-void main() => runApp(const App());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Cache.init();
+  runApp(const App());
+}
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -51,14 +56,33 @@ class _RootState extends State<Root> {
 
   Future<void> _resume() async {
     final saved = await Vault.read();
-    if (saved != null) {
-      try {
-        _session = await Portal().login(saved.$1, saved.$2);
-      } on PortalError catch (e) {
-        _error = e.message;
-      }
+    if (saved == null) return setState(() => _checking = false);
+
+    // Có phiên cũ thì vào app ngay, đăng nhập lại chạy ngầm.
+    final cached = Cache.read('session')?.$1;
+    if (cached != null) {
+      _session = Session.fromMap(Map<String, dynamic>.from(cached as Map));
     }
-    if (mounted) setState(() => _checking = false);
+    if (mounted) setState(() => _checking = _session == null);
+
+    try {
+      final s = await Portal().login(saved.$1, saved.$2);
+      await Cache.write('session', s.toMap());
+      if (mounted) setState(() => _session = s);
+    } on PortalError catch (e) {
+      // Mạng hỏng thì cứ xài cache; sai mật khẩu mới đá về màn đăng nhập.
+      if (e.offline && _session != null) return;
+      await Vault.clear();
+      await Cache.clear();
+      if (mounted) {
+        setState(() {
+          _session = null;
+          _error = e.message;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
   }
 
   @override
@@ -85,16 +109,22 @@ class _RootState extends State<Root> {
     if (_session == null) {
       return LoginScreen(
         initialError: _error,
-        onLoggedIn: (s) => setState(() {
-          _session = s;
-          _error = null;
-        }),
+        onLoggedIn: (s) async {
+          await Cache.write('session', s.toMap());
+          if (mounted) {
+            setState(() {
+              _session = s;
+              _error = null;
+            });
+          }
+        },
       );
     }
     return Shell(
       session: _session!,
       onLogout: () async {
         await Vault.clear();
+        await Cache.clear();
         if (mounted) setState(() => _session = null);
       },
     );
@@ -282,9 +312,16 @@ class _HomeTabState extends State<HomeTab> {
   /// Lớp sinh viên chỉ có ở /api/student/info, nạp một lần khi mở app.
   String? _lop;
 
+  /// Đổi số này là cả cây con dựng lại, mỗi thẻ tự gọi portal lần nữa.
+  int _rev = 0;
+
   @override
   void initState() {
     super.initState();
+    _load();
+  }
+
+  void _load() {
     Portal()
         .studentInfo(widget.session.token)
         .then(
@@ -301,23 +338,30 @@ class _HomeTabState extends State<HomeTab> {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            MediaQuery.paddingOf(context).top + 20,
-            20,
-            120,
+        child: PullRefresh(
+          onRefresh: () async {
+            _load();
+            setState(() => _rev++);
+          },
+          child: ListView(
+            key: ValueKey(_rev),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.paddingOf(context).top + 20,
+              20,
+              120,
+            ),
+            children: [
+              _Header(now: now, session: widget.session),
+              const SizedBox(height: 16),
+              _Me(session: widget.session, lop: _lop),
+              const SizedBox(height: 20),
+              TotalSummary(session: widget.session),
+              TodayLessons(session: widget.session),
+              _NextExam(session: widget.session, now: now),
+              _Menu(onGo: widget.onGo, session: widget.session),
+            ],
           ),
-          children: [
-            _Header(now: now, session: widget.session),
-            const SizedBox(height: 16),
-            _Me(session: widget.session, lop: _lop),
-            const SizedBox(height: 20),
-            TotalSummary(session: widget.session),
-            TodayLessons(session: widget.session),
-            _NextExam(session: widget.session, now: now),
-            _Menu(onGo: widget.onGo, session: widget.session),
-          ],
         ),
       ),
     );
@@ -401,34 +445,45 @@ class _Me extends StatelessWidget {
 }
 
 /// Tab Lịch: chỉ có biểu đồ tháng.
-class ScheduleTab extends StatelessWidget {
+class ScheduleTab extends StatefulWidget {
   const ScheduleTab({super.key, required this.session});
   final Session session;
+
+  @override
+  State<ScheduleTab> createState() => _ScheduleTabState();
+}
+
+class _ScheduleTabState extends State<ScheduleTab> {
+  int _rev = 0;
 
   @override
   Widget build(BuildContext context) => Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 940),
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          MediaQuery.paddingOf(context).top + 20,
-          20,
-          120,
-        ),
-        children: [
-          const Text(
-            'Thời khoá biểu',
-            style: TextStyle(
-              fontFamily: 'Baloo',
-              fontWeight: FontWeight.w800,
-              fontSize: 30,
-              color: Paper.ink,
-            ),
+      child: PullRefresh(
+        onRefresh: () async => setState(() => _rev++),
+        child: ListView(
+          key: ValueKey(_rev),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            MediaQuery.paddingOf(context).top + 20,
+            20,
+            120,
           ),
-          const SizedBox(height: 12),
-          MonthGraph(session: session, now: DateTime.now()),
-        ],
+          children: [
+            const Text(
+              'Thời khoá biểu',
+              style: TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                fontSize: 30,
+                color: Paper.ink,
+              ),
+            ),
+            const SizedBox(height: 12),
+            MonthGraph(session: widget.session, now: DateTime.now()),
+          ],
+        ),
       ),
     ),
   );

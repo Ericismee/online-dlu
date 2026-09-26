@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'cache.dart';
+
 /// Palette lifted from codex-resets.com: cozy paper + hard ink borders.
 class Paper {
   static const paper = Color(0xFFFFF4DD);
@@ -340,3 +342,21 @@ Future<String?> chooseOption(
     ),
   ),
 );
+
+/// Kéo xuống làm mới: xoá cache rồi gọi lại hàm nạp của màn hình.
+class PullRefresh extends StatelessWidget {
+  const PullRefresh({super.key, required this.onRefresh, required this.child});
+  final Future<void> Function() onRefresh;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => RefreshIndicator(
+    color: Paper.ink,
+    backgroundColor: Paper.sun,
+    onRefresh: () async {
+      await Cache.clear();
+      await onRefresh();
+    },
+    child: child,
+  );
+}

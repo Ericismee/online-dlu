@@ -67,74 +67,80 @@ class _InfoScreenState extends State<InfoScreen> {
   Widget build(BuildContext context) => Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 940),
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          MediaQuery.paddingOf(context).top + 20,
-          20,
-          120,
-        ),
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Hồ sơ sinh viên',
-                  style: TextStyle(
-                    fontFamily: 'Baloo',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 30,
-                    color: Paper.ink,
+      child: PullRefresh(
+        onRefresh: () async {
+          setState(() => _info = null);
+          await _load();
+        },
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            MediaQuery.paddingOf(context).top + 20,
+            20,
+            120,
+          ),
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Hồ sơ sinh viên',
+                    style: TextStyle(
+                      fontFamily: 'Baloo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 30,
+                      color: Paper.ink,
+                    ),
                   ),
                 ),
-              ),
-              if (Navigator.of(context).canPop())
-                PaperButton(
-                  label: 'Quay lại',
-                  color: Paper.card,
-                  onColor: Paper.ink,
-                  onPressed: () => Navigator.pop(context),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_error != null)
-            PaperBox(
-              color: Paper.rose,
-              child: Text(_error!, style: const TextStyle(color: Paper.ink)),
-            )
-          else if (_info == null)
-            PaperBox(
-              child: Column(
-                children: [
-                  for (var i = 0; i < 8; i++)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 6),
-                      child: Row(
-                        children: [
-                          Skeleton(width: 110, height: 13),
-                          SizedBox(width: 20),
-                          Expanded(child: Skeleton(height: 15)),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            )
-          else
-            PaperBox(
-              child: Column(
-                children: [
-                  for (final (label, key) in _fields)
-                    if ((_info![key]?.toString() ?? '').isNotEmpty)
-                      _Row(label, _info![key].toString()),
-                ],
-              ),
+                if (Navigator.of(context).canPop())
+                  PaperButton(
+                    label: 'Quay lại',
+                    color: Paper.card,
+                    onColor: Paper.ink,
+                    onPressed: () => Navigator.pop(context),
+                  ),
+              ],
             ),
-          const SizedBox(height: 20),
-          PaperButton(label: 'Đăng xuất', onPressed: widget.onLogout),
-          const SizedBox(height: 40),
-        ],
+            const SizedBox(height: 16),
+            if (_error != null)
+              PaperBox(
+                color: Paper.rose,
+                child: Text(_error!, style: const TextStyle(color: Paper.ink)),
+              )
+            else if (_info == null)
+              PaperBox(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < 8; i++)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          children: [
+                            Skeleton(width: 110, height: 13),
+                            SizedBox(width: 20),
+                            Expanded(child: Skeleton(height: 15)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              )
+            else
+              PaperBox(
+                child: Column(
+                  children: [
+                    for (final (label, key) in _fields)
+                      if ((_info![key]?.toString() ?? '').isNotEmpty)
+                        _Row(label, _info![key].toString()),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 20),
+            PaperButton(label: 'Đăng xuất', onPressed: widget.onLogout),
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     ),
   );

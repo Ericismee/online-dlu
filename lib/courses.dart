@@ -60,96 +60,104 @@ class _CoursesTabState extends State<CoursesTab> {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            MediaQuery.paddingOf(context).top + 20,
-            20,
-            120,
-          ),
-          children: [
-            const Text(
-              'Học phần',
-              style: TextStyle(
-                fontFamily: 'Baloo',
-                fontWeight: FontWeight.w800,
-                fontSize: 30,
-                color: Paper.ink,
+        child: PullRefresh(
+          onRefresh: () async {
+            await _load();
+          },
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.paddingOf(context).top + 20,
+              20,
+              120,
+            ),
+            children: [
+              const Text(
+                'Học phần',
+                style: TextStyle(
+                  fontFamily: 'Baloo',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 30,
+                  color: Paper.ink,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Choice(
-                  label: _pick.$1,
-                  onTap: () async {
-                    final y = await chooseOption(
-                      context,
-                      recentYears(DateTime.now()),
-                      _pick.$1,
-                    );
-                    if (y != null) _set((y, _pick.$2));
-                  },
-                ),
-                const SizedBox(width: 8),
-                Choice(
-                  label: _pick.$2,
-                  color: Paper.mint,
-                  onTap: () async {
-                    final t = await chooseOption(context, const [
-                      'HK01',
-                      'HK02',
-                      'HK03',
-                    ], _pick.$2);
-                    if (t != null) _set((_pick.$1, t));
-                  },
-                ),
-                const Spacer(),
-                if (list.isNotEmpty)
-                  Text(
-                    '${list.first['TongLHP']} LHP · ${list.first['TongSTC']} TC',
-                    style: const TextStyle(color: Paper.ink3, fontSize: 12),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Choice(
+                    label: _pick.$1,
+                    onTap: () async {
+                      final y = await chooseOption(
+                        context,
+                        recentYears(DateTime.now()),
+                        _pick.$1,
+                      );
+                      if (y != null) _set((y, _pick.$2));
+                    },
                   ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_error != null)
-              PaperBox(
-                color: Paper.rose,
-                child: Text(_error!, style: const TextStyle(color: Paper.ink)),
-              )
-            else if (_list == null)
-              for (var i = 0; i < 4; i++)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: Skeleton(height: 96, radius: 16, ink: true),
+                  const SizedBox(width: 8),
+                  Choice(
+                    label: _pick.$2,
+                    color: Paper.mint,
+                    onTap: () async {
+                      final t = await chooseOption(context, const [
+                        'HK01',
+                        'HK02',
+                        'HK03',
+                      ], _pick.$2);
+                      if (t != null) _set((_pick.$1, t));
+                    },
+                  ),
+                  const Spacer(),
+                  if (list.isNotEmpty)
+                    Text(
+                      '${list.first['TongLHP']} LHP · ${list.first['TongSTC']} TC',
+                      style: const TextStyle(color: Paper.ink3, fontSize: 12),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (_error != null)
+                PaperBox(
+                  color: Paper.rose,
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Paper.ink),
+                  ),
                 )
-            else if (list.isEmpty)
-              PaperBox(
-                child: Container(
-                  color: Paper.sun,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  child: const Text(
-                    'Chưa đăng ký',
-                    style: TextStyle(
-                      fontFamily: 'Baloo',
-                      fontWeight: FontWeight.w800,
-                      fontSize: 30,
-                      color: Paper.ink,
+              else if (_list == null)
+                for (var i = 0; i < 4; i++)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Skeleton(height: 96, radius: 16, ink: true),
+                  )
+              else if (list.isEmpty)
+                PaperBox(
+                  child: Container(
+                    color: Paper.sun,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    child: const Text(
+                      'Chưa đăng ký',
+                      style: TextStyle(
+                        fontFamily: 'Baloo',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 30,
+                        color: Paper.ink,
+                      ),
                     ),
                   ),
-                ),
-              )
-            else
-              for (final c in list)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _Course(c),
-                ),
-          ],
+                )
+              else
+                for (final c in list)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _Course(c),
+                  ),
+            ],
+          ),
         ),
       ),
     );

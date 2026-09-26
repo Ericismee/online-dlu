@@ -57,13 +57,16 @@ class _ExamsTabState extends State<ExamsTab> {
   @override
   void initState() {
     super.initState();
-    (widget.portal ?? Portal())
-        .exams(widget.session.token)
-        .then((e) => mounted ? setState(() => _exams = e) : null)
-        .catchError((Object e) {
-          if (mounted) setState(() => _error = '$e');
-          return <dynamic>[];
-        });
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final e = await (widget.portal ?? Portal()).exams(widget.session.token);
+      if (mounted) setState(() => _exams = e);
+    } on PortalError catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    }
   }
 
   @override
@@ -81,85 +84,94 @@ class _ExamsTabState extends State<ExamsTab> {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            MediaQuery.paddingOf(context).top + 20,
-            20,
-            120,
-          ),
-          children: [
-            const Text(
-              'Lịch thi',
-              style: TextStyle(
-                fontFamily: 'Baloo',
-                fontWeight: FontWeight.w800,
-                fontSize: 30,
-                color: Paper.ink,
+        child: PullRefresh(
+          onRefresh: () async {
+            setState(() => _exams = null);
+            await _load();
+          },
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.paddingOf(context).top + 20,
+              20,
+              120,
+            ),
+            children: [
+              const Text(
+                'Lịch thi',
+                style: TextStyle(
+                  fontFamily: 'Baloo',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 30,
+                  color: Paper.ink,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Choice(
-                  label: _pick.$1,
-                  onTap: () async {
-                    final y = await chooseOption(context, years, _pick.$1);
-                    if (y != null) setState(() => _pick = (y, _pick.$2));
-                  },
-                ),
-                const SizedBox(width: 8),
-                Choice(
-                  label: _pick.$2,
-                  color: Paper.mint,
-                  onTap: () async {
-                    final t = await chooseOption(context, const [
-                      'HK01',
-                      'HK02',
-                      'HK03',
-                    ], _pick.$2);
-                    if (t != null) setState(() => _pick = (_pick.$1, t));
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (_error != null)
-              PaperBox(
-                color: Paper.rose,
-                child: Text(_error!, style: const TextStyle(color: Paper.ink)),
-              )
-            else if (_exams == null)
-              for (var i = 0; i < 4; i++)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: Skeleton(height: 96, radius: 16, ink: true),
-                )
-            else if (list.isEmpty)
-              Container(
-                color: Paper.sun,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 2,
-                ),
-                child: const Text(
-                  'Không có lịch thi',
-                  style: TextStyle(
-                    fontFamily: 'Baloo',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 30,
-                    height: 1.25,
-                    color: Paper.ink,
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Choice(
+                    label: _pick.$1,
+                    onTap: () async {
+                      final y = await chooseOption(context, years, _pick.$1);
+                      if (y != null) setState(() => _pick = (y, _pick.$2));
+                    },
                   ),
-                ),
-              )
-            else
-              for (final e in list)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: ExamCard(e, today: today),
-                ),
-          ],
+                  const SizedBox(width: 8),
+                  Choice(
+                    label: _pick.$2,
+                    color: Paper.mint,
+                    onTap: () async {
+                      final t = await chooseOption(context, const [
+                        'HK01',
+                        'HK02',
+                        'HK03',
+                      ], _pick.$2);
+                      if (t != null) setState(() => _pick = (_pick.$1, t));
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (_error != null)
+                PaperBox(
+                  color: Paper.rose,
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Paper.ink),
+                  ),
+                )
+              else if (_exams == null)
+                for (var i = 0; i < 4; i++)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Skeleton(height: 96, radius: 16, ink: true),
+                  )
+              else if (list.isEmpty)
+                Container(
+                  color: Paper.sun,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 2,
+                  ),
+                  child: const Text(
+                    'Không có lịch thi',
+                    style: TextStyle(
+                      fontFamily: 'Baloo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 30,
+                      height: 1.25,
+                      color: Paper.ink,
+                    ),
+                  ),
+                )
+              else
+                for (final e in list)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ExamCard(e, today: today),
+                  ),
+            ],
+          ),
         ),
       ),
     );

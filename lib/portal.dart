@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+
+import 'cache.dart';
 
 /// A logged-in student session. The portal's token lives ~2h, so it is kept in
 /// memory only — on a cold start we log in again from the saved credentials.
@@ -19,6 +22,21 @@ class Session {
   final DateTime expire;
 
   bool get valid => DateTime.now().isBefore(expire);
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'fullName': fullName,
+    'token': token,
+    'expire': expire.toIso8601String(),
+  };
+
+  /// Phiên lưu trong cache, để mở app là vào thẳng dù chưa đăng nhập lại được.
+  static Session fromMap(Map<String, dynamic> m) => Session(
+    id: m['id'] as String? ?? '',
+    fullName: m['fullName'] as String? ?? '',
+    token: m['token'] as String? ?? '',
+    expire: DateTime.parse(m['expire'] as String),
+  );
 
   /// Throws [PortalError] when the portal rejects the login.
   static Session fromJson(Map<String, dynamic> j) {
@@ -40,8 +58,11 @@ class Session {
 }
 
 class PortalError implements Exception {
-  PortalError(this.message);
+  PortalError(this.message, {this.offline = false});
   final String message;
+
+  /// Lỗi mạng / portal chết, không phải sai mật khẩu.
+  final bool offline;
   @override
   String toString() => message;
 }
@@ -133,12 +154,34 @@ class Portal {
   Future<List<dynamic>> exams(String token) =>
       _getList('/api/student/showexambytime', token);
 
-  Future<Map<String, dynamic>> _get(String path, String token) => _send(
-    () => _client.get(
-      Uri.parse('$_base$path'),
-      headers: {..._keys, 'authorization': 'Bearer $token'},
-    ),
-  );
+  Future<Map<String, dynamic>> _get(String path, String token) async =>
+      (await _cached(path, token)) as Map<String, dynamic>;
+
+  Future<List<dynamic>> _getList(String path, String token) async =>
+      (await _cached(path, token)) as List;
+
+  /// Cache trước, mạng sau: có cache thì trả luôn cho nhẹ, cache cũ quá thì
+  /// gọi portal ngầm để lần mở sau đã mới.
+  /// ponytail: màn hình đang mở không tự cập nhật, kéo xuống để làm mới.
+  Future<dynamic> _cached(String path, String token) async {
+    final hit = Cache.read(path);
+    if (hit != null) {
+      if (Cache.stale(hit.$2)) unawaited(_fetch(path, token));
+      return hit.$1;
+    }
+    return _fetch(path, token);
+  }
+
+  Future<dynamic> _fetch(String path, String token) async {
+    final data = await _raw(
+      () => _client.get(
+        Uri.parse('$_base$path'),
+        headers: {..._keys, 'authorization': 'Bearer $token'},
+      ),
+    );
+    await Cache.write(path, data);
+    return data;
+  }
 
   Future<Map<String, dynamic>> _post(String path, Object body) => _send(
     () => _client.post(
@@ -147,14 +190,6 @@ class Portal {
       body: jsonEncode(body),
     ),
   );
-
-  Future<List<dynamic>> _getList(String path, String token) async =>
-      (await _raw(
-        () => _client.get(
-          Uri.parse('$_base$path'),
-          headers: {..._keys, 'authorization': 'Bearer $token'},
-        ),
-      )) as List;
 
   Future<Map<String, dynamic>> _send(
     Future<http.Response> Function() request,
@@ -165,10 +200,16 @@ class Portal {
     try {
       res = await request().timeout(const Duration(seconds: 20));
     } catch (e) {
-      throw PortalError('Không kết nối được portal. Kiểm tra mạng.');
+      throw PortalError(
+        'Không kết nối được portal. Kiểm tra mạng.',
+        offline: true,
+      );
     }
     if (res.statusCode != 200) {
-      throw PortalError('Portal trả về lỗi ${res.statusCode}');
+      throw PortalError(
+        'Portal trả về lỗi ${res.statusCode}',
+        offline: res.statusCode >= 500,
+      );
     }
     return jsonDecode(utf8.decode(res.bodyBytes));
   }

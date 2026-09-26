@@ -88,107 +88,115 @@ class _MarksScreenState extends State<MarksScreen> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 940),
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                MediaQuery.paddingOf(context).top + 20,
-                20,
-                40,
-              ),
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Điểm',
-                        style: TextStyle(
-                          fontFamily: 'Baloo',
-                          fontWeight: FontWeight.w800,
-                          fontSize: 30,
-                          color: Paper.ink,
-                        ),
-                      ),
-                    ),
-                    PaperButton(
-                      label: 'Quay lại',
-                      color: Paper.card,
-                      onColor: Paper.ink,
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
+            child: PullRefresh(
+              onRefresh: () async {
+                setState(() => _years = null);
+                await _load();
+              },
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  MediaQuery.paddingOf(context).top + 20,
+                  20,
+                  40,
                 ),
-                const SizedBox(height: 16),
-                if (_error != null)
-                  PaperBox(
-                    color: Paper.rose,
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Paper.ink),
-                    ),
-                  )
-                else if (_years == null) ...[
-                  const Skeleton(height: 110, radius: 16, ink: true),
-                  const SizedBox(height: 16),
-                  const Skeleton(height: 240, radius: 16, ink: true),
-                ] else if (pick == null)
-                  PaperBox(
-                    child: Container(
-                      color: Paper.sun,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      child: const Text(
-                        'Chưa có điểm',
-                        style: TextStyle(
-                          fontFamily: 'Baloo',
-                          fontWeight: FontWeight.w800,
-                          fontSize: 30,
-                          color: Paper.ink,
-                        ),
-                      ),
-                    ),
-                  )
-                else ...[
-                  TotalCard(record: subjectsOf(years, keys.first).firstOrNull),
-                  const SizedBox(height: 16),
+                children: [
                   Row(
                     children: [
-                      Choice(
-                        label: pick.$1,
-                        onTap: () async {
-                          final y = await chooseOption(
-                            context,
-                            {for (final k in keys) k.$1}.toList(),
-                            pick.$1,
-                          );
-                          if (y == null) return;
-                          setState(
-                            () => _pick = keys.firstWhere(
-                              (k) => k.$1 == y && k.$2 == pick.$2,
-                              orElse: () => keys.firstWhere((k) => k.$1 == y),
-                            ),
-                          );
-                        },
+                      const Expanded(
+                        child: Text(
+                          'Điểm',
+                          style: TextStyle(
+                            fontFamily: 'Baloo',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 30,
+                            color: Paper.ink,
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Choice(
-                        label: pick.$2,
-                        color: Paper.mint,
-                        onTap: () async {
-                          final t = await chooseOption(context, [
-                            for (final k in keys)
-                              if (k.$1 == pick.$1) k.$2,
-                          ], pick.$2);
-                          if (t != null) setState(() => _pick = (pick.$1, t));
-                        },
+                      PaperButton(
+                        label: 'Quay lại',
+                        color: Paper.card,
+                        onColor: Paper.ink,
+                        onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _Term(year: pick.$1, term: pick.$2, subjects: subjects),
+                  if (_error != null)
+                    PaperBox(
+                      color: Paper.rose,
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Paper.ink),
+                      ),
+                    )
+                  else if (_years == null) ...[
+                    const Skeleton(height: 110, radius: 16, ink: true),
+                    const SizedBox(height: 16),
+                    const Skeleton(height: 240, radius: 16, ink: true),
+                  ] else if (pick == null)
+                    PaperBox(
+                      child: Container(
+                        color: Paper.sun,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        child: const Text(
+                          'Chưa có điểm',
+                          style: TextStyle(
+                            fontFamily: 'Baloo',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 30,
+                            color: Paper.ink,
+                          ),
+                        ),
+                      ),
+                    )
+                  else ...[
+                    TotalCard(
+                      record: subjectsOf(years, keys.first).firstOrNull,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Choice(
+                          label: pick.$1,
+                          onTap: () async {
+                            final y = await chooseOption(
+                              context,
+                              {for (final k in keys) k.$1}.toList(),
+                              pick.$1,
+                            );
+                            if (y == null) return;
+                            setState(
+                              () => _pick = keys.firstWhere(
+                                (k) => k.$1 == y && k.$2 == pick.$2,
+                                orElse: () => keys.firstWhere((k) => k.$1 == y),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Choice(
+                          label: pick.$2,
+                          color: Paper.mint,
+                          onTap: () async {
+                            final t = await chooseOption(context, [
+                              for (final k in keys)
+                                if (k.$1 == pick.$1) k.$2,
+                            ], pick.$2);
+                            if (t != null) setState(() => _pick = (pick.$1, t));
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _Term(year: pick.$1, term: pick.$2, subjects: subjects),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

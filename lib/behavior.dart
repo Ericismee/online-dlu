@@ -48,53 +48,59 @@ class _BehaviorScreenState extends State<BehaviorScreen> {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 940),
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              MediaQuery.paddingOf(context).top + 20,
-              20,
-              40,
-            ),
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Điểm rèn luyện',
-                      style: TextStyle(
-                        fontFamily: 'Baloo',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 30,
-                        color: Paper.ink,
+          child: PullRefresh(
+            onRefresh: () async {
+              setState(() => _scores = null);
+              await _load();
+            },
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                MediaQuery.paddingOf(context).top + 20,
+                20,
+                40,
+              ),
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Điểm rèn luyện',
+                        style: TextStyle(
+                          fontFamily: 'Baloo',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 30,
+                          color: Paper.ink,
+                        ),
                       ),
                     ),
-                  ),
-                  PaperButton(
-                    label: 'Quay lại',
-                    color: Paper.card,
-                    onColor: Paper.ink,
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (_error != null)
-                PaperBox(
-                  color: Paper.rose,
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(color: Paper.ink),
-                  ),
-                )
-              else if (_scores == null)
-                const Skeleton(height: 160, radius: 16, ink: true)
-              else
-                PaperBox(
-                  child: Column(
-                    children: [for (final s in _scores!.reversed) _Score(s)],
-                  ),
+                    PaperButton(
+                      label: 'Quay lại',
+                      color: Paper.card,
+                      onColor: Paper.ink,
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
                 ),
-            ],
+                const SizedBox(height: 16),
+                if (_error != null)
+                  PaperBox(
+                    color: Paper.rose,
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Paper.ink),
+                    ),
+                  )
+                else if (_scores == null)
+                  const Skeleton(height: 160, radius: 16, ink: true)
+                else
+                  PaperBox(
+                    child: Column(
+                      children: [for (final s in _scores!.reversed) _Score(s)],
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

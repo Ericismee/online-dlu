@@ -57,67 +57,73 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 940),
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                MediaQuery.paddingOf(context).top + 20,
-                20,
-                40,
-              ),
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Chương trình đào tạo',
-                        style: TextStyle(
-                          fontFamily: 'Baloo',
-                          fontWeight: FontWeight.w800,
-                          fontSize: 30,
-                          color: Paper.ink,
-                        ),
-                      ),
-                    ),
-                    PaperButton(
-                      label: 'Quay lại',
-                      color: Paper.card,
-                      onColor: Paper.ink,
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
+            child: PullRefresh(
+              onRefresh: () async {
+                setState(() => _rows = null);
+                await _load();
+              },
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  MediaQuery.paddingOf(context).top + 20,
+                  20,
+                  40,
                 ),
-                if (_rows != null) ...[
-                  const SizedBox(height: 10),
+                children: [
                   Row(
                     children: [
-                      Pill('${rows.length} HP', color: Paper.sky),
-                      const SizedBox(width: 6),
-                      Pill('${credits(rows)} TC', color: Paper.sun),
+                      const Expanded(
+                        child: Text(
+                          'Chương trình đào tạo',
+                          style: TextStyle(
+                            fontFamily: 'Baloo',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 30,
+                            color: Paper.ink,
+                          ),
+                        ),
+                      ),
+                      PaperButton(
+                        label: 'Quay lại',
+                        color: Paper.card,
+                        onColor: Paper.ink,
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ],
                   ),
-                ],
-                const SizedBox(height: 16),
-                if (_error != null)
-                  PaperBox(
-                    color: Paper.rose,
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Paper.ink),
+                  if (_rows != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Pill('${rows.length} HP', color: Paper.sky),
+                        const SizedBox(width: 6),
+                        Pill('${credits(rows)} TC', color: Paper.sun),
+                      ],
                     ),
-                  )
-                else if (_rows == null)
-                  for (var i = 0; i < 3; i++)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: Skeleton(height: 140, radius: 16, ink: true),
+                  ],
+                  const SizedBox(height: 16),
+                  if (_error != null)
+                    PaperBox(
+                      color: Paper.rose,
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(color: Paper.ink),
+                      ),
                     )
-                else
-                  for (final (term, subjects) in byTerm(rows))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _Term(term: term, subjects: subjects),
-                    ),
-              ],
+                  else if (_rows == null)
+                    for (var i = 0; i < 3; i++)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: Skeleton(height: 140, radius: 16, ink: true),
+                      )
+                  else
+                    for (final (term, subjects) in byTerm(rows))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _Term(term: term, subjects: subjects),
+                      ),
+                ],
+              ),
             ),
           ),
         ),
