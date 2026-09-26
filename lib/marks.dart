@@ -150,7 +150,7 @@ class _MarksScreenState extends State<MarksScreen> {
                     ),
                   )
                 else ...[
-                  _Total(record: subjectsOf(years, keys.first).firstOrNull),
+                  TotalCard(record: subjectsOf(years, keys.first).firstOrNull),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -198,8 +198,8 @@ class _MarksScreenState extends State<MarksScreen> {
 }
 
 /// Tổng kết toàn khoá, đọc từ bản ghi mới nhất.
-class _Total extends StatelessWidget {
-  const _Total({required this.record});
+class TotalCard extends StatelessWidget {
+  const TotalCard({super.key, required this.record});
   final dynamic record;
 
   @override
@@ -241,6 +241,7 @@ class _Term extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final first = subjects.isEmpty ? null : subjects.first;
+    final scored = subjects.any((m) => m['DiemTK_10'] != null);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -257,12 +258,31 @@ class _Term extends StatelessWidget {
                 ),
               ),
             ),
-            if (first != null)
+            if (first != null && scored)
               Pill('TB ${show(first['TB_HK_10'])} · ${show(first['TB_HK_4'])}'),
           ],
         ),
         const SizedBox(height: 8),
-        PaperBox(child: Column(children: [for (final m in subjects) _Mark(m)])),
+        PaperBox(
+          child: scored
+              ? Column(children: [for (final m in subjects) _Mark(m)])
+              : Container(
+                  color: Paper.sun,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  child: const Text(
+                    'Chưa có điểm',
+                    style: TextStyle(
+                      fontFamily: 'Baloo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 26,
+                      color: Paper.ink,
+                    ),
+                  ),
+                ),
+        ),
       ],
     );
   }
@@ -298,8 +318,57 @@ class _Mark extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Pill('${m['DiemTK_10']} · ${m['DiemTK_Chu']}', color: markColor(m)),
+        Pill(
+          '${show(m['DiemTK_10'])} · ${show(m['DiemTK_Chu'])}',
+          color: markColor(m),
+        ),
       ],
     ),
   );
+}
+
+/// Thẻ tích luỹ tự nạp dữ liệu, dùng ở Trang chủ.
+class TotalSummary extends StatefulWidget {
+  const TotalSummary({super.key, required this.session, this.portal});
+  final Session session;
+  final Portal? portal;
+
+  @override
+  State<TotalSummary> createState() => _TotalSummaryState();
+}
+
+class _TotalSummaryState extends State<TotalSummary> {
+  dynamic _record;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final portal = widget.portal ?? Portal();
+    try {
+      final program = await portal.studyProgram(widget.session.token);
+      final years = await portal.marks(widget.session.token, program);
+      final r = years.isEmpty
+          ? null
+          : subjectsOf(years, termKeys(years).first).firstOrNull;
+      if (mounted) setState(() => _record = r);
+    } on PortalError {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_failed) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: _record == null
+          ? const Skeleton(height: 110, radius: 16, ink: true)
+          : TotalCard(record: _record),
+    );
+  }
 }

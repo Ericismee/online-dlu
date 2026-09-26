@@ -1,6 +1,37 @@
+import 'dart:convert';
+
 import 'package:dlu_tkb/marks.dart';
+import 'package:dlu_tkb/portal.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:dlu_tkb/paper.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+final _blank = [
+  {
+    'NamHoc': '2026-2027',
+    'DanhSachDiem': [
+      {
+        'HocKy': 'HK01',
+        'DanhSachDiemHK': [
+          {
+            'CurriculumName': 'Toán',
+            'Credits': 3,
+            'DiemTK_10': null,
+            'DiemTK_Chu': null,
+            'IsPass': null,
+            'TB_HK_10': null,
+            'TB_HK_4': null,
+            'TB_TL_TN': '2.58',
+            'T_TC_TL_TN': 104,
+            'TenXepLoai': 'Khá',
+          },
+        ],
+      },
+    ],
+  },
+];
 
 final _years = [
   {
@@ -44,5 +75,41 @@ void main() {
     expect(termKeys(_years).first, ('2025-2026', 'HK01'));
     expect(latestScored(_years), ('2024-2025', 'HK01'));
     expect(subjectsOf(_years, ('2024-2025', 'HK01')).length, 1);
+  });
+
+  testWidgets('kỳ chưa có điểm thì báo chưa có, không lòi null', (t) async {
+    final portal = Portal(
+      client: MockClient((r) async {
+        if (r.url.path.contains('GetStudyProgram')) {
+          return http.Response.bytes(
+            utf8.encode(
+              jsonEncode([
+                {'StudyProgramID': 'CQ23CT-PM'},
+              ]),
+            ),
+            200,
+          );
+        }
+        return http.Response.bytes(utf8.encode(jsonEncode(_blank)), 200);
+      }),
+    );
+    await t.pumpWidget(
+      MaterialApp(
+        home: MarksScreen(
+          session: Session(
+            id: '1',
+            fullName: 'A',
+            token: 't',
+            expire: DateTime(2030),
+          ),
+          portal: portal,
+        ),
+      ),
+    );
+    await t.pump();
+    await t.pump(const Duration(seconds: 1));
+    expect(find.text('Chưa có điểm'), findsOneWidget);
+    expect(find.textContaining('2.58'), findsOneWidget);
+    expect(find.textContaining('null'), findsNothing);
   });
 }

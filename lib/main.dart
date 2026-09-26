@@ -312,6 +312,7 @@ class _HomeTabState extends State<HomeTab> {
             const SizedBox(height: 16),
             _Me(session: widget.session, lop: _lop),
             const SizedBox(height: 20),
+            TotalSummary(session: widget.session),
             TodayLessons(session: widget.session),
             _NextExam(session: widget.session, now: now),
             _Menu(onGo: widget.onGo, session: widget.session),
