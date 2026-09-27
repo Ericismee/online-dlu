@@ -53,6 +53,6 @@ app.*.map.json
 *.aab
 /dist/
 
-# Khoá ký bản Play — giữ ngoài repo, mất thì xin Google cấp lại upload key.
+# Repo riêng nên keystore nằm luôn trong này; mật khẩu thì không.
+# Trước khi mở public phải rotate upload key, xoá file thôi không đủ.
 /android/key.properties
-/android/app/*.jks
