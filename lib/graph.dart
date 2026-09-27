@@ -35,14 +35,24 @@ int periods(Iterable<dynamic> items) =>
 String buoi(int periodID) =>
     periodID <= 5 ? 'Sáng' : (periodID <= 10 ? 'Chiều' : 'Tối');
 
-/// Ô càng đậm càng nhiều tiết.
-Color _level(int periods) => switch (periods) {
-  0 => const Color(0xFFF2E7CE),
-  <= 4 => Paper.mint,
-  <= 8 => Paper.sun,
-  <= 12 => Paper.peach,
-  _ => Paper.accent,
-};
+/// Màu ô lịch theo buổi học trong ngày. Học cả ngày thì lấy buổi sớm nhất,
+/// vì buổi đầu mới là cái quyết định hôm đó phải dậy lúc mấy giờ.
+Color dayColor(Iterable<dynamic> items) {
+  if (items.isEmpty) return _nghi;
+  final first = items
+      .map((i) => toNum(i['PeriodID']).toInt())
+      .reduce((a, b) => a < b ? a : b);
+  return switch (buoi(first)) {
+    'Sáng' => _sang,
+    'Chiều' => _chieu,
+    _ => _toi,
+  };
+}
+
+const _nghi = Color(0xFFF2E7CE); // nghỉ — nền giấy, không có tiết nào
+const _sang = Paper.mint; // sáng — tiết 1-5
+const _chieu = Paper.sun; // chiều — tiết 6-10
+const _toi = Paper.sky; // tối — tiết 11 trở đi
 
 /// Năm học / học kỳ của một tháng. HK01 tháng 8-1, HK02 tháng 2-6, HK03 tháng 7.
 // ponytail: suy từ lịch chung của trường; nếu trường đổi mốc học kỳ thì sửa ở đây.
@@ -274,7 +284,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                     for (var d = 1; d <= days; d++)
                       _Cell(
                         day: d,
-                        periods: periods(_days?[d] ?? const []),
+                        items: _days?[d] ?? const [],
                         today: thisMonth && d == widget.now.day,
                         picked: d == pick,
                         onTap: () => setState(() => _pick = d),
@@ -282,29 +292,14 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                 ],
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Text(
-                    'Ít',
-                    style: TextStyle(color: Paper.ink3, fontSize: 12),
-                  ),
-                  for (final p in [0, 4, 8, 12, 16])
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      child: Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: _level(p),
-                          border: Border.all(color: Paper.ink, width: 1.5),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ),
-                  const Text(
-                    'Nhiều',
-                    style: TextStyle(color: Paper.ink3, fontSize: 12),
-                  ),
+              Wrap(
+                spacing: 12,
+                runSpacing: 6,
+                children: const [
+                  _Legend(color: _sang, label: 'Sáng'),
+                  _Legend(color: _chieu, label: 'Chiều'),
+                  _Legend(color: _toi, label: 'Tối'),
+                  _Legend(color: _nghi, label: 'Nghỉ'),
                 ],
               ),
             ],
@@ -438,15 +433,41 @@ class _Lesson extends StatelessWidget {
   }
 }
 
+/// Ô màu + tên buổi trong phần chú thích.
+class _Legend extends StatelessWidget {
+  const _Legend({required this.color, required this.label});
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          color: color,
+          border: Border.all(color: Paper.ink, width: 1.5),
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+      const SizedBox(width: 5),
+      Text(label, style: const TextStyle(color: Paper.ink3, fontSize: 12)),
+    ],
+  );
+}
+
 class _Cell extends StatelessWidget {
   const _Cell({
     required this.day,
-    required this.periods,
+    required this.items,
     required this.today,
     required this.picked,
     required this.onTap,
   });
-  final int day, periods;
+  final int day;
+  final List<dynamic> items;
   final bool today, picked;
   final VoidCallback onTap;
 
@@ -456,7 +477,7 @@ class _Cell extends StatelessWidget {
     child: Container(
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: _level(periods),
+        color: dayColor(items),
         border: Border.all(color: Paper.ink, width: picked ? 3 : 1.5),
         borderRadius: BorderRadius.circular(6),
         boxShadow: picked ? Paper.shadow(2) : null,

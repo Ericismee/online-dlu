@@ -145,33 +145,40 @@ class _ShellState extends State<Shell> {
   int _tab = 2; // mở app là Trang chủ
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: DotBackground(
-      child: Stack(
-        children: [
-          IndexedStack(
-            index: _tab,
-            children: [
-              ScheduleTab(session: widget.session),
-              ExamsTab(session: widget.session),
-              HomeTab(
-                session: widget.session,
-                onGo: (i) => setState(() => _tab = i),
-              ),
-              CoursesTab(session: widget.session),
-              InfoScreen(session: widget.session, onLogout: widget.onLogout),
-            ],
-          ),
-          // nội dung cuộn xuống dưới status bar, làm mờ cho mượt
-          const _TopBlur(),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: PaperBar(
+  // Nút back Android: đang ở tab khác thì về Trang chủ, ở Trang chủ mới thoát.
+  Widget build(BuildContext context) => PopScope(
+    canPop: _tab == 2,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) setState(() => _tab = 2);
+    },
+    child: Scaffold(
+      body: DotBackground(
+        child: Stack(
+          children: [
+            IndexedStack(
               index: _tab,
-              onTap: (i) => setState(() => _tab = i),
+              children: [
+                ScheduleTab(session: widget.session),
+                ExamsTab(session: widget.session),
+                HomeTab(
+                  session: widget.session,
+                  onGo: (i) => setState(() => _tab = i),
+                ),
+                CoursesTab(session: widget.session),
+                InfoScreen(session: widget.session, onLogout: widget.onLogout),
+              ],
             ),
-          ),
-        ],
+            // nội dung cuộn xuống dưới status bar, làm mờ cho mượt
+            const _TopBlur(),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: PaperBar(
+                index: _tab,
+                onTap: (i) => setState(() => _tab = i),
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );

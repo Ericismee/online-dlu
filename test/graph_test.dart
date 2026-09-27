@@ -55,4 +55,34 @@ void main() {
     expect(yearTermFor(DateTime(2027, 3)), ('2026-2027', 'HK02'));
     expect(yearTermFor(DateTime(2027, 7)), ('2026-2027', 'HK03'));
   });
+
+  test('màu ô theo buổi, học cả ngày lấy buổi sớm nhất', () {
+    expect(
+      dayColor(const []),
+      isNot(
+        dayColor(const [
+          {'PeriodID': 1},
+        ]),
+      ),
+    );
+    expect(
+      dayColor(const [
+        {'PeriodID': 7},
+        {'PeriodID': 2},
+      ]),
+      dayColor(const [
+        {'PeriodID': 5},
+      ]),
+    );
+    expect(
+      dayColor(const [
+        {'PeriodID': 11},
+      ]),
+      isNot(
+        dayColor(const [
+          {'PeriodID': 7},
+        ]),
+      ),
+    );
+  });
 }
