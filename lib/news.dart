@@ -17,7 +17,20 @@ class Bell extends StatefulWidget {
   State<Bell> createState() => _BellState();
 }
 
-class _BellState extends State<Bell> with Reloadable<Bell> {
+class _BellState extends State<Bell>
+    with Reloadable<Bell>, SingleTickerProviderStateMixin {
+  /// Lắc chuông kiểu bell-wiggle của codex-resets.com: -14deg, 11deg, -5deg.
+  late final _wiggle = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  );
+  late final _angle = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: 0.0, end: -0.24), weight: 25),
+    TweenSequenceItem(tween: Tween(begin: -0.24, end: 0.19), weight: 30),
+    TweenSequenceItem(tween: Tween(begin: 0.19, end: -0.09), weight: 25),
+    TweenSequenceItem(tween: Tween(begin: -0.09, end: 0.0), weight: 20),
+  ]).animate(_wiggle);
+
   @override
   Future<void> reload() => _load();
 
@@ -29,12 +42,21 @@ class _BellState extends State<Bell> with Reloadable<Bell> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _wiggle.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     try {
       final m = await (widget.portal ?? Portal()).messages(
         widget.session.token,
       );
-      if (mounted) setState(() => _msgs = m);
+      if (mounted) {
+        setState(() => _msgs = m);
+        if (unread(m) > 0) _wiggle.forward(from: 0);
+      }
     } on PortalError {
       if (mounted) setState(() => _msgs ??= const []);
     }
@@ -44,53 +66,63 @@ class _BellState extends State<Bell> with Reloadable<Bell> {
   Widget build(BuildContext context) {
     final n = unread(_msgs ?? const []);
     return GestureDetector(
-      onTap: _msgs == null ? null : () => _open(context),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Paper.card,
-              border: Paper.border,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: Paper.shadow(3),
+      onTap: _msgs == null
+          ? null
+          : () {
+              _wiggle.forward(from: 0);
+              _open(context);
+            },
+      child: AnimatedBuilder(
+        animation: _angle,
+        builder: (context, child) =>
+            Transform.rotate(angle: _angle.value, child: child),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Paper.card,
+                border: Paper.border,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: Paper.shadow(3),
+              ),
+              child: Icon(
+                Icons.notifications_rounded,
+                size: 22,
+                color: _msgs == null ? Paper.ink3 : Paper.ink,
+              ),
             ),
-            child: Icon(
-              Icons.notifications_rounded,
-              size: 22,
-              color: _msgs == null ? Paper.ink3 : Paper.ink,
-            ),
-          ),
-          if (n > 0)
-            Positioned(
-              top: -6,
-              right: -6,
-              child: Transform.rotate(
-                angle: -0.12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Paper.accent,
-                    border: Paper.border,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '$n',
-                    style: const TextStyle(
-                      fontFamily: 'Baloo',
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                      color: Paper.card,
+            if (n > 0)
+              Positioned(
+                top: -6,
+                right: -6,
+                child: Transform.rotate(
+                  angle: -0.12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Paper.accent,
+                      border: Paper.border,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$n',
+                      style: const TextStyle(
+                        fontFamily: 'Baloo',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        color: Paper.card,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

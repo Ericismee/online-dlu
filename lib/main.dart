@@ -260,10 +260,9 @@ class _Tab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (icon, asset, label, color, tilt) = item;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return Pressable(
       onTap: onTap,
-      child: Padding(
+      builder: (down) => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -279,7 +278,7 @@ class _Tab extends StatelessWidget {
                   color: on ? color : Colors.transparent,
                   border: on ? Paper.border : null,
                   borderRadius: const BorderRadius.all(Radius.circular(12)),
-                  boxShadow: on ? Paper.shadow(3) : null,
+                  boxShadow: on ? Paper.shadow(down ? 0 : 3) : null,
                 ),
                 child: asset != null
                     ? Opacity(
@@ -354,12 +353,27 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
             children: [
               _Header(now: now, session: widget.session),
               const SizedBox(height: 16),
-              _Me(session: widget.session, lop: _lop),
+              // Các thẻ hiện ra lần lượt cho đỡ khô khan.
+              PopIn(
+                child: _Me(session: widget.session, lop: _lop),
+              ),
               const SizedBox(height: 20),
-              TotalSummary(session: widget.session),
-              TodayLessons(session: widget.session),
-              _NextExam(session: widget.session, now: now),
-              _Menu(onGo: widget.onGo, session: widget.session),
+              PopIn(
+                delay: const Duration(milliseconds: 70),
+                child: TotalSummary(session: widget.session),
+              ),
+              PopIn(
+                delay: const Duration(milliseconds: 140),
+                child: TodayLessons(session: widget.session),
+              ),
+              PopIn(
+                delay: const Duration(milliseconds: 180),
+                child: _NextExam(session: widget.session, now: now),
+              ),
+              PopIn(
+                delay: const Duration(milliseconds: 220),
+                child: _Menu(onGo: widget.onGo, session: widget.session),
+              ),
             ],
           ),
         ),
@@ -568,8 +582,7 @@ class _Menu extends StatelessWidget {
     child: Column(
       children: [
         for (final (tab, icon, label, color) in _items)
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
+          Pressable(
             onTap: () => tab >= 0
                 ? onGo(tab)
                 : Navigator.push(
@@ -582,7 +595,7 @@ class _Menu extends StatelessWidget {
                       },
                     ),
                   ),
-            child: Padding(
+            builder: (down) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 children: [
@@ -592,7 +605,7 @@ class _Menu extends StatelessWidget {
                       color: color,
                       border: Paper.border,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: Paper.shadow(2),
+                      boxShadow: Paper.shadow(down ? 0 : 2),
                     ),
                     child: Icon(icon, size: 20, color: Paper.ink),
                   ),

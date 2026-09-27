@@ -425,91 +425,96 @@ class _DayCard extends StatelessWidget {
             ),
           )
         else
-          for (final i in items) _Lesson(i),
+          for (final (n, i) in items.indexed)
+            _Lesson(i, delay: Duration(milliseconds: 70 * n)),
       ],
     ),
   );
 }
 
 class _Lesson extends StatelessWidget {
-  const _Lesson(this.i);
+  const _Lesson(this.i, {this.delay = Duration.zero});
   final dynamic i;
+  final Duration delay;
 
   @override
   Widget build(BuildContext context) {
     final dau = tietNo(i['BeginTime']);
     final cuoi = tietNo(i['EndTime']);
     final gio = khungGio(dau, cuoi);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Cột giờ vào - giờ ra, nối bằng một vạch cho ra dáng timeline.
-            if (gio != null) ...[
-              SizedBox(
-                width: 46,
+    return PopIn(
+      delay: delay,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Cột giờ vào - giờ ra, nối bằng một vạch cho ra dáng timeline.
+              if (gio != null) ...[
+                SizedBox(
+                  width: 46,
+                  child: Column(
+                    children: [
+                      Text(
+                        gio.$1,
+                        style: const TextStyle(
+                          fontFamily: 'Baloo',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: Paper.ink,
+                        ),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Container(
+                            width: 2,
+                            margin: const EdgeInsets.symmetric(vertical: 3),
+                            color: Paper.ink3,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        gio.$2,
+                        style: const TextStyle(fontSize: 13, color: Paper.ink3),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      gio.$1,
+                      clean(i['CurriculumName']),
                       style: const TextStyle(
-                        fontFamily: 'Baloo',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                         color: Paper.ink,
                       ),
                     ),
-                    Expanded(
-                      child: Center(
-                        child: Container(
-                          width: 2,
-                          margin: const EdgeInsets.symmetric(vertical: 3),
-                          color: Paper.ink3,
-                        ),
-                      ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        Pill('Tiết $dau-$cuoi', color: Paper.sun),
+                        Pill(buoi(dau), color: Paper.mint),
+                        Pill('Phòng ${i['RoomID']}', color: Paper.sky),
+                      ],
                     ),
+                    const SizedBox(height: 4),
                     Text(
-                      gio.$2,
-                      style: const TextStyle(fontSize: 13, color: Paper.ink3),
+                      'GV: ${i['FullName'] ?? '—'}',
+                      style: const TextStyle(fontSize: 13, color: Paper.ink2),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
             ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    clean(i['CurriculumName']),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Paper.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      Pill('Tiết $dau-$cuoi', color: Paper.sun),
-                      Pill(buoi(dau), color: Paper.mint),
-                      Pill('Phòng ${i['RoomID']}', color: Paper.sky),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'GV: ${i['FullName'] ?? '—'}',
-                    style: const TextStyle(fontSize: 13, color: Paper.ink2),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -555,22 +560,26 @@ class _Cell extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: dayColor(items),
-        border: Border.all(color: Paper.ink, width: picked ? 3 : 1.5),
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: picked ? Paper.shadow(2) : null,
-      ),
-      child: Text(
-        '$day',
-        style: TextStyle(
-          fontSize: 12,
-          color: Paper.ink,
-          fontWeight: today ? FontWeight.w800 : FontWeight.w600,
+  Widget build(BuildContext context) => PopIn(
+    // Lần lượt từng ngày cho ra hiệu ứng lướt qua tháng.
+    delay: Duration(milliseconds: 8 * day),
+    child: Pressable(
+      onTap: onTap,
+      builder: (down) => Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: dayColor(items),
+          border: Border.all(color: Paper.ink, width: picked ? 3 : 1.5),
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: picked ? Paper.shadow(down ? 0 : 2) : null,
+        ),
+        child: Text(
+          '$day',
+          style: TextStyle(
+            fontSize: 12,
+            color: Paper.ink,
+            fontWeight: today ? FontWeight.w800 : FontWeight.w600,
+          ),
         ),
       ),
     ),
@@ -759,7 +768,10 @@ class _TodayLessonsState extends State<TodayLessons>
           PaperBox(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [for (final i in _items!) _Lesson(i)],
+              children: [
+                for (final (n, i) in _items!.indexed)
+                  _Lesson(i, delay: Duration(milliseconds: 70 * n)),
+              ],
             ),
           ),
         ],

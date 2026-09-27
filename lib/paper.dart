@@ -26,9 +26,21 @@ class Paper {
   static final border = Border.all(color: ink, width: 2);
 
   /// Hard offset shadow, no blur — the whole look hangs on this.
-  static List<BoxShadow> shadow([double dy = 4]) => [
-    BoxShadow(color: ink, offset: Offset(0, dy)),
+  /// Bóng khối đổ chéo như codex-resets.com (--shadow: 4px 4px 0 ink).
+  static List<BoxShadow> shadow([double d = 4]) => [
+    BoxShadow(color: ink, offset: Offset(d, d)),
   ];
+
+  /// Nhịp chuyển động lấy từ codex-resets.com.
+  /// Bấm 80ms cho dứt khoát, hiện ra 260ms nảy nhẹ.
+  static const pressDur = Duration(milliseconds: 80);
+  static const popDur = Duration(milliseconds: 260);
+
+  /// cubic-bezier(.34, 1.56, .64, 1) — nảy quá đà một chút rồi về.
+  static const popCurve = Cubic(0.34, 1.56, 0.64, 1);
+
+  /// cubic-bezier(.22, 1, .36, 1) — ra nhanh, dừng êm.
+  static const easeOut = Cubic(0.22, 1, 0.36, 1);
 
   static ThemeData theme() {
     const display = 'Baloo';
@@ -74,25 +86,20 @@ class PaperBox extends StatelessWidget {
   final EdgeInsets padding;
   final VoidCallback? onTap;
 
-  @override
-  Widget build(BuildContext context) {
-    final box = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: color,
-        border: Paper.border,
-        borderRadius: const BorderRadius.all(Paper.radius),
-        boxShadow: Paper.shadow(),
-      ),
-      child: child,
-    );
-    if (onTap == null) return box;
-    return InkWell(
-      onTap: onTap,
+  Widget _box(bool down) => Container(
+    padding: padding,
+    decoration: BoxDecoration(
+      color: color,
+      border: Paper.border,
       borderRadius: const BorderRadius.all(Paper.radius),
-      child: box,
-    );
-  }
+      boxShadow: Paper.shadow(down ? 0 : 4),
+    ),
+    child: child,
+  );
+
+  @override
+  Widget build(BuildContext context) =>
+      onTap == null ? _box(false) : Pressable(onTap: onTap!, builder: _box);
 }
 
 class Pill extends StatelessWidget {
@@ -146,25 +153,17 @@ class PaperButton extends StatefulWidget {
 }
 
 class _PaperButtonState extends State<PaperButton> {
-  bool _down = false;
-
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTapDown: (_) => setState(() => _down = true),
-    onTapCancel: () => setState(() => _down = false),
-    onTapUp: (_) {
-      setState(() => _down = false);
-      widget.onPressed();
-    },
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 70),
-      transform: Matrix4.translationValues(0, _down ? 3 : 0, 0),
+  Widget build(BuildContext context) => Pressable(
+    onTap: widget.onPressed,
+    shift: 3,
+    builder: (down) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: widget.color,
         border: Paper.border,
         borderRadius: BorderRadius.circular(999),
-        boxShadow: Paper.shadow(_down ? 1 : 4),
+        boxShadow: Paper.shadow(down ? 0 : 4),
       ),
       child: Text(
         widget.label,
@@ -265,15 +264,15 @@ class Choice extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => Pressable(
     onTap: onTap,
-    child: Container(
+    builder: (down) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: color,
         border: Paper.border,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: Paper.shadow(3),
+        boxShadow: Paper.shadow(down ? 0 : 3),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -377,4 +376,70 @@ mixin Reloadable<T extends StatefulWidget> on State<T> {
     Cache.refreshers.remove(reload);
     super.dispose();
   }
+}
+
+/// Bấm vào là lún xuống đúng chỗ bóng đang đổ, thả ra bật lại.
+/// Cách codex-resets.com làm: translate(2px, 2px) + bỏ bóng.
+class Pressable extends StatefulWidget {
+  const Pressable({
+    super.key,
+    required this.onTap,
+    required this.builder,
+    this.shift = 2,
+  });
+  final VoidCallback onTap;
+
+  /// [down] = đang giữ, để vẽ bóng ngắn lại cho khớp.
+  final Widget Function(bool down) builder;
+  final double shift;
+
+  @override
+  State<Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<Pressable> {
+  bool _down = false;
+
+  void _set(bool v) => setState(() => _down = v);
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTapDown: (_) => _set(true),
+    onTapCancel: () => _set(false),
+    onTapUp: (_) {
+      _set(false);
+      widget.onTap();
+    },
+    child: AnimatedSlide(
+      duration: Paper.pressDur,
+      offset: _down
+          ? Offset(widget.shift / 24, widget.shift / 24)
+          : Offset.zero,
+      child: widget.builder(_down),
+    ),
+  );
+}
+
+/// Hiện ra kiểu pop-in của codex-resets.com: mờ + nhỏ hơn rồi nảy về.
+class PopIn extends StatelessWidget {
+  const PopIn({super.key, required this.child, this.delay = Duration.zero});
+  final Widget child;
+  final Duration delay;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: Paper.popDur + delay,
+    curve: Interval(
+      delay.inMilliseconds / (Paper.popDur + delay).inMilliseconds,
+      1,
+      curve: Paper.popCurve,
+    ),
+    builder: (_, t, child) => Opacity(
+      opacity: t.clamp(0, 1),
+      child: Transform.scale(scale: 0.85 + 0.15 * t, child: child),
+    ),
+    child: child,
+  );
 }
