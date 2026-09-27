@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -460,17 +462,57 @@ Future<bool> confirmDialog(
     false;
 
 /// Kéo xuống làm mới: gọi portal thật, data cũ vẫn nằm đó tới khi có data mới.
-class PullRefresh extends StatelessWidget {
+/// Đổi ý thì kéo ngược lên là vòng xoay tắt ngay, khỏi ngồi chờ server trường.
+class PullRefresh extends StatefulWidget {
   const PullRefresh({super.key, required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => RefreshIndicator(
-    color: Paper.ink,
-    backgroundColor: Paper.sun,
-    onRefresh: Cache.refreshAll,
-    child: child,
-  );
+  State<PullRefresh> createState() => _PullRefreshState();
+}
+
+class _PullRefreshState extends State<PullRefresh> {
+  /// Lượt làm mới đang chạy; hoàn tất là vòng xoay biến mất.
+  Completer<void>? _cho;
+
+  Future<void> _lamMoi() {
+    final cho = _cho = Completer<void>();
+    // Không chờ nữa không có nghĩa là bỏ số: lượt gọi đang bay vẫn chạy nốt,
+    // về tới nơi thì màn tự thay số như thường.
+    unawaited(
+      Cache.refreshAll().whenComplete(() {
+        if (!cho.isCompleted) cho.complete();
+      }),
+    );
+    return cho.future.whenComplete(() {
+      if (identical(_cho, cho)) _cho = null;
+    });
+  }
+
+  /// scrollDelta > 0 là ngón tay đang kéo ngược lên — người dùng đổi ý.
+  bool _keoNguocLen(ScrollNotification n) {
+    final cho = _cho;
+    if (cho != null &&
+        !cho.isCompleted &&
+        n is ScrollUpdateNotification &&
+        n.dragDetails != null &&
+        (n.scrollDelta ?? 0) > 0) {
+      cho.complete();
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      NotificationListener<ScrollNotification>(
+        onNotification: _keoNguocLen,
+        child: RefreshIndicator(
+          color: Paper.ink,
+          backgroundColor: Paper.sun,
+          onRefresh: _lamMoi,
+          child: widget.child,
+        ),
+      );
 }
 
 /// State tự nạp lại khi người dùng kéo xuống.
