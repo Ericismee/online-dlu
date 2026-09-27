@@ -170,8 +170,9 @@ class _Term extends StatelessWidget {
   final List<dynamic> subjects;
 
   @override
+  // stretch để thẻ kéo hết bề ngang, không co lại theo tên học phần dài nhất.
   Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Row(
         children: [
