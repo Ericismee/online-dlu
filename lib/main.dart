@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'behavior.dart';
 import 'cache.dart';
+import 'clock.dart';
 import 'courses.dart';
 import 'curriculum.dart';
 import 'data.dart';
@@ -14,6 +17,7 @@ import 'marks.dart';
 import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
+import 'prefetch.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,7 +92,8 @@ class _RootState extends State<Root> {
       // Vào app bằng phiên cũ thì token đã hết hạn (~2h), mọi màn nạp bằng nó
       // đều hỏng và nằm trống. Có token mới là nạp lại hết, đừng để người
       // dùng phải kéo xuống mới thấy hôm nay học gì.
-      if (cached != null && mounted) await Cache.refreshAll();
+      if (cached != null && mounted) await Cache.reloadAll();
+      unawaited(_napSan(s));
     } on PortalError catch (e) {
       // Mạng hỏng thì cứ xài cache; sai mật khẩu mới đá về màn đăng nhập.
       if (e.offline && _session != null) return;
@@ -103,6 +108,12 @@ class _RootState extends State<Root> {
     } finally {
       if (mounted) setState(() => _checking = false);
     }
+  }
+
+  /// Nạp sẵn phần còn lại cho offline, xong thì giao lại cho màn đang mở.
+  Future<void> _napSan(Session s) async {
+    await Prefetch.run(s);
+    if (mounted) await Cache.reloadAll();
   }
 
   @override
@@ -131,6 +142,7 @@ class _RootState extends State<Root> {
         initialError: _error,
         onLoggedIn: (s) async {
           await Cache.write('session', s.toMap());
+          unawaited(_napSan(s));
           if (mounted) {
             setState(() {
               _session = s;
@@ -366,7 +378,6 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
@@ -379,7 +390,9 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
               MediaQuery.paddingOf(context).bottom + 110,
             ),
             children: [
-              _Header(now: now, session: widget.session),
+              Ticker(
+                builder: (_, now) => _Header(now: now, session: widget.session),
+              ),
               const SizedBox(height: 16),
               // Các thẻ hiện ra lần lượt cho đỡ khô khan.
               PopIn(
@@ -396,7 +409,10 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
               ),
               PopIn(
                 delay: const Duration(milliseconds: 180),
-                child: _NextExam(session: widget.session, now: now),
+                child: Ticker(
+                  builder: (_, now) =>
+                      _NextExam(session: widget.session, now: now),
+                ),
               ),
               PopIn(
                 delay: const Duration(milliseconds: 220),
@@ -519,7 +535,9 @@ class ScheduleTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            MonthGraph(session: session, now: DateTime.now()),
+            Ticker(
+              builder: (_, now) => MonthGraph(session: session, now: now),
+            ),
           ],
         ),
       ),

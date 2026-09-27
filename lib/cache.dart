@@ -24,6 +24,12 @@ class Cache {
   static bool invalidated(DateTime at) =>
       refreshedAt != null && at.isBefore(refreshedAt!);
 
+  /// Nạp lại mọi màn đang mở nhưng vẫn xài cache: màn nào trống (nạp hỏng,
+  /// hoặc dữ liệu vừa được nạp sẵn xong) thì có số ngay mà không gọi portal
+  /// thêm lần nào.
+  static Future<void> reloadAll() =>
+      Future.wait(refreshers.map((f) => f())).then((_) {});
+
   /// Nạp lại mọi màn đang mở, data cũ vẫn hiện cho tới khi có data mới.
   static Future<void> refreshAll() async {
     refreshedAt = DateTime.now();
