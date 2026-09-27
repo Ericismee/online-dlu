@@ -68,11 +68,11 @@ jobs:
           keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab \
             | tee /dev/stderr | grep -q 'CN=Android Debug' && exit 1 || true
 
-      - name: Đặt tên file theo tag
+      - name: Đặt tên file cố định
         run: |
           mkdir -p out
-          cp build/app/outputs/bundle/release/app-release.aab "out/Online-DLU-${GITHUB_REF_NAME}.aab"
-          cp build/app/outputs/flutter-apk/app-release.apk "out/Online-DLU-${GITHUB_REF_NAME}.apk"
+          cp build/app/outputs/bundle/release/app-release.aab out/Online-DLU.aab
+          cp build/app/outputs/flutter-apk/app-release.apk out/Online-DLU.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -135,7 +135,7 @@ jobs:
         run: |
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
           mkdir -p out
-          cp build/ios/ipa/*.ipa "out/Online-DLU-${GITHUB_REF_NAME}.ipa"
+          cp build/ios/ipa/*.ipa out/Online-DLU.ipa
 
       - name: Build IPA chưa ký
         if: steps.signing.outputs.signed != 'true'
@@ -143,7 +143,7 @@ jobs:
           flutter build ios --release --no-codesign
           mkdir -p out Payload
           cp -R build/ios/iphoneos/Runner.app Payload/
-          zip -qry "out/Online-DLU-${GITHUB_REF_NAME}-unsigned.ipa" Payload
+          zip -qry out/Online-DLU-unsigned.ipa Payload
 
       - uses: actions/upload-artifact@v4
         with:
@@ -159,6 +159,20 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: files
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: repo
+
+      - name: Cập nhật lc.json cho LiveContainer
+        run: |
+          cd repo
+          python3 tool/lc_bump.py "$(ls ../files/ios/*.ipa | head -1)" "$GITHUB_REF_NAME"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -sqm "lc.json: $GITHUB_REF_NAME" lc.json || exit 0
+          git push
+
       - uses: softprops/action-gh-release@v2
         with:
           files: files/*/*

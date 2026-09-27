@@ -1,0 +1,48 @@
+{
+  "name": "Online DLU",
+  "identifier": "com.dopaemon.dluonline.repo",
+  "subtitle": "Tra cứu portal Đại học Đà Lạt",
+  "description": "Nguồn cài Online DLU — ứng dụng không chính thức xem thời khoá biểu, lịch thi, điểm và điểm rèn luyện cho sinh viên Trường Đại học Đà Lạt.",
+  "iconURL": "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/icon.png",
+  "headerURL": "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/header.png",
+  "website": "https://github.com/dopaemon/dlu-online",
+  "tintColor": "FF5C2B",
+  "apps": [
+    {
+      "name": "Online DLU",
+      "bundleIdentifier": "com.dopaemon.dluonline",
+      "developerName": "dopaemon",
+      "subtitle": "Thời khoá biểu, lịch thi, điểm",
+      "localizedDescription": "Ứng dụng không chính thức cho sinh viên Trường Đại học Đà Lạt. Đăng nhập bằng tài khoản portal của trường để xem:\n\n• Thời khoá biểu theo tháng, buổi sắp tới đếm ngược tới giờ vào lớp\n• Thêm lịch học cả tháng vào ứng dụng Lịch, nhắc trước 15 phút\n• Lịch thi từng học kỳ\n• Điểm từng môn, GPA tích luỹ, thử GPA với điểm dự kiến\n• Kết quả đăng ký học phần và chương trình đào tạo\n• Phiếu điểm rèn luyện\n\nDữ liệu đã xem lưu trong máy nên mất mạng vẫn mở được. Mật khẩu nằm trong Keychain, chỉ gửi tới máy chủ portal của trường. Không quảng cáo, không thu phí.\n\nĐây không phải sản phẩm của nhà trường và không được nhà trường bảo trợ.",
+      "iconURL": "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/icon.png",
+      "tintColor": "FF5C2B",
+      "category": "education",
+      "screenshotURLs": [
+        "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/screenshot-1.png",
+        "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/screenshot-2.png",
+        "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/screenshot-3.png",
+        "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/screenshot-4.png"
+      ],
+      "screenshots": {
+        "iphone": [
+          "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/screenshot-1.png",
+          "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/screenshot-2.png",
+          "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/screenshot-3.png",
+          "https://raw.githubusercontent.com/dopaemon/dlu-online/main/store/screenshot-4.png"
+        ]
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "buildVersion": "1",
+          "date": "2026-09-27",
+          "localizedDescription": "Bản đầu tiên.",
+          "downloadURL": "https://github.com/dopaemon/dlu-online/releases/latest/download/Online-DLU-unsigned.ipa",
+          "size": 11194473,
+          "minOSVersion": "15.0"
+        }
+      ]
+    }
+  ],
+  "news": []
+}

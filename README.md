@@ -91,6 +91,28 @@ git tag v1.0.0 && git push origin v1.0.0
 
 Chi tiết secrets cần khai ở `.github/workflows/release.yml`.
 
+## Cài trên iPhone bằng LiveContainer
+
+[LiveContainer](https://github.com/khanhduytran0/LiveContainer) chạy app iOS
+bên trong nó, nên chỉ phải ký lại LiveContainer mỗi tuần thay vì ký lại từng
+app, và không tốn slot trong 3 app mà chứng chỉ miễn phí cho phép.
+
+Trong LiveContainer, thêm nguồn:
+
+```
+https://raw.githubusercontent.com/dopaemon/dlu-online/main/lc.json
+```
+
+`lc.json` trỏ thẳng vào bản mới nhất ở Releases, nên phát hành tag mới là máy
+hiện nút cập nhật — workflow tự ghi lại số phiên bản trong file đó sau mỗi lần
+build (`tool/lc_bump.py`).
+
+Nguồn này chỉ hoạt động khi repo để **public**; repo private thì cả
+`raw.githubusercontent.com` lẫn file trong Releases đều đòi đăng nhập.
+
+Không dùng LiveContainer thì tải thẳng `.ipa` ở Releases rồi ký bằng Sideloadly
+hoặc AltStore như thường.
+
 ## Nền tảng tối thiểu
 
 Android 7.0 (API 24) và iOS 15 — đều là mức thấp nhất Flutter còn cho phép.
