@@ -30,6 +30,8 @@ void main() {
     expect('BEGIN:VEVENT'.allMatches(ics).length, 1);
     expect(ics, contains('DTSTART:20260901T073000'));
     expect(ics, contains('DTEND:20260901T111000'));
+    // Có VALARM thì app Lịch mới nhắc, đúng như lời hộp thoại hứa.
+    expect(ics, contains('TRIGGER:-PT15M'));
     expect(ics, contains('DTSTAMP:20260927T000000Z'));
     expect(ics, contains('LOCATION:Phòng A11'));
     expect(icsCount(days), 1);

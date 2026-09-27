@@ -59,11 +59,11 @@ void main() {
     await t.pump();
     await t.pump();
 
-    await t.tap(find.text('Xuất lịch tháng'));
+    await t.tap(find.text('Thêm vào Lịch'));
     await t.pump();
     await t.pump();
     // Không xuất thẳng: phải có hộp hỏi với đủ hai lựa chọn.
-    expect(find.textContaining('Xuất lịch tháng 9/2026?'), findsOneWidget);
+    expect(find.textContaining('tháng 9/2026 vào Lịch?'), findsOneWidget);
     expect(find.textContaining('buổi học'), findsOneWidget);
     expect(find.text('Huỷ'), findsOneWidget);
 

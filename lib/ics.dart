@@ -41,6 +41,13 @@ String icsMonth(DateTime month, Map<int, List<dynamic>> days, {DateTime? now}) {
         _fold(
           'DESCRIPTION:${_esc('Tiết $dau-$cuoi${gv.isEmpty ? '' : ' · GV: $gv'}')}',
         ),
+        // Nhắc trước 15 phút — có dòng này thì app Lịch mới rung,
+        // không thì buổi học chỉ nằm im trong lịch.
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        'TRIGGER:-PT15M',
+        _fold('DESCRIPTION:${_esc(ten)}'),
+        'END:VALARM',
         'END:VEVENT',
         '',
       ], '\r\n');
