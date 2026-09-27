@@ -131,11 +131,15 @@ class PaperButton extends StatefulWidget {
     required this.onPressed,
     this.color = Paper.accent,
     this.onColor = Paper.card,
+    this.fontSize,
   });
   final String label;
   final VoidCallback onPressed;
   final Color color;
   final Color onColor;
+
+  /// Nhãn dài thì truyền cỡ chữ nhỏ hơn cho khỏi vỡ hàng.
+  final double? fontSize;
 
   @override
   State<PaperButton> createState() => _PaperButtonState();
@@ -167,6 +171,7 @@ class _PaperButtonState extends State<PaperButton> {
         style: TextStyle(
           fontFamily: 'Baloo',
           fontWeight: FontWeight.w800,
+          fontSize: widget.fontSize,
           color: widget.onColor,
         ),
       ),

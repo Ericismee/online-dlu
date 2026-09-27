@@ -270,6 +270,9 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
               GridView.count(
                 crossAxisCount: 7,
                 shrinkWrap: true,
+                // Không đặt thì GridView tự chèn padding bằng status bar,
+                // thành ra hở nguyên một hàng phía trên ngày 1.
+                padding: EdgeInsets.zero,
                 physics: const NeverScrollableScrollPhysics(),
                 childAspectRatio: 1.15,
                 crossAxisSpacing: 6,
@@ -340,6 +343,8 @@ class _DayCard extends StatelessWidget {
             Expanded(
               child: Text(
                 '${dayNames[day.weekday]}, ${day.day}/${day.month}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontFamily: 'Baloo',
                   fontWeight: FontWeight.w800,
@@ -350,7 +355,8 @@ class _DayCard extends StatelessWidget {
             ),
             if (onToday != null)
               PaperButton(
-                label: 'Hôm nay',
+                label: 'Xem ngày hôm nay',
+                fontSize: 13,
                 color: Paper.sky,
                 onColor: Paper.ink,
                 onPressed: onToday!,
