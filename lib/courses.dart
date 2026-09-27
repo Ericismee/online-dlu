@@ -177,7 +177,7 @@ class _Course extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            clean(c['CurriculumName']),
+            subjectName(c['CurriculumName']),
             style: const TextStyle(
               fontFamily: 'Baloo',
               fontWeight: FontWeight.w800,

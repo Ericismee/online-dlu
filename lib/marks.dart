@@ -312,7 +312,7 @@ class _Mark extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                clean(m['CurriculumName']),
+                subjectName(m['CurriculumName']),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -320,7 +320,9 @@ class _Mark extends StatelessWidget {
                 ),
               ),
               Text(
-                '${m['Credits']} TC',
+                isCondition(m['CurriculumName'])
+                    ? '${toNum(m['Credits'])} TC · không tính điểm TB'
+                    : '${toNum(m['Credits'])} TC',
                 style: const TextStyle(fontSize: 12, color: Paper.ink3),
               ),
             ],

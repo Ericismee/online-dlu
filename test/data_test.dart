@@ -9,6 +9,13 @@ void main() {
     expect(toNum('x'), 0);
   });
 
+  test('dấu sao = học phần điều kiện', () {
+    expect(isCondition('Giáo dục thể chất 1 (Thực hành) *'), isTrue);
+    expect(subjectName('Giáo dục thể chất 1 *'), 'Giáo dục thể chất 1');
+    expect(isCondition('Thiết kế Web'), isFalse);
+    expect(subjectName('Thiết kế Web'), 'Thiết kế Web');
+  });
+
   test('clean gỡ thẻ html và ký tự escape', () {
     expect(clean('<span>Thiết kế Web</span>'), 'Thiết kế Web');
     expect(clean('Toán<br/>rời rạc'), 'Toán rời rạc');

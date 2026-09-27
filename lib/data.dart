@@ -1,3 +1,11 @@
+/// Portal gắn '*' vào tên học phần điều kiện (GDQP, GDTC...) — học để đủ
+/// điều kiện tốt nghiệp nhưng không tính vào điểm trung bình.
+bool isCondition(Object? name) => clean(name).endsWith('*');
+
+/// Tên học phần đã bỏ dấu '*' ở cuối.
+String subjectName(Object? name) =>
+    clean(name).replaceFirst(RegExp(r'\s*\*$'), '');
+
 /// Portal lúc trả số, lúc trả chuỗi, ép về num cho khỏi văng.
 num toNum(Object? v) => v is num ? v : (num.tryParse('$v') ?? 0);
 

@@ -74,13 +74,20 @@ class _CurriculumScreenState extends State<CurriculumScreen>
                   Row(
                     children: [
                       const Expanded(
-                        child: Text(
-                          'Chương trình đào tạo',
-                          style: TextStyle(
-                            fontFamily: 'Baloo',
-                            fontWeight: FontWeight.w800,
-                            fontSize: 30,
-                            color: Paper.ink,
+                        // Tên dài nhất trong app, co lại cho vừa một dòng
+                        // thay vì xuống dòng đè lên hàng pill bên dưới.
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Chương trình đào tạo',
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontFamily: 'Baloo',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 30,
+                              color: Paper.ink,
+                            ),
                           ),
                         ),
                       ),
@@ -179,7 +186,7 @@ class _Subject extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            clean(s['TenHP']),
+            subjectName(s['TenHP']),
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -197,6 +204,8 @@ class _Subject extends StatelessWidget {
                 required ? 'Bắt buộc' : 'Tự chọn',
                 color: required ? Paper.mint : Paper.peach,
               ),
+              if (isCondition(s['TenHP']))
+                Pill('Không tính TB', color: Paper.card),
             ],
           ),
         ],
