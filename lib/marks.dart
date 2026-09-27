@@ -438,56 +438,6 @@ class _Mark extends StatelessWidget {
   );
 }
 
-/// Thẻ tích luỹ tự nạp dữ liệu, dùng ở Trang chủ.
-class TotalSummary extends StatefulWidget {
-  const TotalSummary({super.key, required this.session, this.portal});
-  final Session session;
-  final Portal? portal;
-
-  @override
-  State<TotalSummary> createState() => _TotalSummaryState();
-}
-
-class _TotalSummaryState extends State<TotalSummary>
-    with Reloadable<TotalSummary> {
-  @override
-  Future<void> reload() => _load();
-
-  dynamic _record;
-  bool _failed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final portal = widget.portal ?? Portal();
-    try {
-      final program = await portal.studyProgram(widget.session.token);
-      final years = await portal.marks(widget.session.token, program);
-      final r = years.isEmpty
-          ? null
-          : subjectsOf(years, termKeys(years).first).firstOrNull;
-      if (mounted) setState(() => _record = r);
-    } on PortalError {
-      if (mounted) setState(() => _failed = true);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_failed) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: _record == null
-          ? const Skeleton(height: 110, radius: 16, ink: true)
-          : TotalCard(record: _record),
-    );
-  }
-}
-
 /// Thử GPA: chọn điểm dự kiến cho mấy môn chưa có điểm, xem tích luỹ đi tới đâu.
 class WhatIfScreen extends StatefulWidget {
   const WhatIfScreen({

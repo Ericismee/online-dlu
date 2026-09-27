@@ -423,21 +423,17 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
               const SizedBox(height: 20),
               PopIn(
                 delay: const Duration(milliseconds: 70),
-                child: TotalSummary(session: widget.session),
-              ),
-              PopIn(
-                delay: const Duration(milliseconds: 140),
                 child: TodayLessons(session: widget.session),
               ),
               PopIn(
-                delay: const Duration(milliseconds: 180),
+                delay: const Duration(milliseconds: 140),
                 child: Ticker(
                   builder: (_, now) =>
                       _NextExam(session: widget.session, now: now),
                 ),
               ),
               PopIn(
-                delay: const Duration(milliseconds: 220),
+                delay: const Duration(milliseconds: 180),
                 child: _Menu(onGo: widget.onGo, session: widget.session),
               ),
             ],
