@@ -76,4 +76,39 @@ void main() {
     await portal.behaviorScores('t');
     expect(Cache.syncedAt, lanDau);
   });
+
+  test('kéo làm mới ở màn này thì màn mở sau cũng lấy số mới', () async {
+    var calls = 0;
+    var hong = false;
+    final portal = Portal(
+      client: MockClient((_) async {
+        calls++;
+        if (hong) throw const SocketException('mất mạng');
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode([
+              {'LastScore': 90},
+            ]),
+          ),
+          200,
+        );
+      }),
+    );
+    await portal.behaviorScores('t');
+    await portal.behaviorScores('t');
+    expect(calls, 1);
+
+    // Kéo làm mới trong khi màn 'điểm rèn luyện' chưa mở: cache của nó
+    // cũng phải hết giá trị.
+    await Cache.refreshAll();
+    await portal.behaviorScores('t');
+    expect(calls, 2);
+
+    // Nhưng mất mạng thì vẫn đưa số cũ ra, không quăng lỗi lên màn.
+    await Cache.refreshAll();
+    hong = true;
+    final cu = await portal.behaviorScores('t');
+    expect(calls, 3);
+    expect(cu.first['LastScore'], 90);
+  });
 }

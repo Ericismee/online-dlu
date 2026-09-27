@@ -17,8 +17,16 @@ class Cache {
   /// Màn hình đang mở tự đăng ký hàm nạp lại, kéo xuống là gọi hết.
   static final refreshers = <Future<void> Function()>{};
 
+  /// Kéo làm mới lúc nào. Số ghi trước mốc này coi như phải lấy lại, kể cả
+  /// của màn chưa mở — kéo ở đâu cũng là làm mới cả app.
+  static DateTime? refreshedAt;
+
+  static bool invalidated(DateTime at) =>
+      refreshedAt != null && at.isBefore(refreshedAt!);
+
   /// Nạp lại mọi màn đang mở, data cũ vẫn hiện cho tới khi có data mới.
   static Future<void> refreshAll() async {
+    refreshedAt = DateTime.now();
     bypass = true;
     // Vòng làm mới này giao lại số cho mọi màn đang mở; màn nào hỏng thì
     // không ghi mốc, chip lùi về mốc cũ nhất còn lại.
@@ -70,6 +78,7 @@ class Cache {
   /// Đăng xuất thì bỏ sạch.
   static Future<void> clear() async {
     served.clear();
+    refreshedAt = null;
     await _box?.clear();
   }
 }

@@ -172,16 +172,25 @@ class Portal {
   /// ponytail: màn hình đang mở không tự cập nhật, kéo xuống để làm mới.
   Future<dynamic> _cached(String path, String token) async {
     final hit = Cache.bypass ? null : Cache.read(path);
-    if (hit != null) {
+    // Cache ghi trước lượt kéo làm mới gần nhất thì không dùng nữa: người
+    // dùng đã bảo lấy số mới, màn này mở sau cũng phải là số mới.
+    if (hit != null && !Cache.invalidated(hit.$2)) {
       if (Cache.stale(hit.$2)) unawaited(_fetch(path, token));
       // Màn đang xem số của lúc cache ghi, không phải của bây giờ.
       Cache.served[path] = hit.$2;
       return hit.$1;
     }
-    final data = await _fetch(path, token);
-    // Lấy lại đúng mốc vừa ghi vào cache cho khỏi lệch vài mili giây.
-    Cache.served[path] = Cache.read(path)?.$2 ?? DateTime.now();
-    return data;
+    try {
+      final data = await _fetch(path, token);
+      // Lấy lại đúng mốc vừa ghi vào cache cho khỏi lệch vài mili giây.
+      Cache.served[path] = Cache.read(path)?.$2 ?? DateTime.now();
+      return data;
+    } on PortalError {
+      // Mất mạng mà trong máy còn số cũ thì đưa số cũ, hơn là màn báo lỗi.
+      if (hit == null) rethrow;
+      Cache.served[path] = hit.$2;
+      return hit.$1;
+    }
   }
 
   Future<dynamic> _fetch(String path, String token) async {
