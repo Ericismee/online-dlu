@@ -434,6 +434,12 @@ class _Header extends StatelessWidget {
               '${dayNames[now.weekday]}, ${now.day}/${now.month}/${now.year}',
               style: const TextStyle(color: Paper.ink2, fontSize: 14),
             ),
+            // Mất mạng thì app vẫn hiện số cũ; nói rõ cũ từ lúc nào.
+            if (Cache.syncedAt != null)
+              Text(
+                dataAge(Cache.syncedAt!, now),
+                style: const TextStyle(color: Paper.ink3, fontSize: 12),
+              ),
           ],
         ),
       ),

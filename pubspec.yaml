@@ -38,6 +38,7 @@ dependencies:
   http: ^1.6.0
   flutter_secure_storage: ^11.2.0
   hive_ce_flutter: ^2.3.4
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4

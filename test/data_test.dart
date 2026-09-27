@@ -22,4 +22,10 @@ void main() {
     expect(clean('Lập trình &amp; ứng dụng&nbsp;'), 'Lập trình & ứng dụng');
     expect(clean(null), '');
   });
+
+  test('nhãn dữ liệu: cùng ngày chỉ hiện giờ, khác ngày thêm ngày', () {
+    final now = DateTime(2026, 9, 27, 13, 5);
+    expect(dataAge(DateTime(2026, 9, 27, 13, 2), now), 'Dữ liệu lúc 13:02');
+    expect(dataAge(DateTime(2026, 9, 26, 9, 40), now), 'Dữ liệu 26/9 lúc 9:40');
+  });
 }

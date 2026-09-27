@@ -46,11 +46,32 @@ class Cache {
 
   static bool stale(DateTime at) => DateTime.now().difference(at) > ttl;
 
-  static Future<void> write(String key, dynamic data) async => _box?.put(
-    key,
-    jsonEncode({'at': DateTime.now().toIso8601String(), 'data': data}),
-  );
+  static DateTime? _synced;
+
+  /// Lần cuối lấy được dữ liệu mới từ portal. Mở lại app thì dò trong box,
+  /// để màn hình nói rõ đang xem số của lúc nào chứ không để người dùng đoán.
+  static DateTime? get syncedAt {
+    if (_synced != null) return _synced;
+    for (final raw in _box?.values ?? const <String>[]) {
+      final at = DateTime.tryParse(
+        (jsonDecode(raw) as Map<String, dynamic>)['at'] as String? ?? '',
+      );
+      if (at != null && (_synced == null || at.isAfter(_synced!))) _synced = at;
+    }
+    return _synced;
+  }
+
+  static Future<void> write(String key, dynamic data) async {
+    _synced = DateTime.now();
+    await _box?.put(
+      key,
+      jsonEncode({'at': DateTime.now().toIso8601String(), 'data': data}),
+    );
+  }
 
   /// Đăng xuất thì bỏ sạch.
-  static Future<void> clear() async => _box?.clear();
+  static Future<void> clear() async {
+    _synced = null;
+    await _box?.clear();
+  }
 }

@@ -41,6 +41,41 @@ List<dynamic> subjectsOf(List<dynamic> years, (String, String) key) {
   );
 }
 
+/// Thang 4 của trường: A 4.0 · B+ 3.5 · B 3.0 · C+ 2.5 · C 2.0 · D+ 1.5 ·
+/// D 1.0 · F 0. Dùng để đoán GPA, còn điểm thật vẫn lấy từ portal.
+// ponytail: mốc quy đổi theo quy chế tín chỉ; trường đổi thang thì sửa ở đây.
+const thang4 = <(String, double)>[
+  ('A', 4.0),
+  ('B+', 3.5),
+  ('B', 3.0),
+  ('C+', 2.5),
+  ('C', 2.0),
+  ('D+', 1.5),
+  ('D', 1.0),
+  ('F', 0.0),
+];
+
+/// GPA sau khi cộng thêm mấy môn chưa có điểm: [them] là (số tín chỉ, điểm hệ 4).
+/// Trả về (GPA dự kiến, tổng tín chỉ tích luỹ dự kiến).
+(double, int) gpaDuBao({
+  required double gpa,
+  required int tc,
+  required List<(int, double)> them,
+}) {
+  final tcThem = them.fold(0, (a, e) => a + e.$1);
+  if (tcThem == 0) return (gpa, tc);
+  final diem = them.fold(0.0, (a, e) => a + e.$1 * e.$2);
+  return ((gpa * tc + diem) / (tc + tcThem), tc + tcThem);
+}
+
+/// Môn của một kỳ chưa có điểm, bỏ học phần điều kiện vì không tính điểm TB.
+List<dynamic> chuaCoDiem(List<dynamic> subjects) => [
+  for (final m in subjects)
+    if ((m['DiemTK_10'] == null || m['DiemTK_10'] == '') &&
+        !isCondition(m['CurriculumName']))
+      m,
+];
+
 /// Bảng điểm theo năm học / học kỳ.
 class MarksScreen extends StatefulWidget {
   const MarksScreen({super.key, required this.session, this.portal});
@@ -159,6 +194,31 @@ class _MarksScreenState extends State<MarksScreen>
                     TotalCard(
                       record: subjectsOf(years, keys.first).firstOrNull,
                     ),
+                    if (chuaCoDiem(subjects).isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: PaperButton(
+                          label: 'Thử GPA',
+                          fontSize: 14,
+                          color: Paper.sky,
+                          onColor: Paper.ink,
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => WhatIfScreen(
+                                term: '${pick.$1} · ${pick.$2}',
+                                subjects: chuaCoDiem(subjects),
+                                record: subjectsOf(
+                                  years,
+                                  keys.first,
+                                ).firstOrNull,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -384,6 +444,184 @@ class _TotalSummaryState extends State<TotalSummary>
       child: _record == null
           ? const Skeleton(height: 110, radius: 16, ink: true)
           : TotalCard(record: _record),
+    );
+  }
+}
+
+/// Thử GPA: chọn điểm dự kiến cho mấy môn chưa có điểm, xem tích luỹ đi tới đâu.
+class WhatIfScreen extends StatefulWidget {
+  const WhatIfScreen({
+    super.key,
+    required this.term,
+    required this.subjects,
+    required this.record,
+  });
+  final String term;
+  final List<dynamic> subjects;
+
+  /// Bản ghi mới nhất, lấy GPA và số tín chỉ đang tích luỹ.
+  final dynamic record;
+
+  @override
+  State<WhatIfScreen> createState() => _WhatIfScreenState();
+}
+
+class _WhatIfScreenState extends State<WhatIfScreen> {
+  /// Chỉ số môn -> điểm chữ đã chọn. Chưa chọn thì không tính vào dự báo.
+  final _chon = <int, String>{};
+
+  double get _gpa => toNum(widget.record?['TB_TL_TN']).toDouble();
+  int get _tc => toNum(widget.record?['T_TC_TL_TN']).toInt();
+
+  List<(int, double)> get _them => [
+    for (final e in _chon.entries)
+      (
+        toNum(widget.subjects[e.key]['Credits']).toInt(),
+        thang4.firstWhere((g) => g.$1 == e.value).$2,
+      ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final (gpa, tc) = gpaDuBao(gpa: _gpa, tc: _tc, them: _them);
+    return Scaffold(
+      body: DotBackground(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 940),
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                MediaQuery.paddingOf(context).top + 20,
+                20,
+                MediaQuery.paddingOf(context).bottom + 40,
+              ),
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Thử GPA',
+                        style: TextStyle(
+                          fontFamily: 'Baloo',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 30,
+                          color: Paper.ink,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    PaperButton(
+                      label: 'Quay lại',
+                      color: Paper.card,
+                      onColor: Paper.ink,
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${widget.term} · số dự đoán, không phải điểm thật',
+                  style: const TextStyle(fontSize: 13, color: Paper.ink3),
+                ),
+                const SizedBox(height: 16),
+                PaperBox(
+                  color: _chon.isEmpty ? Paper.card : Paper.sun,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'GPA dự kiến ${gpa.toStringAsFixed(2)}/4',
+                        style: const TextStyle(
+                          fontFamily: 'Baloo',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 24,
+                          color: Paper.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          Pill(
+                            'Hiện ${_gpa.toStringAsFixed(2)}',
+                            color: Paper.card,
+                          ),
+                          Pill('$tc TC', color: Paper.mint),
+                          Pill(
+                            '${_chon.length}/${widget.subjects.length} môn đã đoán',
+                            color: Paper.sky,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                PaperBox(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final (n, m) in widget.subjects.indexed)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      subjectName(m['CurriculumName']),
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: Paper.ink,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${toNum(m['Credits'])} TC',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Paper.ink3,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Choice(
+                                label: _chon[n] ?? '—',
+                                color: _chon[n] == null
+                                    ? Paper.card
+                                    : Paper.mint,
+                                onTap: () async {
+                                  final g = await chooseOption(context, [
+                                    '—',
+                                    for (final t in thang4) t.$1,
+                                  ], _chon[n] ?? '—');
+                                  if (g == null) return;
+                                  setState(() {
+                                    if (g == '—') {
+                                      _chon.remove(n);
+                                    } else {
+                                      _chon[n] = g;
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

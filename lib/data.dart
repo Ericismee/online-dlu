@@ -36,3 +36,13 @@ const dayNames = [
   'Thứ 7',
   'CN',
 ];
+
+/// Nhãn cho biết số đang xem lấy về lúc nào. Cùng ngày thì chỉ cần giờ.
+String dataAge(DateTime at, DateTime now) {
+  final gio = '${at.hour}:${at.minute.toString().padLeft(2, '0')}';
+  final cungNgay =
+      at.year == now.year && at.month == now.month && at.day == now.day;
+  return cungNgay
+      ? 'Dữ liệu lúc $gio'
+      : 'Dữ liệu ${at.day}/${at.month} lúc $gio';
+}

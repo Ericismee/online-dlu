@@ -360,6 +360,68 @@ Future<String?> chooseOption(
   ),
 );
 
+/// Hỏi trước khi làm việc gì đó ra ngoài app. Trả về true nếu người dùng đồng ý.
+Future<bool> confirmDialog(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String ok,
+}) async =>
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 340),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Paper.paper,
+            border: Paper.border,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: Paper.shadow(6),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Baloo',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: Paper.ink,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                body,
+                style: const TextStyle(fontSize: 14, color: Paper.ink2),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  PaperButton(
+                    label: 'Huỷ',
+                    color: Paper.card,
+                    onColor: Paper.ink,
+                    onPressed: () => Navigator.pop(context, false),
+                  ),
+                  const SizedBox(width: 10),
+                  PaperButton(
+                    label: ok,
+                    onPressed: () => Navigator.pop(context, true),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ) ??
+    false;
+
 /// Kéo xuống làm mới: gọi portal thật, data cũ vẫn nằm đó tới khi có data mới.
 class PullRefresh extends StatelessWidget {
   const PullRefresh({super.key, required this.child});

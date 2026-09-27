@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'data.dart';
+import 'ics.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -54,6 +58,12 @@ const _batDau = <int, int>{
   14: 19 * 60 + 10,
 };
 
+/// Phút bắt đầu của một tiết; tiết lạ thì null để nơi gọi khỏi bịa giờ.
+int? batDauPhut(int tiet) => _batDau[tiet];
+
+/// Mỗi tiết 50 phút.
+const tietPhut = 50;
+
 String _gio(int phut) =>
     '${phut ~/ 60}h${(phut % 60).toString().padLeft(2, '0')}';
 
@@ -66,7 +76,7 @@ int tietNo(Object? v) =>
   final dau = _batDau[tietDau];
   final cuoi = _batDau[tietCuoi];
   if (dau == null || cuoi == null) return null;
-  return (_gio(dau), _gio(cuoi + 50));
+  return (_gio(dau), _gio(cuoi + tietPhut));
 }
 
 /// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối).
@@ -194,6 +204,37 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
       ),
     );
     return itemsByDay(fetched.expand((e) => e), month);
+  }
+
+  /// Xuất lịch tháng ra file .ics rồi mở bảng chia sẻ của máy, để người dùng
+  /// chọn nạp vào app Lịch. Hỏi trước vì đây là việc bước ra khỏi app.
+  Future<void> _xuatLich(DateTime month) async {
+    final days = _days;
+    if (days == null) return;
+    final n = icsCount(days);
+    final ok = await confirmDialog(
+      context,
+      title: 'Xuất lịch tháng ${month.month}/${month.year}?',
+      body:
+          'Tạo file .ics gồm $n buổi học rồi mở bảng chia sẻ của máy. '
+          'Chọn Lịch để nạp vào, máy sẽ tự nhắc trước giờ học.\n\n'
+          'File chỉ nằm trên máy bạn, không gửi đi đâu.',
+      ok: 'Xuất',
+    );
+    if (!ok || !mounted) return;
+    final ten = 'lich-${month.month}-${month.year}.ics';
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile.fromData(
+            utf8.encode(icsMonth(month, days)),
+            mimeType: 'text/calendar',
+            name: ten,
+          ),
+        ],
+        fileNameOverrides: [ten],
+      ),
+    );
   }
 
   @override
@@ -355,6 +396,19 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                     ),
                 ],
               ),
+              if (_days != null && icsCount(_days!) > 0) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: PaperButton(
+                    label: 'Xuất lịch tháng',
+                    fontSize: 13,
+                    color: Paper.mint,
+                    onColor: Paper.ink,
+                    onPressed: () => _xuatLich(month),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
