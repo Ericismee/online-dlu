@@ -264,23 +264,18 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                     icon: Icons.chevron_right_rounded,
                     onTap: () => _goto(DateTime(month.year, month.month + 1)),
                   ),
-                  const SizedBox(width: 8),
-                  if (_error != null)
-                    Text(
-                      _error!,
-                      style: const TextStyle(color: Paper.ink3, fontSize: 12),
-                    )
-                  else if (_days == null)
-                    const Skeleton(width: 48, height: 12)
-                  else
+                  // Số tiết nằm dưới hàng chú thích: để trên này thì hai nút
+                  // mũi tên với nó chen nhau, tên tháng bị cắt mất năm.
+                  if (_error != null) ...[
+                    const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        '${periods(_days!.values.expand((e) => e))} tiết',
-                        maxLines: 1,
-                        softWrap: false,
+                        _error!,
+                        maxLines: 2,
                         style: const TextStyle(color: Paper.ink3, fontSize: 12),
                       ),
                     ),
+                  ],
                 ],
               ),
               const SizedBox(height: 8),
@@ -341,11 +336,23 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
               Wrap(
                 spacing: 12,
                 runSpacing: 6,
-                children: const [
-                  _Legend(color: _motBuoi, label: '1 buổi'),
-                  _Legend(color: _haiBuoi, label: '2 buổi'),
-                  _Legend(color: _baBuoi, label: '3 buổi'),
-                  _Legend(color: _nghi, label: 'Nghỉ'),
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const _Legend(color: _motBuoi, label: '1 buổi'),
+                  const _Legend(color: _haiBuoi, label: '2 buổi'),
+                  const _Legend(color: _baBuoi, label: '3 buổi'),
+                  const _Legend(color: _nghi, label: 'Nghỉ'),
+                  if (_days == null)
+                    const Skeleton(width: 48, height: 12)
+                  else
+                    Text(
+                      '${periods(_days!.values.expand((e) => e))} tiết',
+                      style: const TextStyle(
+                        color: Paper.ink3,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                 ],
               ),
             ],

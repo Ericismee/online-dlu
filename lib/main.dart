@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -207,22 +205,18 @@ class _TopBlur extends StatelessWidget {
   const _TopBlur();
 
   @override
+  // Chỉ là dải gradient màu giấy: BackdropFilter làm mờ cả khung hình
+  // mỗi frame trong khi nền vốn đã một màu, nhìn không khác gì.
   Widget build(BuildContext context) => Align(
     alignment: Alignment.topCenter,
-    child: ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          height: MediaQuery.paddingOf(context).top,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Paper.paper.withValues(alpha: 0.92),
-                Paper.paper.withValues(alpha: 0.55),
-              ],
-            ),
+    child: IgnorePointer(
+      child: Container(
+        height: MediaQuery.paddingOf(context).top,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Paper.paper, Paper.paper.withValues(alpha: 0)],
           ),
         ),
       ),
@@ -278,45 +272,57 @@ class _Tab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (icon, asset, label, color, tilt) = item;
-    return Pressable(
-      onTap: onTap,
-      builder: (down) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Transform.rotate(
-              angle: on ? tilt : 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
+    return Semantics(
+      selected: on,
+      child: Pressable(
+        onTap: onTap,
+        builder: (down) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Transform.rotate(
+                angle: on ? tilt : 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: on ? color : Colors.transparent,
+                    border: on ? Paper.border : null,
+                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                    boxShadow: on ? Paper.shadow(down ? 0 : 3) : null,
+                  ),
+                  child: asset != null
+                      ? Opacity(
+                          opacity: on ? 1 : 0.55,
+                          child: Image.asset(
+                            asset,
+                            width: 26,
+                            height: 26,
+                            excludeFromSemantics: true,
+                          ),
+                        )
+                      : Icon(
+                          icon,
+                          size: 22,
+                          color: on ? Paper.ink : Paper.ink3,
+                        ),
                 ),
-                decoration: BoxDecoration(
-                  color: on ? color : Colors.transparent,
-                  border: on ? Paper.border : null,
-                  borderRadius: const BorderRadius.all(Radius.circular(12)),
-                  boxShadow: on ? Paper.shadow(down ? 0 : 3) : null,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Baloo',
+                  fontSize: 12,
+                  fontWeight: on ? FontWeight.w800 : FontWeight.w600,
+                  color: on ? Paper.ink : Paper.ink3,
                 ),
-                child: asset != null
-                    ? Opacity(
-                        opacity: on ? 1 : 0.55,
-                        child: Image.asset(asset, width: 26, height: 26),
-                      )
-                    : Icon(icon, size: 22, color: on ? Paper.ink : Paper.ink3),
               ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Baloo',
-                fontSize: 12,
-                fontWeight: on ? FontWeight.w800 : FontWeight.w600,
-                color: on ? Paper.ink : Paper.ink3,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -116,7 +116,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           enabled: !_busy,
                           keyboardType: TextInputType.number,
                           autofillHints: const [AutofillHints.username],
-                          onSubmit: _submit,
+                          action: TextInputAction.next,
+                          onSubmit: () => FocusScope.of(context).nextFocus(),
                         ),
                         const SizedBox(height: 14),
                         _Label('Mật khẩu'),
@@ -233,6 +234,7 @@ class _Input extends StatelessWidget {
     this.suffix,
     this.keyboardType,
     this.autofillHints,
+    this.action = TextInputAction.done,
   });
 
   final TextEditingController controller;
@@ -242,6 +244,9 @@ class _Input extends StatelessWidget {
   final Widget? suffix;
   final TextInputType? keyboardType;
   final Iterable<String>? autofillHints;
+
+  /// Ô cuối là 'done' để gửi luôn, ô trên là 'next' để xuống ô kế.
+  final TextInputAction action;
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +260,7 @@ class _Input extends StatelessWidget {
       obscureText: obscure,
       keyboardType: keyboardType,
       autofillHints: autofillHints,
-      textInputAction: TextInputAction.done,
+      textInputAction: action,
       onSubmitted: (_) => onSubmit(),
       decoration: InputDecoration(
         isDense: true,
