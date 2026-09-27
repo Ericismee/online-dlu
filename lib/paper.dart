@@ -168,6 +168,7 @@ class _PaperButtonState extends State<PaperButton> {
       ),
       child: Text(
         widget.label,
+        textAlign: TextAlign.center,
         style: TextStyle(
           fontFamily: 'Baloo',
           fontWeight: FontWeight.w800,
@@ -366,6 +367,8 @@ Future<bool> confirmDialog(
   required String title,
   required String body,
   required String ok,
+  IconData icon = Icons.event_available_rounded,
+  Color color = Paper.sun,
 }) async =>
     await showDialog<bool>(
       context: context,
@@ -384,34 +387,68 @@ Future<bool> confirmDialog(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Baloo',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 20,
-                  color: Paper.ink,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Huy hiệu cùng kiểu với các ô trong app, để hộp thoại
+                  // trông như một thẻ giấy nữa chứ không phải popup hệ thống.
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: color,
+                      border: Paper.border,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: Paper.shadow(3),
+                    ),
+                    child: Icon(icon, size: 22, color: Paper.ink),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontFamily: 'Baloo',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 20,
+                        height: 1.15,
+                        color: Paper.ink,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                body,
-                style: const TextStyle(fontSize: 14, color: Paper.ink2),
+              const SizedBox(height: 14),
+              // Lời dẫn nằm trong thẻ giấy: chữ xám trên nền kem trơn
+              // bị chìm, có viền với bóng thì đọc ra ngay.
+              PaperBox(
+                padding: const EdgeInsets.all(14),
+                child: Text(
+                  body,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.45,
+                    fontWeight: FontWeight.w500,
+                    color: Paper.ink2,
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  PaperButton(
-                    label: 'Huỷ',
-                    color: Paper.card,
-                    onColor: Paper.ink,
-                    onPressed: () => Navigator.pop(context, false),
+                  Expanded(
+                    child: PaperButton(
+                      label: 'Huỷ',
+                      color: Paper.card,
+                      onColor: Paper.ink,
+                      onPressed: () => Navigator.pop(context, false),
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  PaperButton(
-                    label: ok,
-                    onPressed: () => Navigator.pop(context, true),
+                  Expanded(
+                    child: PaperButton(
+                      label: ok,
+                      onPressed: () => Navigator.pop(context, true),
+                    ),
                   ),
                 ],
               ),
