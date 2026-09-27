@@ -44,4 +44,36 @@ void main() {
     expect(Cache.stale(DateTime.now()), isFalse);
     expect(Cache.stale(DateTime.now().subtract(Cache.ttl * 2)), isTrue);
   });
+
+  test('mốc dữ liệu chỉ nhích khi thật sự lấy được', () async {
+    var hong = false;
+    final portal = Portal(
+      client: MockClient((_) async {
+        if (hong) return http.Response.bytes(utf8.encode('{}'), 500);
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode([
+              {'LastScore': 90},
+            ]),
+          ),
+          200,
+        );
+      }),
+    );
+    expect(Cache.syncedAt, isNull);
+    await portal.behaviorScores('t');
+    final lanDau = Cache.syncedAt;
+    expect(lanDau, isNotNull);
+
+    // Lấy lại lúc mạng hỏng: màn giữ số cũ nên mốc phải đứng yên.
+    hong = true;
+    Cache.bypass = true;
+    await expectLater(portal.behaviorScores('t'), throwsA(isA<PortalError>()));
+    Cache.bypass = false;
+    expect(Cache.syncedAt, lanDau);
+
+    // Đọc lại từ cache thì mốc là lúc cache ghi, không phải bây giờ.
+    await portal.behaviorScores('t');
+    expect(Cache.syncedAt, lanDau);
+  });
 }

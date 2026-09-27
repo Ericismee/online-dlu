@@ -20,6 +20,9 @@ class Cache {
   /// Nạp lại mọi màn đang mở, data cũ vẫn hiện cho tới khi có data mới.
   static Future<void> refreshAll() async {
     bypass = true;
+    // Vòng làm mới này giao lại số cho mọi màn đang mở; màn nào hỏng thì
+    // không ghi mốc, chip lùi về mốc cũ nhất còn lại.
+    served.clear();
     try {
       await Future.wait(refreshers.map((f) => f()));
     } finally {
@@ -46,23 +49,18 @@ class Cache {
 
   static bool stale(DateTime at) => DateTime.now().difference(at) > ttl;
 
-  static DateTime? _synced;
+  /// Mốc của dữ liệu đang thật sự nằm trên màn hình, ghi lúc giao cho màn
+  /// chứ không phải lúc gọi mạng. Gọi hỏng thì màn vẫn là số cũ nên mốc
+  /// cũng phải đứng yên; lấy được từ cache thì mốc là lúc cache đó ghi.
+  static final served = <String, DateTime>{};
 
-  /// Lần cuối lấy được dữ liệu mới từ portal. Mở lại app thì dò trong box,
-  /// để màn hình nói rõ đang xem số của lúc nào chứ không để người dùng đoán.
-  static DateTime? get syncedAt {
-    if (_synced != null) return _synced;
-    for (final raw in _box?.values ?? const <String>[]) {
-      final at = DateTime.tryParse(
-        (jsonDecode(raw) as Map<String, dynamic>)['at'] as String? ?? '',
-      );
-      if (at != null && (_synced == null || at.isAfter(_synced!))) _synced = at;
-    }
-    return _synced;
-  }
+  /// Cũ nhất trong đám đang hiện: nói "số trên màn mới ít nhất từ lúc này"
+  /// thì không bao giờ hứa quá.
+  static DateTime? get syncedAt => served.values.isEmpty
+      ? null
+      : served.values.reduce((a, b) => a.isBefore(b) ? a : b);
 
   static Future<void> write(String key, dynamic data) async {
-    _synced = DateTime.now();
     await _box?.put(
       key,
       jsonEncode({'at': DateTime.now().toIso8601String(), 'data': data}),
@@ -71,7 +69,7 @@ class Cache {
 
   /// Đăng xuất thì bỏ sạch.
   static Future<void> clear() async {
-    _synced = null;
+    served.clear();
     await _box?.clear();
   }
 }

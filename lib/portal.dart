@@ -167,9 +167,14 @@ class Portal {
     final hit = Cache.bypass ? null : Cache.read(path);
     if (hit != null) {
       if (Cache.stale(hit.$2)) unawaited(_fetch(path, token));
+      // Màn đang xem số của lúc cache ghi, không phải của bây giờ.
+      Cache.served[path] = hit.$2;
       return hit.$1;
     }
-    return _fetch(path, token);
+    final data = await _fetch(path, token);
+    // Lấy lại đúng mốc vừa ghi vào cache cho khỏi lệch vài mili giây.
+    Cache.served[path] = Cache.read(path)?.$2 ?? DateTime.now();
+    return data;
   }
 
   Future<dynamic> _fetch(String path, String token) async {
