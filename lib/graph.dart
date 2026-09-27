@@ -31,9 +31,43 @@ Map<int, List<dynamic>> itemsByDay(Iterable<dynamic> items, DateTime month) {
 int periods(Iterable<dynamic> items) =>
     items.fold(0, (a, i) => a + toNum(i['NumberOfPeriods']).toInt());
 
-/// Tiết 1-5 sáng, 6-10 chiều, còn lại tối.
+/// Tiết 1-6 sáng, 7-10 chiều, 11-14 tối (theo bảng giờ giảng của trường).
 String buoi(int periodID) =>
-    periodID <= 5 ? 'Sáng' : (periodID <= 10 ? 'Chiều' : 'Tối');
+    periodID <= 6 ? 'Sáng' : (periodID <= 10 ? 'Chiều' : 'Tối');
+
+/// Phút bắt đầu của từng tiết theo bảng giờ giảng của trường, mỗi tiết 50 phút.
+// ponytail: trường chỉ công bố tiết 1-4, 7-14; tiết 5-6 suy ra tiếp nối tiết 4.
+const _batDau = <int, int>{
+  1: 7 * 60 + 30,
+  2: 8 * 60 + 20,
+  3: 9 * 60 + 30,
+  4: 10 * 60 + 20,
+  5: 11 * 60 + 10,
+  6: 12 * 60,
+  7: 13 * 60,
+  8: 13 * 60 + 50,
+  9: 14 * 60 + 50,
+  10: 15 * 60 + 40,
+  11: 16 * 60 + 40,
+  12: 17 * 60 + 30,
+  13: 18 * 60 + 20,
+  14: 19 * 60 + 10,
+};
+
+String _gio(int phut) =>
+    '${phut ~/ 60}h${(phut % 60).toString().padLeft(2, '0')}';
+
+/// Số tiết trong chuỗi portal trả về ('Tiết: 3' -> 3).
+int tietNo(Object? v) =>
+    int.tryParse(RegExp(r'\d+').firstMatch(clean(v))?.group(0) ?? '') ?? 0;
+
+/// Giờ vào - giờ ra của một dải tiết. Tiết lạ thì trả null để khỏi bịa giờ.
+(String, String)? khungGio(int tietDau, int tietCuoi) {
+  final dau = _batDau[tietDau];
+  final cuoi = _batDau[tietCuoi];
+  if (dau == null || cuoi == null) return null;
+  return (_gio(dau), _gio(cuoi + 50));
+}
 
 /// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối).
 Color dayColor(Iterable<dynamic> items) {
@@ -403,36 +437,80 @@ class _Lesson extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tiet = '${i['BeginTime']}-${i['EndTime']}'.replaceAll('Tiết: ', '');
+    final dau = tietNo(i['BeginTime']);
+    final cuoi = tietNo(i['EndTime']);
+    final gio = khungGio(dau, cuoi);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            clean(i['CurriculumName']),
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: Paper.ink,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              Pill('Tiết $tiet', color: Paper.sun),
-              Pill(buoi(toNum(i['PeriodID']).toInt()), color: Paper.mint),
-              Pill('Phòng ${i['RoomID']}', color: Paper.sky),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Cột giờ vào - giờ ra, nối bằng một vạch cho ra dáng timeline.
+            if (gio != null) ...[
+              SizedBox(
+                width: 46,
+                child: Column(
+                  children: [
+                    Text(
+                      gio.$1,
+                      style: const TextStyle(
+                        fontFamily: 'Baloo',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: Paper.ink,
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Container(
+                          width: 2,
+                          margin: const EdgeInsets.symmetric(vertical: 3),
+                          color: Paper.ink3,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      gio.$2,
+                      style: const TextStyle(fontSize: 13, color: Paper.ink3),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
             ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'GV: ${i['FullName'] ?? '—'}',
-            style: const TextStyle(fontSize: 13, color: Paper.ink2),
-          ),
-        ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    clean(i['CurriculumName']),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Paper.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      Pill('Tiết $dau-$cuoi', color: Paper.sun),
+                      Pill(buoi(dau), color: Paper.mint),
+                      Pill('Phòng ${i['RoomID']}', color: Paper.sky),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'GV: ${i['FullName'] ?? '—'}',
+                    style: const TextStyle(fontSize: 13, color: Paper.ink2),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

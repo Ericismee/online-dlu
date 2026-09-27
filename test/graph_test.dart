@@ -100,4 +100,14 @@ void main() {
       ),
     );
   });
+
+  test('khung giờ theo bảng giờ giảng của trường', () {
+    expect(khungGio(1, 1), ('7h30', '8h20'));
+    expect(khungGio(1, 4), ('7h30', '11h10'));
+    expect(khungGio(7, 10), ('13h00', '16h30'));
+    expect(khungGio(11, 14), ('16h40', '20h00'));
+    expect(khungGio(0, 3), isNull);
+    expect(tietNo('Tiết: 3'), 3);
+    expect(buoi(6), 'Sáng');
+  });
 }
