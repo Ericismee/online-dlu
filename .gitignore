@@ -52,3 +52,7 @@ app.*.map.json
 *.apk
 *.aab
 /dist/
+
+# Khoá ký bản Play — giữ ngoài repo, mất thì xin Google cấp lại upload key.
+/android/key.properties
+/android/app/upload.jks
