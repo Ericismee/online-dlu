@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Bản release không tự có quyền mạng như bản debug. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="DLU Online"
         android:name="${applicationName}"
