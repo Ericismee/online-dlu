@@ -129,4 +129,22 @@ void main() {
     // Tan hết thì không còn gì để nhắc.
     expect(tietKe(items, DateTime(2026, 9, 21, 20, 0)), isNull);
   });
+
+  test('trạng thái buổi học: chưa vào lớp -> đang học -> ra chơi -> xong', () {
+    final buoi = {'BeginTime': 'Tiết: 1', 'EndTime': 'Tiết: 3'}; // 7h30-10h20
+    LessonPhase? pha(int h, int m) =>
+        lessonPhase(buoi, DateTime(2026, 9, 21, h, m));
+    expect(pha(7, 0), LessonPhase.chuaVao);
+    expect(pha(7, 40), LessonPhase.dangHoc);
+    // Tiết 2 tan 9h10, tiết 3 mới vào 9h30 — ở giữa là ra chơi.
+    expect(pha(9, 15), LessonPhase.raChoi);
+    expect(pha(9, 40), LessonPhase.dangHoc);
+    expect(pha(10, 25), LessonPhase.xong);
+    expect(phaseTag(LessonPhase.dangHoc).$1, 'Đang học');
+    // Tiết lạ thì không bịa trạng thái.
+    expect(
+      lessonPhase({'BeginTime': 'x', 'EndTime': 'y'}, DateTime(2026)),
+      isNull,
+    );
+  });
 }

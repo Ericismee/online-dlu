@@ -92,6 +92,38 @@ dynamic tietKe(List<dynamic> items, DateTime now) {
   return null;
 }
 
+/// Buổi học đang ở đoạn nào: chưa tới giờ, trong tiết, nghỉ giữa tiết, đã tan.
+enum LessonPhase { chuaVao, dangHoc, raChoi, xong }
+
+/// Trạng thái của một buổi so với [now]. Tiết lạ thì null để khỏi bịa.
+LessonPhase? lessonPhase(dynamic item, DateTime now) {
+  final dau = tietNo(item['BeginTime']);
+  final cuoi = tietNo(item['EndTime']);
+  final vao = batDauPhut(dau);
+  final tietCuoi = batDauPhut(cuoi);
+  if (vao == null || tietCuoi == null) return null;
+  final phut = now.hour * 60 + now.minute;
+  if (phut < vao) return LessonPhase.chuaVao;
+  if (phut >= tietCuoi + tietPhut) return LessonPhase.xong;
+  // Trong khoảng buổi học mà không nằm trong tiết nào thì đang nghỉ giữa tiết
+  // (tiết 2 tan 9h10, tiết 3 mới vào 9h30).
+  for (var t = dau; t <= cuoi; t++) {
+    final s = batDauPhut(t);
+    if (s != null && phut >= s && phut < s + tietPhut) {
+      return LessonPhase.dangHoc;
+    }
+  }
+  return LessonPhase.raChoi;
+}
+
+/// Nhãn và màu giấy cho từng trạng thái.
+(String, Color) phaseTag(LessonPhase p) => switch (p) {
+  LessonPhase.chuaVao => ('Chưa vào lớp', Paper.card),
+  LessonPhase.dangHoc => ('Đang học', Paper.mint),
+  LessonPhase.raChoi => ('Ra chơi', Paper.sun),
+  LessonPhase.xong => ('Xong', Paper.paper),
+};
+
 /// Đếm ngược tới giờ vào lớp, hoặc báo đang học. Tiết lạ thì null.
 String? demNguoc(dynamic item, DateTime now) {
   final dau = batDauPhut(tietNo(item['BeginTime']));
@@ -487,6 +519,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
         const SizedBox(height: 12),
         _DayCard(
           day: DateTime(month.year, month.month, pick),
+          now: thisMonth && pick == widget.now.day ? widget.now : null,
           items: _days?[pick] ?? const [],
           loading: _days == null && _error == null,
           onToday: thisMonth && pick == widget.now.day
@@ -504,8 +537,10 @@ class _DayCard extends StatelessWidget {
     required this.items,
     required this.loading,
     required this.onToday,
+    this.now,
   });
   final DateTime day;
+  final DateTime? now;
   final List<dynamic> items;
   final bool loading;
   final VoidCallback? onToday;
@@ -569,22 +604,30 @@ class _DayCard extends StatelessWidget {
           )
         else
           for (final (n, i) in items.indexed)
-            _Lesson(i, delay: Duration(milliseconds: 70 * n)),
+            _Lesson(
+              i,
+              delay: Duration(milliseconds: 70 * n),
+              now: now,
+            ),
       ],
     ),
   );
 }
 
 class _Lesson extends StatelessWidget {
-  const _Lesson(this.i, {this.delay = Duration.zero});
+  const _Lesson(this.i, {this.delay = Duration.zero, this.now});
   final dynamic i;
   final Duration delay;
+
+  /// Chỉ ngày hôm nay mới có trạng thái; ngày khác để null.
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
     final dau = tietNo(i['BeginTime']);
     final cuoi = tietNo(i['EndTime']);
     final gio = khungGio(dau, cuoi);
+    final pha = now == null ? null : lessonPhase(i, now!);
     return PopIn(
       delay: delay,
       child: Padding(
@@ -643,6 +686,8 @@ class _Lesson extends StatelessWidget {
                       spacing: 6,
                       runSpacing: 6,
                       children: [
+                        if (pha != null)
+                          Pill(phaseTag(pha).$1, color: phaseTag(pha).$2),
                         Pill('Tiết $dau-$cuoi', color: Paper.sun),
                         Pill(buoi(dau), color: Paper.mint),
                         Pill('Phòng ${i['RoomID']}', color: Paper.sky),
@@ -914,7 +959,8 @@ class _TodayLessonsState extends State<TodayLessons>
       );
     }
     if (_items!.isEmpty) return const SizedBox.shrink();
-    final ke = tietKe(_items!, DateTime.now());
+    final now = DateTime.now();
+    final ke = tietKe(_items!, now);
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
@@ -931,7 +977,7 @@ class _TodayLessonsState extends State<TodayLessons>
           ),
           const SizedBox(height: 10),
           if (ke != null) ...[
-            _TietKe(item: ke, now: DateTime.now()),
+            _TietKe(item: ke, now: now),
             const SizedBox(height: 10),
           ],
           PaperBox(
@@ -939,7 +985,11 @@ class _TodayLessonsState extends State<TodayLessons>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (final (n, i) in _items!.indexed)
-                  _Lesson(i, delay: Duration(milliseconds: 70 * n)),
+                  _Lesson(
+                    i,
+                    delay: Duration(milliseconds: 70 * n),
+                    now: now,
+                  ),
               ],
             ),
           ),
@@ -961,6 +1011,8 @@ class _TietKe extends StatelessWidget {
     final cuoi = tietNo(item['EndTime']);
     final gio = khungGio(dau, cuoi);
     final con = demNguoc(item, now);
+    final pha = lessonPhase(item, now);
+    final mau = pha == null ? Paper.card : phaseTag(pha).$2;
     return PaperBox(
       color: Paper.sun,
       child: Column(
@@ -968,7 +1020,8 @@ class _TietKe extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Pill('Sắp tới', color: Paper.card),
+              // Nhãn theo trạng thái thật: chưa vào lớp / đang học / ra chơi.
+              Pill(pha == null ? 'Sắp tới' : phaseTag(pha).$1, color: mau),
               if (con != null) ...[
                 const SizedBox(width: 8),
                 Expanded(
