@@ -249,9 +249,12 @@ class _MarksScreenState extends State<MarksScreen>
                           label: pick.$2,
                           color: Paper.mint,
                           onTap: () async {
-                            final t = await chooseOption(context, [
-                              for (final k in keys)
-                                if (k.$1 == pick.$1) k.$2,
+                            // Luôn có đủ ba kỳ: học hè là HK03, portal chỉ
+                            // trả kỳ đã có điểm nên không thể lấy từ dữ liệu.
+                            final t = await chooseOption(context, const [
+                              'HK01',
+                              'HK02',
+                              'HK03',
                             ], pick.$2);
                             if (t != null) setState(() => _pick = (pick.$1, t));
                           },

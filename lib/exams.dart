@@ -80,8 +80,11 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
       all.where((e) => examTerm(e) == _pick),
       DateTime(today.year, today.month, today.day),
     );
+    // Có năm hiện tại cố định trong danh sách: chọn năm cũ rồi vẫn quay lại
+    // được, chứ không phải chọn xong là năm mới biến mất khỏi menu.
     final years = {
       ...all.map((e) => examTerm(e)?.$1).nonNulls,
+      yearTermFor(today).$1,
       _pick.$1,
     }.toList()..sort((a, b) => b.compareTo(a));
     return Center(
