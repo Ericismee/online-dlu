@@ -275,6 +275,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                           padding: const EdgeInsets.symmetric(vertical: 11),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Flexible(
                                 child: Text(
@@ -284,14 +285,14 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                                   style: const TextStyle(
                                     fontFamily: 'Baloo',
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 18,
+                                    fontSize: 22,
                                     color: Paper.ink,
                                   ),
                                 ),
                               ),
                               const Icon(
                                 Icons.expand_more_rounded,
-                                size: 20,
+                                size: 22,
                                 color: Paper.ink2,
                               ),
                             ],
