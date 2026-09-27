@@ -570,3 +570,78 @@ class PopIn extends StatelessWidget {
     );
   }
 }
+
+/// Ô tìm kiếm mặc kiểu giấy. Giữ chữ trong controller của chính nó,
+/// nơi gọi chỉ cần nghe onChanged.
+class SearchBox extends StatefulWidget {
+  const SearchBox({super.key, required this.onChanged, this.hint = 'Tìm'});
+  final ValueChanged<String> onChanged;
+  final String hint;
+
+  @override
+  State<SearchBox> createState() => _SearchBoxState();
+}
+
+class _SearchBoxState extends State<SearchBox> {
+  final _c = TextEditingController();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void _set(String v) {
+    widget.onChanged(v);
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    decoration: BoxDecoration(
+      color: Paper.card,
+      border: Paper.border,
+      borderRadius: BorderRadius.circular(999),
+      boxShadow: Paper.shadow(3),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.search_rounded, size: 20, color: Paper.ink3),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextField(
+            controller: _c,
+            onChanged: _set,
+            textInputAction: TextInputAction.search,
+            style: const TextStyle(fontSize: 15, color: Paper.ink),
+            decoration: InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              hintText: widget.hint,
+              hintStyle: const TextStyle(color: Paper.ink3, fontSize: 15),
+              // 12+20+12 = 44pt, đủ ngưỡng chạm mà không phình ô.
+              contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        if (_c.text.isNotEmpty)
+          Semantics(
+            button: true,
+            label: 'Xoá chữ tìm',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                _c.clear();
+                _set('');
+              },
+              child: const Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(Icons.close_rounded, size: 18, color: Paper.ink2),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}

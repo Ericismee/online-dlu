@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'data.dart';
@@ -77,6 +80,29 @@ int tietNo(Object? v) =>
   final cuoi = _batDau[tietCuoi];
   if (dau == null || cuoi == null) return null;
   return (_gio(dau), _gio(cuoi + tietPhut));
+}
+
+/// Buổi sắp tới trong ngày: buổi đầu tiên chưa tan. Tan hết thì null.
+dynamic tietKe(List<dynamic> items, DateTime now) {
+  final phut = now.hour * 60 + now.minute;
+  for (final i in items) {
+    final cuoi = batDauPhut(tietNo(i['EndTime']));
+    if (cuoi != null && phut < cuoi + tietPhut) return i;
+  }
+  return null;
+}
+
+/// Đếm ngược tới giờ vào lớp, hoặc báo đang học. Tiết lạ thì null.
+String? demNguoc(dynamic item, DateTime now) {
+  final dau = batDauPhut(tietNo(item['BeginTime']));
+  final cuoi = batDauPhut(tietNo(item['EndTime']));
+  if (dau == null || cuoi == null) return null;
+  final phut = now.hour * 60 + now.minute;
+  if (phut >= dau) return 'Đang học, còn ${cuoi + tietPhut - phut} phút';
+  final con = dau - phut;
+  if (con < 60) return 'Còn $con phút nữa';
+  final le = con % 60;
+  return 'Còn ${con ~/ 60} giờ${le == 0 ? '' : ' $le phút'} nữa';
 }
 
 /// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối).
@@ -208,6 +234,35 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
 
   /// Chép lịch tháng sang app Lịch của máy qua file .ics.
   /// Hỏi trước vì đây là việc bước ra khỏi app.
+  /// Khung để chụp đúng tấm lịch, không dính cả màn hình.
+  final _anhKey = GlobalKey();
+
+  /// Chụp tấm lịch thành ảnh rồi đưa vào bảng chia sẻ — gửi cho bạn cùng lớp
+  /// nhanh hơn là tả bằng lời.
+  Future<void> _chiaSeAnh(DateTime month) async {
+    final khung = _anhKey.currentContext?.findRenderObject();
+    if (khung is! RenderRepaintBoundary) return;
+    // pixelRatio 3: đọc rõ trên màn retina mà file vẫn dưới 1 MB.
+    final anh = await khung.toImage(pixelRatio: 3);
+    final png = await anh.toByteData(format: ImageByteFormat.png);
+    anh.dispose();
+    if (png == null) return;
+    final ten = 'lich-${month.month}-${month.year}.png';
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile.fromData(
+            png.buffer.asUint8List(),
+            mimeType: 'image/png',
+            name: ten,
+          ),
+        ],
+        fileNameOverrides: [ten],
+        text: 'Lịch học tháng ${month.month}/${month.year}',
+      ),
+    );
+  }
+
   Future<void> _xuatLich(DateTime month) async {
     final days = _days;
     if (days == null) return;
@@ -247,170 +302,186 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
     final pick = _pick ?? (thisMonth ? widget.now.day : 1);
     return Column(
       children: [
-        PaperBox(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _Arrow(
-                    icon: Icons.chevron_left_rounded,
-                    onTap: () => _goto(DateTime(month.year, month.month - 1)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Semantics(
-                      button: true,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () async {
-                          final m = await showDialog<DateTime>(
-                            context: context,
-                            builder: (_) => _MonthPicker(month: month),
-                          );
-                          if (m != null) _goto(m);
-                        },
-                        // Chữ cao ~22pt, đệm thêm cho đủ ngưỡng chạm 44pt.
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 11),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  'Tháng ${month.month}/${month.year}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontFamily: 'Baloo',
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 22,
-                                    color: Paper.ink,
+        RepaintBoundary(
+          key: _anhKey,
+          child: PaperBox(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _Arrow(
+                      icon: Icons.chevron_left_rounded,
+                      onTap: () => _goto(DateTime(month.year, month.month - 1)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Semantics(
+                        button: true,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () async {
+                            final m = await showDialog<DateTime>(
+                              context: context,
+                              builder: (_) => _MonthPicker(month: month),
+                            );
+                            if (m != null) _goto(m);
+                          },
+                          // Chữ cao ~22pt, đệm thêm cho đủ ngưỡng chạm 44pt.
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'Tháng ${month.month}/${month.year}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'Baloo',
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 22,
+                                      color: Paper.ink,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const Icon(
-                                Icons.expand_more_rounded,
-                                size: 22,
-                                color: Paper.ink2,
-                              ),
-                            ],
+                                const Icon(
+                                  Icons.expand_more_rounded,
+                                  size: 22,
+                                  color: Paper.ink2,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  _Arrow(
-                    icon: Icons.chevron_right_rounded,
-                    onTap: () => _goto(DateTime(month.year, month.month + 1)),
-                  ),
-                  // Số tiết nằm dưới hàng chú thích: để trên này thì hai nút
-                  // mũi tên với nó chen nhau, tên tháng bị cắt mất năm.
-                  if (_error != null) ...[
                     const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        _error!,
-                        maxLines: 2,
-                        style: const TextStyle(color: Paper.ink3, fontSize: 12),
-                      ),
+                    _Arrow(
+                      icon: Icons.chevron_right_rounded,
+                      onTap: () => _goto(DateTime(month.year, month.month + 1)),
                     ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Nhãn thứ để ô trống trước ngày 1 nhìn ra là lịch, không phải
-              // khoảng hở thừa.
-              Row(
-                children: [
-                  for (final d in const [
-                    'T2',
-                    'T3',
-                    'T4',
-                    'T5',
-                    'T6',
-                    'T7',
-                    'CN',
-                  ])
-                    Expanded(
-                      child: Text(
-                        d,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Paper.ink3,
+                    // Số tiết nằm dưới hàng chú thích: để trên này thì hai nút
+                    // mũi tên với nó chen nhau, tên tháng bị cắt mất năm.
+                    if (_error != null) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          _error!,
+                          maxLines: 2,
+                          style: const TextStyle(
+                            color: Paper.ink3,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              GridView.count(
-                crossAxisCount: 7,
-                shrinkWrap: true,
-                // Không đặt thì GridView tự chèn padding bằng status bar,
-                // thành ra hở nguyên một hàng phía trên ngày 1.
-                padding: EdgeInsets.zero,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 1.15,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
-                children: [
-                  for (var i = 0; i < lead; i++) const SizedBox(),
-                  if (_days == null)
-                    for (var d = 1; d <= days; d++)
-                      const Skeleton(height: 44, radius: 6, ink: true)
-                  else
-                    for (var d = 1; d <= days; d++)
-                      _Cell(
-                        day: d,
-                        items: _days?[d] ?? const [],
-                        today: thisMonth && d == widget.now.day,
-                        picked: d == pick,
-                        onTap: () => setState(() => _pick = d),
-                      ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 12,
-                runSpacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  const _Legend(color: _motBuoi, label: '1 buổi'),
-                  const _Legend(color: _haiBuoi, label: '2 buổi'),
-                  const _Legend(color: _baBuoi, label: '3 buổi'),
-                  const _Legend(color: _nghi, label: 'Nghỉ'),
-                  if (_days == null)
-                    const Skeleton(width: 48, height: 12)
-                  else
-                    Text(
-                      '${periods(_days!.values.expand((e) => e))} tiết',
-                      style: const TextStyle(
-                        color: Paper.ink3,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                ],
-              ),
-              if (_days != null && icsCount(_days!) > 0) ...[
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: PaperButton(
-                    label: 'Thêm vào Lịch',
-                    fontSize: 13,
-                    color: Paper.mint,
-                    onColor: Paper.ink,
-                    onPressed: () => _xuatLich(month),
-                  ),
+                    ],
+                  ],
                 ),
+                const SizedBox(height: 8),
+                // Nhãn thứ để ô trống trước ngày 1 nhìn ra là lịch, không phải
+                // khoảng hở thừa.
+                Row(
+                  children: [
+                    for (final d in const [
+                      'T2',
+                      'T3',
+                      'T4',
+                      'T5',
+                      'T6',
+                      'T7',
+                      'CN',
+                    ])
+                      Expanded(
+                        child: Text(
+                          d,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Paper.ink3,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                GridView.count(
+                  crossAxisCount: 7,
+                  shrinkWrap: true,
+                  // Không đặt thì GridView tự chèn padding bằng status bar,
+                  // thành ra hở nguyên một hàng phía trên ngày 1.
+                  padding: EdgeInsets.zero,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: 1.15,
+                  crossAxisSpacing: 6,
+                  mainAxisSpacing: 6,
+                  children: [
+                    for (var i = 0; i < lead; i++) const SizedBox(),
+                    if (_days == null)
+                      for (var d = 1; d <= days; d++)
+                        const Skeleton(height: 44, radius: 6, ink: true)
+                    else
+                      for (var d = 1; d <= days; d++)
+                        _Cell(
+                          day: d,
+                          items: _days?[d] ?? const [],
+                          today: thisMonth && d == widget.now.day,
+                          picked: d == pick,
+                          onTap: () => setState(() => _pick = d),
+                        ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const _Legend(color: _motBuoi, label: '1 buổi'),
+                    const _Legend(color: _haiBuoi, label: '2 buổi'),
+                    const _Legend(color: _baBuoi, label: '3 buổi'),
+                    const _Legend(color: _nghi, label: 'Nghỉ'),
+                    if (_days == null)
+                      const Skeleton(width: 48, height: 12)
+                    else
+                      Text(
+                        '${periods(_days!.values.expand((e) => e))} tiết',
+                        style: const TextStyle(
+                          color: Paper.ink3,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                  ],
+                ),
+                if (_days != null && icsCount(_days!) > 0) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      PaperButton(
+                        label: 'Thêm vào Lịch',
+                        fontSize: 13,
+                        color: Paper.mint,
+                        onColor: Paper.ink,
+                        onPressed: () => _xuatLich(month),
+                      ),
+                      PaperButton(
+                        label: 'Chia sẻ ảnh',
+                        fontSize: 13,
+                        color: Paper.sky,
+                        onColor: Paper.ink,
+                        onPressed: () => _chiaSeAnh(month),
+                      ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -799,10 +870,22 @@ class _TodayLessonsState extends State<TodayLessons>
 
   List<dynamic>? _items;
 
+  /// Đếm ngược mà đứng im thì sai ngay sau một phút.
+  Timer? _dongHo;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _dongHo = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _dongHo?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -831,6 +914,7 @@ class _TodayLessonsState extends State<TodayLessons>
       );
     }
     if (_items!.isEmpty) return const SizedBox.shrink();
+    final ke = tietKe(_items!, DateTime.now());
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
@@ -846,6 +930,10 @@ class _TodayLessonsState extends State<TodayLessons>
             ),
           ),
           const SizedBox(height: 10),
+          if (ke != null) ...[
+            _TietKe(item: ke, now: DateTime.now()),
+            const SizedBox(height: 10),
+          ],
           PaperBox(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -854,6 +942,71 @@ class _TodayLessonsState extends State<TodayLessons>
                   _Lesson(i, delay: Duration(milliseconds: 70 * n)),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Thẻ nổi cho buổi sắp tới: mở app ra là biết đi đâu, còn bao lâu.
+class _TietKe extends StatelessWidget {
+  const _TietKe({required this.item, required this.now});
+  final dynamic item;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final dau = tietNo(item['BeginTime']);
+    final cuoi = tietNo(item['EndTime']);
+    final gio = khungGio(dau, cuoi);
+    final con = demNguoc(item, now);
+    return PaperBox(
+      color: Paper.sun,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Pill('Sắp tới', color: Paper.card),
+              if (con != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    con,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Baloo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Paper.ink,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subjectName(item['CurriculumName']),
+            style: const TextStyle(
+              fontFamily: 'Baloo',
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              height: 1.15,
+              color: Paper.ink,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              if (gio != null) Pill('${gio.$1} - ${gio.$2}', color: Paper.card),
+              Pill('Phòng ${item['RoomID']}', color: Paper.card),
+              Pill('Tiết $dau-$cuoi', color: Paper.card),
+            ],
           ),
         ],
       ),

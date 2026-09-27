@@ -46,3 +46,30 @@ String dataAge(DateTime at, DateTime now) {
       ? 'Dữ liệu lúc $gio'
       : 'Dữ liệu ${at.day}/${at.month} lúc $gio';
 }
+
+/// Gõ 'toan roi rac' vẫn ra 'Toán rời rạc' — sinh viên hiếm ai gõ dấu khi tìm.
+const _nhomDau = {
+  'a': 'àáạảãâầấậẩẫăằắặẳẵ',
+  'e': 'èéẹẻẽêềếệểễ',
+  'i': 'ìíịỉĩ',
+  'o': 'òóọỏõôồốộổỗơờớợởỡ',
+  'u': 'ùúụủũưừứựửữ',
+  'y': 'ỳýỵỷỹ',
+  'd': 'đ',
+};
+
+String khongDau(String s) {
+  final out = StringBuffer();
+  for (final c in s.toLowerCase().split('')) {
+    out.write(
+      _nhomDau.entries
+          .firstWhere((e) => e.value.contains(c), orElse: () => MapEntry(c, ''))
+          .key,
+    );
+  }
+  return out.toString();
+}
+
+/// Ô tìm kiếm khớp không phân biệt dấu lẫn hoa thường. Gõ rỗng thì khớp hết.
+bool khop(String text, String q) =>
+    q.trim().isEmpty || khongDau(text).contains(khongDau(q.trim()));

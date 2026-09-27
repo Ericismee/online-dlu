@@ -28,6 +28,7 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
   late (String, String) _pick = yearTermFor(DateTime.now());
   List<dynamic>? _list;
   String? _error;
+  String _q = '';
 
   @override
   void initState() {
@@ -60,7 +61,18 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final list = _list ?? const <dynamic>[];
+    final all = _list ?? const <dynamic>[];
+    // Tìm cả theo tên môn, mã lớp học phần lẫn tên thầy.
+    final list = [
+      for (final c in all)
+        if (khop(
+          '${subjectName(c['CurriculumName'])} '
+          '${clean(c['ScheduleStudyUnitAlias'])} '
+          '${c['ProfessorName'] ?? ''}',
+          _q,
+        ))
+          c,
+    ];
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
@@ -110,12 +122,12 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                     },
                   ),
                   const Spacer(),
-                  if (list.isNotEmpty)
+                  if (all.isNotEmpty)
                     // Flexible: máy hẹp hoặc cỡ chữ to thì cắt bớt,
                     // không thì hàng tràn qua mép.
                     Flexible(
                       child: Text(
-                        '${list.first['TongLHP']} LHP · ${list.first['TongSTC']} TC',
+                        '${all.first['TongLHP']} LHP · ${all.first['TongSTC']} TC',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: Paper.ink3, fontSize: 12),
@@ -123,6 +135,13 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                     ),
                 ],
               ),
+              if (all.length > 5) ...[
+                const SizedBox(height: 12),
+                SearchBox(
+                  hint: 'Tìm môn, mã lớp, tên thầy',
+                  onChanged: (v) => setState(() => _q = v),
+                ),
+              ],
               const SizedBox(height: 16),
               if (_error != null)
                 PaperBox(
@@ -138,6 +157,13 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                     padding: EdgeInsets.only(bottom: 12),
                     child: Skeleton(height: 96, radius: 16, ink: true),
                   )
+              else if (all.isNotEmpty && list.isEmpty)
+                PaperBox(
+                  child: const Text(
+                    'Không có học phần nào khớp.',
+                    style: TextStyle(color: Paper.ink2),
+                  ),
+                )
               else if (list.isEmpty)
                 PaperBox(
                   child: Container(

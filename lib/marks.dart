@@ -94,6 +94,7 @@ class _MarksScreenState extends State<MarksScreen>
   List<dynamic>? _years;
   (String, String)? _pick;
   String? _error;
+  String _q = '';
 
   @override
   void initState() {
@@ -122,7 +123,11 @@ class _MarksScreenState extends State<MarksScreen>
     final years = _years ?? const [];
     final keys = years.isEmpty ? const <(String, String)>[] : termKeys(years);
     final pick = _pick;
-    final subjects = pick == null ? const [] : subjectsOf(years, pick);
+    final all = pick == null ? const [] : subjectsOf(years, pick);
+    final subjects = [
+      for (final m in all)
+        if (khop(subjectName(m['CurriculumName']), _q)) m,
+    ];
     return Scaffold(
       body: DotBackground(
         child: Center(
@@ -194,7 +199,7 @@ class _MarksScreenState extends State<MarksScreen>
                     TotalCard(
                       record: subjectsOf(years, keys.first).firstOrNull,
                     ),
-                    if (chuaCoDiem(subjects).isNotEmpty) ...[
+                    if (chuaCoDiem(all).isNotEmpty) ...[
                       const SizedBox(height: 10),
                       Align(
                         alignment: Alignment.centerLeft,
@@ -208,7 +213,7 @@ class _MarksScreenState extends State<MarksScreen>
                             MaterialPageRoute<void>(
                               builder: (_) => WhatIfScreen(
                                 term: '${pick.$1} · ${pick.$2}',
-                                subjects: chuaCoDiem(subjects),
+                                subjects: chuaCoDiem(all),
                                 record: subjectsOf(
                                   years,
                                   keys.first,
@@ -253,8 +258,21 @@ class _MarksScreenState extends State<MarksScreen>
                         ),
                       ],
                     ),
+                    // Kỳ nào cũng hơn chục môn, cuộn tìm một môn khá mệt.
+                    if (all.length > 5) ...[
+                      const SizedBox(height: 12),
+                      SearchBox(
+                        hint: 'Tìm môn',
+                        onChanged: (v) => setState(() => _q = v),
+                      ),
+                    ],
                     const SizedBox(height: 16),
-                    _Term(year: pick.$1, term: pick.$2, subjects: subjects),
+                    _Term(
+                      year: pick.$1,
+                      term: pick.$2,
+                      subjects: subjects,
+                      timKhongThay: subjects.isEmpty && all.isNotEmpty,
+                    ),
                   ],
                 ],
               ),
@@ -302,10 +320,18 @@ class TotalCard extends StatelessWidget {
 }
 
 class _Term extends StatelessWidget {
-  const _Term({required this.year, required this.term, required this.subjects});
+  const _Term({
+    required this.year,
+    required this.term,
+    required this.subjects,
+    this.timKhongThay = false,
+  });
   final String year;
   final String term;
   final List<dynamic> subjects;
+
+  /// Kỳ có môn nhưng chữ đang tìm không khớp môn nào.
+  final bool timKhongThay;
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +359,12 @@ class _Term extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         PaperBox(
-          child: scored
+          child: timKhongThay
+              ? const Text(
+                  'Không có môn nào khớp.',
+                  style: TextStyle(color: Paper.ink2),
+                )
+              : scored
               ? Column(children: [for (final m in subjects) _Mark(m)])
               : Container(
                   color: Paper.sun,

@@ -110,4 +110,23 @@ void main() {
     expect(tietNo('Tiết: 3'), 3);
     expect(buoi(6), 'Sáng');
   });
+
+  test('tiết sắp tới và đếm ngược', () {
+    final items = [
+      {'BeginTime': 'Tiết: 1', 'EndTime': 'Tiết: 2'}, // 7h30 - 9h10
+      {'BeginTime': 'Tiết: 7', 'EndTime': 'Tiết: 8'}, // 13h00 - 14h40
+    ];
+    final s = DateTime(2026, 9, 21, 6, 45);
+    expect(tietKe(items, s), items[0]);
+    expect(demNguoc(items[0], s), 'Còn 45 phút nữa');
+    // Đang trong tiết thì vẫn là buổi hiện tại, không nhảy sang buổi sau.
+    final giua = DateTime(2026, 9, 21, 8, 30);
+    expect(tietKe(items, giua), items[0]);
+    expect(demNguoc(items[0], giua), 'Đang học, còn 40 phút');
+    final trua = DateTime(2026, 9, 21, 11, 0);
+    expect(tietKe(items, trua), items[1]);
+    expect(demNguoc(items[1], trua), 'Còn 2 giờ nữa');
+    // Tan hết thì không còn gì để nhắc.
+    expect(tietKe(items, DateTime(2026, 9, 21, 20, 0)), isNull);
+  });
 }

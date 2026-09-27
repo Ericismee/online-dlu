@@ -28,4 +28,13 @@ void main() {
     expect(dataAge(DateTime(2026, 9, 27, 13, 2), now), 'Dữ liệu lúc 13:02');
     expect(dataAge(DateTime(2026, 9, 26, 9, 40), now), 'Dữ liệu 26/9 lúc 9:40');
   });
+
+  test('tìm không dấu', () {
+    expect(khop('Toán rời rạc', 'toan roi'), isTrue);
+    expect(khop('Toán rời rạc', 'TOAN'), isTrue);
+    expect(khop('Đại số', 'dai so'), isTrue);
+    expect(khop('Toán rời rạc', 'ly'), isFalse);
+    // Ô trống thì đừng lọc mất gì.
+    expect(khop('bất kỳ', '   '), isTrue);
+  });
 }
