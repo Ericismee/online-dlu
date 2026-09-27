@@ -40,6 +40,7 @@ class _CurriculumScreenState extends State<CurriculumScreen>
   Future<void> reload() => _load();
 
   List<dynamic>? _rows;
+  String? _term;
   String? _error;
 
   @override
@@ -53,7 +54,12 @@ class _CurriculumScreenState extends State<CurriculumScreen>
     try {
       final program = await portal.studyProgram(widget.session.token);
       final rows = await portal.curriculum(widget.session.token, program);
-      if (mounted) setState(() => _rows = rows);
+      if (mounted) {
+        setState(() {
+          _rows = rows;
+          _term ??= byTerm(rows).firstOrNull?.$1;
+        });
+      }
     } on PortalError catch (e) {
       if (mounted) setState(() => _error = e.message);
     }
@@ -111,7 +117,22 @@ class _CurriculumScreenState extends State<CurriculumScreen>
                       children: [
                         Pill('${rows.length} HP', color: Paper.sky),
                         const SizedBox(width: 6),
-                        Pill('${credits(rows)} TC', color: Paper.sun),
+                        Pill('${credits(rows)} TC toàn khoá', color: Paper.sun),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Choice(
+                          label: _term ?? '—',
+                          color: Paper.mint,
+                          onTap: () async {
+                            final t = await chooseOption(context, [
+                              for (final g in byTerm(rows)) g.$1,
+                            ], _term ?? '');
+                            if (t != null) setState(() => _term = t);
+                          },
+                        ),
                       ],
                     ),
                   ],
@@ -132,10 +153,7 @@ class _CurriculumScreenState extends State<CurriculumScreen>
                       )
                   else
                     for (final (term, subjects) in byTerm(rows))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _Term(term: term, subjects: subjects),
-                      ),
+                      if (term == _term) _Term(term: term, subjects: subjects),
                 ],
               ),
             ),
@@ -173,7 +191,10 @@ class _Term extends StatelessWidget {
       ),
       const SizedBox(height: 8),
       PaperBox(
-        child: Column(children: [for (final s in subjects) _Subject(s)]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [for (final s in subjects) _Subject(s)],
+        ),
       ),
     ],
   );
