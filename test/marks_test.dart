@@ -77,7 +77,7 @@ void main() {
     expect(subjectsOf(_years, ('2024-2025', 'HK01')).length, 1);
   });
 
-  testWidgets('kỳ chưa có điểm thì báo chưa có, không lòi null', (t) async {
+  testWidgets('kỳ chưa có điểm vẫn hiện tên môn, ô điểm để gạch', (t) async {
     final portal = Portal(
       client: MockClient((r) async {
         if (r.url.path.contains('GetStudyProgram')) {
@@ -108,7 +108,10 @@ void main() {
     );
     await t.pump();
     await t.pump(const Duration(seconds: 1));
-    expect(find.text('Chưa có điểm'), findsOneWidget);
+    // Có môn thì hiện môn, chứ không nuốt cả kỳ chỉ vì chưa chấm điểm.
+    expect(find.text('Toán'), findsOneWidget);
+    expect(find.text('— · —'), findsOneWidget);
+    expect(find.text('Chưa có điểm'), findsNothing);
     expect(find.textContaining('2.58'), findsOneWidget);
     expect(find.textContaining('null'), findsNothing);
   });
