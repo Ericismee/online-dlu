@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'data.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -9,13 +10,13 @@ Color markColor(dynamic m) => m['DiemTK_10'] == null || m['DiemTK_10'] == ''
     : (m['IsPass'] == 'x' ? Paper.mint : Paper.rose);
 
 /// Ô trống của portal về null, hiện gạch cho dễ nhìn.
-String show(Object? v) => (v == null || v == '') ? '—' : '$v';
+String show(Object? v) => (v == null || v == '') ? '—' : clean(v);
 
 /// Danh sách (năm học, học kỳ) có trong bảng điểm, mới nhất trước.
 List<(String, String)> termKeys(List<dynamic> years) => [
   for (final y in years.reversed)
     for (final t in (y['DanhSachDiem'] as List).reversed)
-      (y['NamHoc'] as String, t['HocKy'] as String),
+      (clean(y['NamHoc']), clean(t['HocKy'])),
 ];
 
 /// Các môn của một kỳ.
@@ -311,7 +312,7 @@ class _Mark extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                m['CurriculumName'] as String? ?? '',
+                clean(m['CurriculumName']),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,

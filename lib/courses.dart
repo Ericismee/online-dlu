@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'graph.dart';
+import 'data.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -176,7 +177,7 @@ class _Course extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            c['CurriculumName'] as String? ?? '',
+            clean(c['CurriculumName']),
             style: const TextStyle(
               fontFamily: 'Baloo',
               fontWeight: FontWeight.w800,
@@ -189,10 +190,7 @@ class _Course extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
-              Pill(
-                c['ScheduleStudyUnitAlias'] as String? ?? '',
-                color: Paper.sky,
-              ),
+              Pill(clean(c['ScheduleStudyUnitAlias']), color: Paper.sky),
               Pill('${c['Credits']} TC'),
               Pill(
                 c['TinhTrang'] as String? ?? '',

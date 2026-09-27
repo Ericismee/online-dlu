@@ -193,7 +193,7 @@ class ExamCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            e['CurriculumName'] as String? ?? '',
+            clean(e['CurriculumName']),
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,

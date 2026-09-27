@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: Paper.card,
                         border: Paper.border,
@@ -82,8 +82,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: Image.asset(
                         'assets/logo_icon.png',
-                        width: 72,
-                        height: 72,
+                        width: 108,
+                        height: 108,
                       ),
                     ),
                   ),
@@ -192,13 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Mật khẩu được lưu trong Keychain/Keystore của máy, '
-                    'không gửi đi đâu ngoài portal DLU.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Paper.ink3),
                   ),
                 ],
               ),

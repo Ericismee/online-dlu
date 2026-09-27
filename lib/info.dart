@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'data.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -19,28 +20,55 @@ class InfoScreen extends StatefulWidget {
   State<InfoScreen> createState() => _InfoScreenState();
 }
 
-/// Label + key, in the order they show up on the card. Empty values are hidden.
-const _fields = [
-  ('Mã sinh viên', 'MaSinhVien'),
-  ('Họ tên', 'HoTen'),
-  ('Lớp', 'LopSinhVien'),
-  ('Khoá học', 'KhoaHoc'),
-  ('Niên khoá', 'NienKhoa'),
-  ('Tình trạng', 'TinhTrangHoc'),
-  ('Giới tính', 'GioiTinh'),
-  ('Ngày sinh', 'NgaySinh'),
-  ('CMND/CCCD', 'CMND'),
-  ('Dân tộc', 'DanToc'),
-  ('Tôn giáo', 'TonGiao'),
-  ('Di động', 'DiDong'),
-  ('Email trường', 'EmailTruong'),
-  ('Email cá nhân', 'EmailCaNhan'),
-  ('Quốc gia', 'QuocGia'),
-  ('Tỉnh/Thành', 'TinhThanh'),
-  ('Quận/Huyện', 'QuanHuyen'),
-  ('Địa chỉ', 'DiaChi'),
-  ('Cố vấn học tập', 'CoVanHocTap'),
+/// Nhóm thông tin: tiêu đề, màu giấy, rồi (icon, nhãn, key).
+const _groups = <(String, Color, List<(IconData, String, String)>)>[
+  (
+    'Học vụ',
+    Paper.mint,
+    [
+      (Icons.class_rounded, 'Lớp', 'LopSinhVien'),
+      (Icons.school_rounded, 'Khoá học', 'KhoaHoc'),
+      (Icons.event_rounded, 'Niên khoá', 'NienKhoa'),
+      (Icons.verified_rounded, 'Tình trạng', 'TinhTrangHoc'),
+      (Icons.support_agent_rounded, 'Cố vấn học tập', 'CoVanHocTap'),
+    ],
+  ),
+  (
+    'Liên hệ',
+    Paper.sky,
+    [
+      (Icons.phone_rounded, 'Di động', 'DiDong'),
+      (Icons.alternate_email_rounded, 'Email trường', 'EmailTruong'),
+      (Icons.mail_outline_rounded, 'Email cá nhân', 'EmailCaNhan'),
+      (Icons.home_rounded, 'Địa chỉ', 'DiaChi'),
+      (Icons.location_city_rounded, 'Tỉnh/Thành', 'TinhThanh'),
+      (Icons.map_rounded, 'Quận/Huyện', 'QuanHuyen'),
+      (Icons.flag_rounded, 'Quốc gia', 'QuocGia'),
+    ],
+  ),
+  (
+    'Cá nhân',
+    Paper.peach,
+    [
+      (Icons.cake_rounded, 'Ngày sinh', 'NgaySinh'),
+      (Icons.wc_rounded, 'Giới tính', 'GioiTinh'),
+      (Icons.badge_rounded, 'CMND/CCCD', 'CMND'),
+      (Icons.groups_rounded, 'Dân tộc', 'DanToc'),
+      (Icons.temple_buddhist_rounded, 'Tôn giáo', 'TonGiao'),
+    ],
+  ),
 ];
+
+/// Portal trả sai vài ô, sửa lại cho đúng trước khi hiện.
+String field(Map<String, dynamic> info, String key) {
+  final mssv = clean(info['MaSinhVien']);
+  if (key == 'EmailTruong') return mssv.isEmpty ? '' : '$mssv@dlu.edu.vn';
+  final v = clean(info[key]);
+  if (key == 'QuocGia' && v.toLowerCase().replaceAll(' ', '') == 'vietnam') {
+    return 'Việt Nam';
+  }
+  return v;
+}
 
 class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
   @override
@@ -125,16 +153,16 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
                   ],
                 ),
               )
-            else
-              PaperBox(
-                child: Column(
-                  children: [
-                    for (final (label, key) in _fields)
-                      if ((_info![key]?.toString() ?? '').isNotEmpty)
-                        _Row(label, _info![key].toString()),
-                  ],
+            else ...[
+              _Card(info: _info!),
+              for (final (title, color, fields) in _groups)
+                _Group(
+                  title: title,
+                  color: color,
+                  fields: fields,
+                  info: _info!,
                 ),
-              ),
+            ],
             const SizedBox(height: 20),
             PaperButton(label: 'Đăng xuất', onPressed: widget.onLogout),
             const SizedBox(height: 40),
@@ -145,31 +173,144 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
   );
 }
 
+/// Thẻ đầu trang: tên + mã số + lớp.
+class _Card extends StatelessWidget {
+  const _Card({required this.info});
+  final Map<String, dynamic> info;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 20),
+    child: PaperBox(
+      color: Paper.sun,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Paper.paper,
+              border: Paper.border,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: Paper.shadow(2),
+            ),
+            child: const Icon(Icons.person_rounded, size: 30, color: Paper.ink),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  clean(info['HoTen']),
+                  style: const TextStyle(
+                    fontFamily: 'Baloo',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 22,
+                    height: 1.1,
+                    color: Paper.ink,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    Pill(clean(info['MaSinhVien']), color: Paper.paper),
+                    if (clean(info['LopSinhVien']).isNotEmpty)
+                      Pill(clean(info['LopSinhVien']), color: Paper.mint),
+                    if (clean(info['TinhTrangHoc']).isNotEmpty)
+                      Pill(clean(info['TinhTrangHoc']), color: Paper.sky),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Một nhóm thông tin, bỏ qua ô trống.
+class _Group extends StatelessWidget {
+  const _Group({
+    required this.title,
+    required this.color,
+    required this.fields,
+    required this.info,
+  });
+  final String title;
+  final Color color;
+  final List<(IconData, String, String)> fields;
+  final Map<String, dynamic> info;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = [
+      for (final (icon, label, key) in fields)
+        if (field(info, key).isNotEmpty) (icon, label, field(info, key)),
+    ];
+    if (rows.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            color: color,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                color: Paper.ink,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          PaperBox(
+            child: Column(
+              children: [for (final (i, l, v) in rows) _Row(i, l, v)],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Row extends StatelessWidget {
-  const _Row(this.label, this.value);
+  const _Row(this.icon, this.label, this.value);
+  final IconData icon;
   final String label, value;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
+    padding: const EdgeInsets.symmetric(vertical: 7),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 130,
-          child: Text(
-            label,
-            style: const TextStyle(color: Paper.ink3, fontSize: 13),
-          ),
-        ),
+        Icon(icon, size: 18, color: Paper.ink3),
+        const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              color: Paper.ink,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: Paper.ink3, fontSize: 12),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Paper.ink,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ],

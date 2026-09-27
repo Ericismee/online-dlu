@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'data.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -129,7 +130,7 @@ class _Score extends StatelessWidget {
         ),
         Pill(
           '${s['LastScore']} · ${s['BehaviorScoreRank']}',
-          color: scoreColor(s['LastScore'] as num? ?? 0),
+          color: scoreColor(toNum(s['LastScore'])),
         ),
       ],
     ),

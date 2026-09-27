@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'data.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -174,7 +175,7 @@ class _Message extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            m['MessageSubject'] as String? ?? '',
+            clean(m['MessageSubject']),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,

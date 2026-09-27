@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'data.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -7,7 +8,7 @@ import 'portal.dart';
 List<(String, List<dynamic>)> byTerm(List<dynamic> rows) {
   final out = <(String, List<dynamic>)>[];
   for (final r in rows) {
-    final term = r['HocKy'] as String? ?? '';
+    final term = clean(r['HocKy']);
     if (out.isEmpty || out.last.$1 != term) out.add((term, <dynamic>[]));
     out.last.$2.add(r);
   }
@@ -16,7 +17,7 @@ List<(String, List<dynamic>)> byTerm(List<dynamic> rows) {
 
 /// Tổng số tín chỉ của một danh sách học phần.
 int credits(List<dynamic> rows) =>
-    rows.fold(0, (s, r) => s + ((r['STC'] as num?)?.toInt() ?? 0));
+    rows.fold(0, (s, r) => s + toNum(r['STC']).toInt());
 
 /// Chương trình đào tạo, nhóm theo học kỳ.
 class CurriculumScreen extends StatefulWidget {
@@ -178,7 +179,7 @@ class _Subject extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            s['TenHP'] as String? ?? '',
+            clean(s['TenHP']),
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -190,8 +191,8 @@ class _Subject extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
-              Pill('${s['MaHP']}', color: Paper.sky),
-              Pill('${s['STC']} TC', color: Paper.sun),
+              Pill(clean(s['MaHP']), color: Paper.sky),
+              Pill('${toNum(s['STC'])} TC', color: Paper.sun),
               Pill(
                 required ? 'Bắt buộc' : 'Tự chọn',
                 color: required ? Paper.mint : Paper.peach,

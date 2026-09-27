@@ -16,18 +16,20 @@ Map<int, List<dynamic>> itemsByDay(Iterable<dynamic> items, DateTime month) {
   for (final i in items) {
     final p = (i['StartDate'] as String).split('/'); // dd/MM/yyyy của thứ 2
     final monday = DateTime(int.parse(p[2]), int.parse(p[1]), int.parse(p[0]));
-    final day = monday.add(Duration(days: (i['DayOfWeek'] as int) - 1));
+    final day = monday.add(Duration(days: toNum(i['DayOfWeek']).toInt() - 1));
     if (day.year != month.year || day.month != month.month) continue;
     out.putIfAbsent(day.day, () => []).add(i);
   }
   for (final l in out.values) {
-    l.sort((a, b) => (a['PeriodID'] as int) - (b['PeriodID'] as int));
+    l.sort(
+      (a, b) => toNum(a['PeriodID']).toInt() - toNum(b['PeriodID']).toInt(),
+    );
   }
   return out;
 }
 
 int periods(Iterable<dynamic> items) =>
-    items.fold(0, (a, i) => a + (i['NumberOfPeriods'] as int));
+    items.fold(0, (a, i) => a + toNum(i['NumberOfPeriods']).toInt());
 
 /// Tiết 1-5 sáng, 6-10 chiều, còn lại tối.
 String buoi(int periodID) =>
@@ -228,11 +230,39 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                     ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
+              // Nhãn thứ để ô trống trước ngày 1 nhìn ra là lịch, không phải
+              // khoảng hở thừa.
+              Row(
+                children: [
+                  for (final d in const [
+                    'T2',
+                    'T3',
+                    'T4',
+                    'T5',
+                    'T6',
+                    'T7',
+                    'CN',
+                  ])
+                    Expanded(
+                      child: Text(
+                        d,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Paper.ink3,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
               GridView.count(
                 crossAxisCount: 7,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 1.15,
                 crossAxisSpacing: 6,
                 mainAxisSpacing: 6,
                 children: [
@@ -380,7 +410,7 @@ class _Lesson extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            i['CurriculumName'] as String? ?? '',
+            clean(i['CurriculumName']),
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -393,7 +423,7 @@ class _Lesson extends StatelessWidget {
             runSpacing: 6,
             children: [
               Pill('Tiết $tiet', color: Paper.sun),
-              Pill(buoi(i['PeriodID'] as int), color: Paper.mint),
+              Pill(buoi(toNum(i['PeriodID']).toInt()), color: Paper.mint),
               Pill('Phòng ${i['RoomID']}', color: Paper.sky),
             ],
           ),
