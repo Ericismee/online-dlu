@@ -218,36 +218,44 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () async {
-                        final m = await showDialog<DateTime>(
-                          context: context,
-                          builder: (_) => _MonthPicker(month: month),
-                        );
-                        if (m != null) _goto(m);
-                      },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Tháng ${month.month}/${month.year}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontFamily: 'Baloo',
-                                fontWeight: FontWeight.w800,
-                                fontSize: 18,
-                                color: Paper.ink,
+                    child: Semantics(
+                      button: true,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () async {
+                          final m = await showDialog<DateTime>(
+                            context: context,
+                            builder: (_) => _MonthPicker(month: month),
+                          );
+                          if (m != null) _goto(m);
+                        },
+                        // Chữ cao ~22pt, đệm thêm cho đủ ngưỡng chạm 44pt.
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'Tháng ${month.month}/${month.year}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontFamily: 'Baloo',
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                    color: Paper.ink,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const Icon(
+                                Icons.expand_more_rounded,
+                                size: 20,
+                                color: Paper.ink2,
+                              ),
+                            ],
                           ),
-                          const Icon(
-                            Icons.expand_more_rounded,
-                            size: 20,
-                            color: Paper.ink2,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -265,11 +273,13 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                   else if (_days == null)
                     const Skeleton(width: 48, height: 12)
                   else
-                    Text(
-                      '${periods(_days!.values.expand((e) => e))} tiết',
-                      maxLines: 1,
-                      softWrap: false,
-                      style: const TextStyle(color: Paper.ink3, fontSize: 12),
+                    Flexible(
+                      child: Text(
+                        '${periods(_days!.values.expand((e) => e))} tiết',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: const TextStyle(color: Paper.ink3, fontSize: 12),
+                      ),
                     ),
                 ],
               ),

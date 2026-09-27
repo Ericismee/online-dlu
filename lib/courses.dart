@@ -111,9 +111,15 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                   ),
                   const Spacer(),
                   if (list.isNotEmpty)
-                    Text(
-                      '${list.first['TongLHP']} LHP · ${list.first['TongSTC']} TC',
-                      style: const TextStyle(color: Paper.ink3, fontSize: 12),
+                    // Flexible: máy hẹp hoặc cỡ chữ to thì cắt bớt,
+                    // không thì hàng tràn qua mép.
+                    Flexible(
+                      child: Text(
+                        '${list.first['TongLHP']} LHP · ${list.first['TongSTC']} TC',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Paper.ink3, fontSize: 12),
+                      ),
                     ),
                 ],
               ),
