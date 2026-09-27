@@ -8,7 +8,7 @@
 PRODUCT_NAME = DLU Online
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.dlu.dluTkb
+PRODUCT_BUNDLE_IDENTIFIER = com.dopaemon.dluonline
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.dlu. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 dopaemon. All rights reserved.

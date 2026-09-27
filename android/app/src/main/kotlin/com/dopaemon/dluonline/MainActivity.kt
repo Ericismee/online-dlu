@@ -1,4 +1,4 @@
-package com.dlu.dlu_tkb
+package com.dopaemon.dluonline
 
 import io.flutter.embedding.android.FlutterActivity
 
