@@ -139,20 +139,27 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        InkWell(
-                          onTap: () => setState(() => _remember = !_remember),
-                          child: Row(
-                            children: [
-                              _Check(on: _remember),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'Nhớ tài khoản',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
+                        Semantics(
+                          checked: _remember,
+                          child: InkWell(
+                            onTap: () => setState(() => _remember = !_remember),
+                            child: Padding(
+                              // Hàng cao 22pt thì hụt ngưỡng chạm 44pt.
+                              padding: const EdgeInsets.symmetric(vertical: 11),
+                              child: Row(
+                                children: [
+                                  _Check(on: _remember),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'Nhớ tài khoản',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                         if (_error != null) ...[

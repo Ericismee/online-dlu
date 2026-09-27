@@ -2,6 +2,7 @@
     <!-- Bản release không tự có quyền mạng như bản debug. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
+        android:enableOnBackInvokedCallback="true"
         android:label="DLU Online"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">

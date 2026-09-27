@@ -65,63 +65,69 @@ class _BellState extends State<Bell>
   @override
   Widget build(BuildContext context) {
     final n = unread(_msgs ?? const []);
-    return GestureDetector(
-      onTap: _msgs == null
-          ? null
-          : () {
-              _wiggle.forward(from: 0);
-              _open(context);
-            },
-      child: AnimatedBuilder(
-        animation: _angle,
-        builder: (context, child) =>
-            Transform.rotate(angle: _angle.value, child: child),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Paper.card,
-                border: Paper.border,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: Paper.shadow(3),
+    return Semantics(
+      button: true,
+      label: n > 0 ? 'Thông báo, $n tin chưa đọc' : 'Thông báo',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _msgs == null
+            ? null
+            : () {
+                _wiggle.forward(from: 0);
+                _open(context);
+              },
+        child: AnimatedBuilder(
+          animation: _angle,
+          builder: (context, child) =>
+              Transform.rotate(angle: _angle.value, child: child),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                // 12+22+12 = 46pt, đủ ngưỡng chạm.
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Paper.card,
+                  border: Paper.border,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: Paper.shadow(3),
+                ),
+                child: Icon(
+                  Icons.notifications_rounded,
+                  size: 22,
+                  color: _msgs == null ? Paper.ink3 : Paper.ink,
+                ),
               ),
-              child: Icon(
-                Icons.notifications_rounded,
-                size: 22,
-                color: _msgs == null ? Paper.ink3 : Paper.ink,
-              ),
-            ),
-            if (n > 0)
-              Positioned(
-                top: -6,
-                right: -6,
-                child: Transform.rotate(
-                  angle: -0.12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Paper.accent,
-                      border: Paper.border,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '$n',
-                      style: const TextStyle(
-                        fontFamily: 'Baloo',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                        color: Paper.card,
+              if (n > 0)
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  child: Transform.rotate(
+                    angle: -0.12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Paper.accent,
+                        border: Paper.border,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$n',
+                        style: const TextStyle(
+                          fontFamily: 'Baloo',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          color: Paper.card,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

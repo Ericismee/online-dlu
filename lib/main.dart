@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'behavior.dart';
 import 'cache.dart';
@@ -18,6 +19,17 @@ import 'portal.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Nền giấy luôn sáng, nên ép icon status bar / nav bar màu mực.
+  // Không đặt thì Android vẽ icon trắng, mất tiêu trên nền kem.
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   await Cache.init();
   runApp(const App());
 }
@@ -30,6 +42,12 @@ class App extends StatelessWidget {
     title: 'DLU Online',
     debugShowCheckedModeBanner: false,
     theme: Paper.theme(),
+    // App chỉ có một bộ màu giấy; khai báo hẳn để máy đang dark mode
+    // không bị Material tự chế biến thêm.
+    themeMode: ThemeMode.light,
+    // Cỡ chữ hệ thống to quá thì thanh tab và lưới lịch vỡ hàng; chặn ở 1.3.
+    builder: (context, child) =>
+        MediaQuery.withClampedTextScaling(maxScaleFactor: 1.3, child: child!),
     home: const Root(),
   );
 }

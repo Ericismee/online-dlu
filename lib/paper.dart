@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'cache.dart';
 
@@ -184,8 +185,13 @@ class DotBackground extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) =>
-      CustomPaint(painter: _Dots(), child: child);
+  // RepaintBoundary: nội dung cuộn không kéo theo ~350 chấm vẽ lại mỗi frame.
+  Widget build(BuildContext context) => CustomPaint(
+    painter: _Dots(),
+    isComplex: true,
+    willChange: false,
+    child: RepaintBoundary(child: child),
+  );
 }
 
 class _Dots extends CustomPainter {
@@ -238,7 +244,9 @@ class _SkeletonState extends State<Skeleton>
 
   @override
   Widget build(BuildContext context) => FadeTransition(
-    opacity: _a.drive(Tween(begin: 0.45, end: 0.9)),
+    opacity: MediaQuery.disableAnimationsOf(context)
+        ? const AlwaysStoppedAnimation(0.7)
+        : _a.drive(Tween(begin: 0.45, end: 0.9)),
     child: Container(
       width: widget.width,
       height: widget.height,
@@ -317,25 +325,30 @@ Future<String?> chooseOption(
           for (final o in options)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context, o),
-                child: Container(
-                  width: double.infinity,
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: o == current ? Paper.sun : Paper.card,
-                    border: Paper.border,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: Paper.shadow(2),
-                  ),
-                  child: Text(
-                    o,
-                    style: const TextStyle(
-                      fontFamily: 'Baloo',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: Paper.ink,
+              child: Semantics(
+                button: true,
+                selected: o == current,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context, o),
+                  child: Container(
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    // 12+12+chữ 15 ~ 45pt, đủ ngưỡng chạm 44pt.
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: o == current ? Paper.sun : Paper.card,
+                      border: Paper.border,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: Paper.shadow(2),
+                    ),
+                    child: Text(
+                      o,
+                      style: const TextStyle(
+                        fontFamily: 'Baloo',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Paper.ink,
+                      ),
                     ),
                   ),
                 ),
@@ -403,20 +416,31 @@ class _PressableState extends State<Pressable> {
   void _set(bool v) => setState(() => _down = v);
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTapDown: (_) => _set(true),
-    onTapCancel: () => _set(false),
-    onTapUp: (_) {
-      _set(false);
-      widget.onTap();
-    },
-    child: AnimatedSlide(
-      duration: Paper.pressDur,
-      offset: _down
-          ? Offset(widget.shift / 24, widget.shift / 24)
-          : Offset.zero,
-      child: widget.builder(_down),
+  // MergeSemantics + button: VoiceOver/TalkBack đọc nguyên thẻ là một nút,
+  // không thì nó đọc rời từng dòng chữ mà không biết bấm được.
+  Widget build(BuildContext context) => MergeSemantics(
+    child: Semantics(
+      button: true,
+      onTap: widget.onTap,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) {
+          HapticFeedback.selectionClick();
+          _set(true);
+        },
+        onTapCancel: () => _set(false),
+        onTapUp: (_) {
+          _set(false);
+          widget.onTap();
+        },
+        child: AnimatedSlide(
+          duration: Paper.pressDur,
+          offset: _down
+              ? Offset(widget.shift / 24, widget.shift / 24)
+              : Offset.zero,
+          child: widget.builder(_down),
+        ),
+      ),
     ),
   );
 }
@@ -428,18 +452,22 @@ class PopIn extends StatelessWidget {
   final Duration delay;
 
   @override
-  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-    tween: Tween(begin: 0, end: 1),
-    duration: Paper.popDur + delay,
-    curve: Interval(
-      delay.inMilliseconds / (Paper.popDur + delay).inMilliseconds,
-      1,
-      curve: Paper.popCurve,
-    ),
-    builder: (_, t, child) => Opacity(
-      opacity: t.clamp(0, 1),
-      child: Transform.scale(scale: 0.85 + 0.15 * t, child: child),
-    ),
-    child: child,
-  );
+  Widget build(BuildContext context) {
+    // Tắt hiệu ứng trong Cài đặt thì hiện thẳng, khỏi nảy.
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Paper.popDur + delay,
+      curve: Interval(
+        delay.inMilliseconds / (Paper.popDur + delay).inMilliseconds,
+        1,
+        curve: Paper.popCurve,
+      ),
+      builder: (_, t, child) => Opacity(
+        opacity: t.clamp(0, 1),
+        child: Transform.scale(scale: 0.85 + 0.15 * t, child: child),
+      ),
+      child: child,
+    );
+  }
 }

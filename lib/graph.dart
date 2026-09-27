@@ -592,17 +592,22 @@ class _Arrow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: Paper.card,
-        border: Paper.border,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: Paper.shadow(2),
+  // Nút bé tí thì khó bấm: đệm cho đủ 44pt theo chuẩn HIG.
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    child: GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Paper.card,
+          border: Paper.border,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: Paper.shadow(2),
+        ),
+        child: Icon(icon, size: 20, color: Paper.ink),
       ),
-      child: Icon(icon, size: 20, color: Paper.ink),
     ),
   );
 }
@@ -669,26 +674,30 @@ class _MonthPickerState extends State<_MonthPicker> {
             childAspectRatio: 1.6,
             children: [
               for (var m = 1; m <= 12; m++)
-                GestureDetector(
-                  onTap: () => Navigator.pop(context, DateTime(_year, m)),
-                  child: Container(
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color:
-                          m == widget.month.month && _year == widget.month.year
-                          ? Paper.sun
-                          : Paper.card,
-                      border: Paper.border,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: Paper.shadow(2),
-                    ),
-                    child: Text(
-                      'Th $m',
-                      style: const TextStyle(
-                        fontFamily: 'Baloo',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: Paper.ink,
+                Semantics(
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context, DateTime(_year, m)),
+                    child: Container(
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color:
+                            m == widget.month.month &&
+                                _year == widget.month.year
+                            ? Paper.sun
+                            : Paper.card,
+                        border: Paper.border,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: Paper.shadow(2),
+                      ),
+                      child: Text(
+                        'Th $m',
+                        style: const TextStyle(
+                          fontFamily: 'Baloo',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Paper.ink,
+                        ),
                       ),
                     ),
                   ),

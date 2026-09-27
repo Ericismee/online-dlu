@@ -59,7 +59,7 @@ class _BehaviorScreenState extends State<BehaviorScreen>
                 20,
                 MediaQuery.paddingOf(context).top + 20,
                 20,
-                40,
+                MediaQuery.paddingOf(context).bottom + 40,
               ),
               children: [
                 Row(
