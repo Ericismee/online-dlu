@@ -1,4 +1,6 @@
+import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'data.dart';
 import 'paper.dart';
@@ -58,6 +60,26 @@ const _groups = <(String, Color, List<(IconData, String, String)>)>[
     ],
   ),
 ];
+
+/// Nhấn giữ là copy — số điện thoại, email, CCCD toàn thứ phải dán đi chỗ khác.
+Widget copyable(BuildContext context, String text, Widget child) =>
+    GestureDetector(
+      // Không có opaque thì chỉ đúng chữ mới bắt được, khoảng trống bên cạnh
+      // nhấn giữ không ăn.
+      behavior: HitTestBehavior.opaque,
+      onLongPress: text.isEmpty
+          ? null
+          : () {
+              Clipboard.setData(ClipboardData(text: text));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Đã copy: $text'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+      child: child,
+    );
 
 /// Portal trả sai vài ô, sửa lại cho đúng trước khi hiện.
 String field(Map<String, dynamic> info, String key) {
@@ -155,6 +177,7 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
               )
             else ...[
               _Card(info: _info!),
+              _StudentCard(info: _info!),
               for (final (title, color, fields) in _groups)
                 _Group(
                   title: title,
@@ -200,14 +223,18 @@ class _Card extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                copyable(
+                  context,
                   clean(info['HoTen']),
-                  style: const TextStyle(
-                    fontFamily: 'Baloo',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 22,
-                    height: 1.1,
-                    color: Paper.ink,
+                  Text(
+                    clean(info['HoTen']),
+                    style: const TextStyle(
+                      fontFamily: 'Baloo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 22,
+                      height: 1.1,
+                      color: Paper.ink,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -215,7 +242,11 @@ class _Card extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    Pill(clean(info['MaSinhVien']), color: Paper.paper),
+                    copyable(
+                      context,
+                      clean(info['MaSinhVien']),
+                      Pill(clean(info['MaSinhVien']), color: Paper.paper),
+                    ),
                     if (clean(info['LopSinhVien']).isNotEmpty)
                       Pill(clean(info['LopSinhVien']), color: Paper.mint),
                     if (clean(info['TinhTrangHoc']).isNotEmpty)
@@ -287,33 +318,124 @@ class _Row extends StatelessWidget {
   final String label, value;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 7),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: Paper.ink3),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(color: Paper.ink3, fontSize: 12),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Paper.ink,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) => copyable(
+    context,
+    value,
+    Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Paper.ink3),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(color: Paper.ink3, fontSize: 12),
                 ),
-              ),
-            ],
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Paper.ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
+}
+
+/// Thẻ sinh viên: đưa cho thư viện / phòng thi quét, nội dung mã là MSSV.
+/// Máy quét cũ chỉ đọc vạch, máy mới đọc QR — nên có nút đổi qua lại.
+class _StudentCard extends StatefulWidget {
+  const _StudentCard({required this.info});
+  final Map<String, dynamic> info;
+
+  @override
+  State<_StudentCard> createState() => _StudentCardState();
+}
+
+class _StudentCardState extends State<_StudentCard> {
+  bool _qr = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final mssv = clean(widget.info['MaSinhVien']);
+    if (mssv.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: PaperBox(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Thẻ sinh viên',
+                    style: TextStyle(
+                      fontFamily: 'Baloo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
+                      color: Paper.ink,
+                    ),
+                  ),
+                ),
+                PaperButton(
+                  label: _qr ? 'Mã vạch' : 'Mã QR',
+                  fontSize: 13,
+                  color: Paper.sky,
+                  onColor: Paper.ink,
+                  onPressed: () => setState(() => _qr = !_qr),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            copyable(
+              context,
+              mssv,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Paper.border,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: BarcodeWidget(
+                    // Nền trắng, mực đen: máy quét cần tương phản thật, màu giấy
+                    // kem làm vài đầu đọc đọc không ra.
+                    barcode: _qr ? Barcode.qrCode() : Barcode.code128(),
+                    data: mssv,
+                    height: _qr ? 180 : 90,
+                    width: _qr ? 180 : null,
+                    drawText: !_qr,
+                    color: Colors.black,
+                    style: Paper.mono.copyWith(fontSize: 14),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${clean(widget.info['HoTen'])} · ${field(widget.info, 'LopSinhVien')}',
+              style: const TextStyle(color: Paper.ink2, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
