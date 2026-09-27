@@ -65,10 +65,10 @@ void main() {
     final lanDau = Cache.syncedAt;
     expect(lanDau, isNotNull);
 
-    // Lấy lại lúc mạng hỏng: màn giữ số cũ nên mốc phải đứng yên.
+    // Lấy lại lúc mạng hỏng: đưa lại số cũ, và mốc phải đứng yên.
     hong = true;
     Cache.bypass = true;
-    await expectLater(portal.behaviorScores('t'), throwsA(isA<PortalError>()));
+    expect((await portal.behaviorScores('t')).first['LastScore'], 90);
     Cache.bypass = false;
     expect(Cache.syncedAt, lanDau);
 
@@ -110,5 +110,36 @@ void main() {
     final cu = await portal.behaviorScores('t');
     expect(calls, 3);
     expect(cu.first['LastScore'], 90);
+  });
+
+  test('portal lỗi giữa lượt làm mới thì giữ số cũ, không xoá màn', () async {
+    var hong = false;
+    final portal = Portal(
+      client: MockClient((_) async {
+        if (hong) return http.Response.bytes(utf8.encode('{}'), 400);
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode([
+              {'LastScore': 90},
+            ]),
+          ),
+          200,
+        );
+      }),
+    );
+    await portal.behaviorScores('t');
+
+    // Mở app là làm mới hết; portal trả 400 thì vẫn phải thấy số cũ chứ
+    // không phải màn báo lỗi đỏ.
+    hong = true;
+    Cache.bypass = true;
+    Cache.refreshedAt = DateTime.now();
+    final cu = await portal.behaviorScores('t');
+    Cache.bypass = false;
+    expect(cu.first['LastScore'], 90);
+
+    // Chưa có gì trong máy thì đành báo lỗi thật.
+    await Cache.clear();
+    await expectLater(portal.behaviorScores('t'), throwsA(isA<PortalError>()));
   });
 }

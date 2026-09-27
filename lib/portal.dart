@@ -171,7 +171,8 @@ class Portal {
   /// gọi portal ngầm để lần mở sau đã mới.
   /// ponytail: màn hình đang mở không tự cập nhật, kéo xuống để làm mới.
   Future<dynamic> _cached(String path, String token) async {
-    final hit = Cache.bypass ? null : Cache.read(path);
+    final saved = Cache.read(path);
+    final hit = Cache.bypass ? null : saved;
     // Cache ghi trước lượt kéo làm mới gần nhất thì không dùng nữa: người
     // dùng đã bảo lấy số mới, màn này mở sau cũng phải là số mới.
     if (hit != null && !Cache.invalidated(hit.$2)) {
@@ -186,10 +187,12 @@ class Portal {
       Cache.served[path] = Cache.read(path)?.$2 ?? DateTime.now();
       return data;
     } on PortalError {
-      // Mất mạng mà trong máy còn số cũ thì đưa số cũ, hơn là màn báo lỗi.
-      if (hit == null) rethrow;
-      Cache.served[path] = hit.$2;
-      return hit.$1;
+      // Mất mạng mà trong máy còn số cũ thì đưa số cũ, hơn là màn báo lỗi —
+      // kể cả trong lượt làm mới, vì portal lỗi một lần không có nghĩa là
+      // phải xoá sạch những gì người dùng đang xem.
+      if (saved == null) rethrow;
+      Cache.served[path] = saved.$2;
+      return saved.$1;
     }
   }
 
