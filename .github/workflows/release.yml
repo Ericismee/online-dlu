@@ -1,0 +1,172 @@
+# Đẩy tag v* là build cả hai nền tảng rồi tạo Release kèm file.
+#
+# Secrets cần khai (Settings → Secrets and variables → Actions):
+#
+#   Android — keystore đã nằm trong repo, chỉ thiếu mật khẩu:
+#     ANDROID_STORE_PASSWORD   mật khẩu keystore
+#     ANDROID_KEY_PASSWORD     mật khẩu key (thường trùng cái trên)
+#
+#   iOS — không khai thì vẫn build được, ra IPA chưa ký:
+#     IOS_CERTIFICATE_P12      chứng chỉ Apple Distribution, base64
+#     IOS_CERTIFICATE_PASSWORD mật khẩu file .p12
+#     IOS_PROVISIONING_PROFILE provisioning profile, base64
+#     IOS_TEAM_ID              Team ID 10 ký tự
+#     IOS_EXPORT_METHOD        app-store hoặc ad-hoc (mặc định app-store)
+#
+#   Tạo base64: base64 -i cert.p12 | pbcopy
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: 3.47.1
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Dựng key.properties từ secrets
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$STORE_PASSWORD" ]; then
+            echo "::error::Thiếu secret ANDROID_STORE_PASSWORD, bản build sẽ ký bằng debug key."
+            exit 1
+          fi
+          cat > android/key.properties <<EOF
+          storePassword=$STORE_PASSWORD
+          keyPassword=${KEY_PASSWORD:-$STORE_PASSWORD}
+          keyAlias=online-dlu
+          storeFile=online-dlu.jks
+          EOF
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build appbundle --release
+      - run: flutter build apk --release
+
+      - name: Kiểm chứng không phải debug key
+        run: |
+          # Bản ký debug có CN=Android Debug; thấy chuỗi đó là hỏng, đừng phát hành.
+          keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab \
+            | tee /dev/stderr | grep -q 'CN=Android Debug' && exit 1 || true
+
+      - name: Đặt tên file theo tag
+        run: |
+          mkdir -p out
+          cp build/app/outputs/bundle/release/app-release.aab "out/Online-DLU-${GITHUB_REF_NAME}.aab"
+          cp build/app/outputs/flutter-apk/app-release.apk "out/Online-DLU-${GITHUB_REF_NAME}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: out/*
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+
+      - name: Nạp chứng chỉ ký (bỏ qua nếu chưa khai secrets)
+        id: signing
+        env:
+          CERT: ${{ secrets.IOS_CERTIFICATE_P12 }}
+          CERT_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
+        run: |
+          if [ -z "$CERT" ] || [ -z "$PROFILE" ] || [ -z "$TEAM_ID" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Chưa có secrets ký iOS, sẽ ra IPA chưa ký."
+            exit 0
+          fi
+          # Keychain tạm, sống đúng một lần chạy rồi biến mất cùng runner.
+          KEYCHAIN=$RUNNER_TEMP/signing.keychain-db
+          PASSWORD=$(uuidgen)
+          security create-keychain -p "$PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$PASSWORD" "$KEYCHAIN"
+          echo -n "$CERT" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -P "$CERT_PASSWORD" -A \
+            -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo -n "$PROFILE" | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/build.mobileprovision
+          cat > ios/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>${EXPORT_METHOD:-app-store}</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          EOF
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build IPA đã ký
+        if: steps.signing.outputs.signed == 'true'
+        run: |
+          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+          mkdir -p out
+          cp build/ios/ipa/*.ipa "out/Online-DLU-${GITHUB_REF_NAME}.ipa"
+
+      - name: Build IPA chưa ký
+        if: steps.signing.outputs.signed != 'true'
+        run: |
+          flutter build ios --release --no-codesign
+          mkdir -p out Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry "out/Online-DLU-${GITHUB_REF_NAME}-unsigned.ipa" Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: out/*
+
+  release:
+    needs: [android, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: files/*/*
+          generate_release_notes: true
+          body: |
+            Ứng dụng không chính thức cho sinh viên Trường Đại học Đà Lạt.
+
+            - `.apk` — cài thẳng lên Android 7.0 trở lên
+            - `.aab` — bản nộp Google Play
+            - `.ipa` — iOS 15 trở lên; bản `unsigned` phải tự ký bằng
+              Sideloadly hoặc AltStore
