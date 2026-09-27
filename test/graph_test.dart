@@ -56,7 +56,7 @@ void main() {
     expect(yearTermFor(DateTime(2027, 7)), ('2026-2027', 'HK03'));
   });
 
-  test('màu ô theo buổi, học cả ngày lấy buổi sớm nhất', () {
+  test('màu ô theo số buổi học trong ngày', () {
     expect(
       dayColor(const []),
       isNot(
@@ -65,10 +65,11 @@ void main() {
         ]),
       ),
     );
+    // hai tiết cùng buổi sáng vẫn là một buổi
     expect(
       dayColor(const [
-        {'PeriodID': 7},
-        {'PeriodID': 2},
+        {'PeriodID': 1},
+        {'PeriodID': 3},
       ]),
       dayColor(const [
         {'PeriodID': 5},
@@ -76,10 +77,24 @@ void main() {
     );
     expect(
       dayColor(const [
-        {'PeriodID': 11},
+        {'PeriodID': 1},
+        {'PeriodID': 7},
       ]),
       isNot(
         dayColor(const [
+          {'PeriodID': 1},
+        ]),
+      ),
+    );
+    expect(
+      dayColor(const [
+        {'PeriodID': 1},
+        {'PeriodID': 7},
+        {'PeriodID': 12},
+      ]),
+      isNot(
+        dayColor(const [
+          {'PeriodID': 1},
           {'PeriodID': 7},
         ]),
       ),

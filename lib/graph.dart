@@ -35,24 +35,23 @@ int periods(Iterable<dynamic> items) =>
 String buoi(int periodID) =>
     periodID <= 5 ? 'Sáng' : (periodID <= 10 ? 'Chiều' : 'Tối');
 
-/// Màu ô lịch theo buổi học trong ngày. Học cả ngày thì lấy buổi sớm nhất,
-/// vì buổi đầu mới là cái quyết định hôm đó phải dậy lúc mấy giờ.
+/// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối).
 Color dayColor(Iterable<dynamic> items) {
-  if (items.isEmpty) return _nghi;
-  final first = items
-      .map((i) => toNum(i['PeriodID']).toInt())
-      .reduce((a, b) => a < b ? a : b);
-  return switch (buoi(first)) {
-    'Sáng' => _sang,
-    'Chiều' => _chieu,
-    _ => _toi,
+  final buoiTrongNgay = items
+      .map((i) => buoi(toNum(i['PeriodID']).toInt()))
+      .toSet();
+  return switch (buoiTrongNgay.length) {
+    0 => _nghi,
+    1 => _motBuoi,
+    2 => _haiBuoi,
+    _ => _baBuoi,
   };
 }
 
-const _nghi = Color(0xFFF2E7CE); // nghỉ — nền giấy, không có tiết nào
-const _sang = Paper.mint; // sáng — tiết 1-5
-const _chieu = Paper.sun; // chiều — tiết 6-10
-const _toi = Paper.sky; // tối — tiết 11 trở đi
+const _nghi = Color(0xFFF2E7CE); // nghỉ — không có tiết nào
+const _motBuoi = Paper.mint; // xanh lá — học 1 buổi
+const _haiBuoi = Paper.sky; // xanh dương — học 2 buổi
+const _baBuoi = Paper.rose; // đỏ — học cả 3 buổi
 
 /// Năm học / học kỳ của một tháng. HK01 tháng 8-1, HK02 tháng 2-6, HK03 tháng 7.
 // ponytail: suy từ lịch chung của trường; nếu trường đổi mốc học kỳ thì sửa ở đây.
@@ -296,9 +295,9 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                 spacing: 12,
                 runSpacing: 6,
                 children: const [
-                  _Legend(color: _sang, label: 'Sáng'),
-                  _Legend(color: _chieu, label: 'Chiều'),
-                  _Legend(color: _toi, label: 'Tối'),
+                  _Legend(color: _motBuoi, label: '1 buổi'),
+                  _Legend(color: _haiBuoi, label: '2 buổi'),
+                  _Legend(color: _baBuoi, label: '3 buổi'),
                   _Legend(color: _nghi, label: 'Nghỉ'),
                 ],
               ),
