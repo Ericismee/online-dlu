@@ -4,16 +4,21 @@ import 'data.dart';
 import 'paper.dart';
 import 'portal.dart';
 
-/// Gộp học phần theo học kỳ, giữ nguyên thứ tự portal trả về.
+/// Gộp học phần theo học kỳ, xếp từ kỳ 1 trở đi.
+/// Portal trả lộn xộn nên gom theo tên kỳ chứ không theo thứ tự dòng.
 List<(String, List<dynamic>)> byTerm(List<dynamic> rows) {
-  final out = <(String, List<dynamic>)>[];
+  final out = <String, List<dynamic>>{};
   for (final r in rows) {
-    final term = clean(r['HocKy']);
-    if (out.isEmpty || out.last.$1 != term) out.add((term, <dynamic>[]));
-    out.last.$2.add(r);
+    out.putIfAbsent(clean(r['HocKy']), () => <dynamic>[]).add(r);
   }
-  return out;
+  final keys = out.keys.toList()
+    ..sort((a, b) => _termNo(a).compareTo(_termNo(b)));
+  return [for (final k in keys) (k, out[k]!)];
 }
+
+/// Số kỳ trong 'Học kỳ 5'; không đọc được thì đẩy xuống cuối.
+int _termNo(String term) =>
+    int.tryParse(RegExp(r'\d+').firstMatch(term)?.group(0) ?? '') ?? 1 << 30;
 
 /// Tổng số tín chỉ của một danh sách học phần.
 int credits(List<dynamic> rows) =>
