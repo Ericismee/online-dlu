@@ -30,7 +30,9 @@ void main() {
     expect(s.id, '2312577');
     expect(s.fullName, 'Trần Nguyễn Tuấn Anh'); // utf8, not mojibake
     expect(s.token, 'jwt-here');
-    expect(s.expire.isAfter(DateTime(2026, 9, 27)), isTrue);
+    // So với một mốc tuyệt đối chứ không phải nửa đêm giờ máy: CI chạy
+    // giờ UTC thì 02:28 +07 rơi về ngày hôm trước, phép so lật ngược.
+    expect(s.expire.toUtc(), DateTime.utc(2026, 9, 26, 19, 28, 6, 941, 970));
   });
 
   test('surfaces the portal message when login is refused', () async {
