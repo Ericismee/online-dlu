@@ -172,7 +172,7 @@ class Portal {
   /// ponytail: màn hình đang mở không tự cập nhật, kéo xuống để làm mới.
   Future<dynamic> _cached(String path, String token) async {
     final saved = Cache.read(path);
-    final hit = Cache.bypass ? null : saved;
+    final hit = (Cache.bypass || Cache.forced) ? null : saved;
     // Cache ghi trước lượt kéo làm mới gần nhất thì không dùng nữa: người
     // dùng đã bảo lấy số mới, màn này mở sau cũng phải là số mới.
     if (hit != null && !Cache.invalidated(hit.$2)) {

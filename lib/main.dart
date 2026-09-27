@@ -63,7 +63,7 @@ class Root extends StatefulWidget {
   State<Root> createState() => _RootState();
 }
 
-class _RootState extends State<Root> {
+class _RootState extends State<Root> with WidgetsBindingObserver {
   Session? _session;
   String? _error;
   bool _checking = true;
@@ -71,7 +71,27 @@ class _RootState extends State<Root> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _resume();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Mở app lần nào cũng thử lấy số mới: màn hiện số trong máy ngay, lượt
+  /// tải chạy song song. Token còn hạn thì khỏi đăng nhập lại.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final s = _session;
+    if (s == null || !s.valid) {
+      _resume();
+    } else {
+      unawaited(_napSan(s));
+    }
   }
 
   Future<void> _resume() async {

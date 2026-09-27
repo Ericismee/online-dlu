@@ -61,13 +61,55 @@ void main() {
       ]),
     );
 
-    // Đã nạp rồi thì các màn mở sau đọc trong máy, và lượt nạp thứ hai
-    // trong cùng phiên không đụng tới server trường nữa.
+    // Đã nạp rồi thì các màn mở sau đọc trong máy, không gọi portal nữa.
     final xong = hit.length;
     await portal.exams('t');
     await portal.studentInfo('t');
-    await Prefetch.run(session, portal: portal);
     expect(hit.length, xong);
+
+    // Nhưng mở app lần nữa là lại thử lấy số mới, dù cache còn hạn.
+    await Prefetch.run(session, portal: portal);
+    expect(hit.length, xong * 2);
+  });
+
+  test('lấy về kịp thì mốc dữ liệu nhích lên, hỏng thì đứng yên', () async {
+    var hong = false;
+    final portal = Portal(
+      client: MockClient((req) async {
+        if (hong) return http.Response.bytes(utf8.encode('{}'), 500);
+        final body = switch (req.url.path) {
+          '/api/student/info' => {'sinhVien': {}},
+          '/api/student/GetStudyProgram' => [
+            {'StudyProgramID': 'CQ2021'},
+          ],
+          '/api/student/studyProgram' => {'tbStudyPrograms': []},
+          '/api/student/DrawingSchedules_v2' => {'ResultDataSchedule': []},
+          '/api/student/BehaviorByStudent' => {},
+          _ => [],
+        };
+        return http.Response.bytes(utf8.encode(jsonEncode(body)), 200);
+      }),
+    );
+    await portal.exams('t');
+    final cu = Cache.served['/api/student/showexambytime'];
+    expect(cu, isNotNull);
+
+    // Nạp sẵn lấy được số mới: mốc phải là lúc này, không phải lúc ghi cache.
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await Prefetch.run(
+      Session(id: '1', fullName: 'A', token: 't', expire: DateTime(2030)),
+      portal: portal,
+    );
+    final moi = Cache.served['/api/student/showexambytime'];
+    expect(moi!.isAfter(cu!), isTrue);
+
+    // Không lấy được thì thôi, màn vẫn số cũ và mốc đứng yên.
+    hong = true;
+    await Prefetch.run(
+      Session(id: '1', fullName: 'A', token: 't', expire: DateTime(2030)),
+      portal: portal,
+    );
+    expect(Cache.served['/api/student/showexambytime'], moi);
   });
 
   test('một mục lỗi thì các mục sau vẫn nạp', () async {

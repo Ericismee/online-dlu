@@ -8,18 +8,25 @@ import 'portal.dart';
 /// màn sau bấm vào là có ngay.
 ///
 /// Gọi tuần tự chứ không bắn một lượt: server trường yếu, mà đằng nào người
-/// dùng cũng chỉ nhìn một màn tại một thời điểm. Thứ nào cache còn hạn thì
-/// [Portal] tự trả về từ máy, không đụng tới mạng.
+/// dùng cũng chỉ nhìn một màn tại một thời điểm. Lượt này luôn lấy số mới
+/// (chạy trong zone mang [Cache.forceKey] nên bỏ qua cache) — màn hình vẫn
+/// hiện số cũ trong máy, lấy về kịp thì mốc dữ liệu nhích lên ngay, không
+/// kịp thì thôi, để lần mở sau.
 class Prefetch {
   /// Một lượt nạp tại một thời điểm, khỏi nhân đôi số lần gọi portal.
   static bool _dangChay = false;
 
-  /// Lượt nạp gần nhất xong lúc nào — trong một phiên thì khỏi lặp lại.
+  /// Lượt nạp gần nhất xong lúc nào — chỉ để xem, không chặn lượt sau: mở
+  /// app lần nào cũng phải thử lấy số mới.
   static DateTime? xongLuc;
 
-  static Future<void> run(Session session, {Portal? portal}) async {
+  static Future<void> run(Session session, {Portal? portal}) => runZoned(
+    () => _chay(session, portal),
+    zoneValues: {Cache.forceKey: true},
+  );
+
+  static Future<void> _chay(Session session, Portal? portal) async {
     if (_dangChay) return;
-    if (xongLuc != null && !Cache.stale(xongLuc!)) return;
     _dangChay = true;
     final p = portal ?? Portal();
     final token = session.token;
@@ -37,11 +44,13 @@ class Prefetch {
         await _thu(() => p.marks(token, program));
         await _thu(() => p.curriculum(token, program));
       }
-      // Tháng này và tháng sau: cuối tháng mở ra vẫn thấy lịch tuần tới,
-      // và nửa đêm sang tháng mới không phải chờ mạng.
+      // Tháng này, tháng sau, rồi tháng trước: đúng ba tháng mà màn Lịch
+      // đụng tới ngay khi mở. Thiếu tháng trước là chip "dữ liệu lúc..."
+      // bị ghim vào mốc cũ của nó dù mọi thứ khác vừa lấy mới xong.
       for (final m in [
         DateTime(now.year, now.month),
         DateTime(now.year, now.month + 1),
+        DateTime(now.year, now.month - 1),
       ]) {
         await _thu(() => fetchMonth(p, token, m));
       }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:hive_ce_flutter/hive_flutter.dart';
@@ -13,6 +14,12 @@ class Cache {
   /// Bật trong lúc kéo xuống làm mới: bỏ qua cache, gọi thẳng portal.
   /// ponytail: cờ toàn cục vì mỗi lần chỉ có một lượt làm mới.
   static bool bypass = false;
+
+  /// Lượt nạp sẵn chạy trong zone mang cờ này: nó bỏ qua cache để lấy số
+  /// mới, còn màn đang mở vẫn đọc cache như thường, không bị kéo theo.
+  static const forceKey = #dluForceFetch;
+
+  static bool get forced => Zone.current[forceKey] == true;
 
   /// Màn hình đang mở tự đăng ký hàm nạp lại, kéo xuống là gọi hết.
   static final refreshers = <Future<void> Function()>{};
