@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'clock.dart';
 import 'data.dart';
 import 'ics.dart';
 import 'paper.dart';
@@ -33,6 +34,27 @@ Map<int, List<dynamic>> itemsByDay(Iterable<dynamic> items, DateTime month) {
     );
   }
   return out;
+}
+
+/// Lịch cả tháng, gom theo ngày. Lấy nguyên tháng chứ không phải từng tuần:
+/// tốn đúng mấy lần gọi mà đổi ngày, xem ngày khác đều khỏi đụng tới portal.
+Future<Map<int, List<dynamic>>> fetchMonth(
+  Portal portal,
+  String token,
+  DateTime month,
+) async {
+  final last = DateTime(month.year, month.month + 1, 0);
+  final (year, term) = yearTermFor(month);
+  final weeks = {
+    for (var d = month; !d.isAfter(last); d = d.add(const Duration(days: 1)))
+      isoWeek(d),
+  };
+  final fetched = await Future.wait(
+    weeks.map(
+      (w) => portal.weekSchedule(token, year: year, term: term, week: w),
+    ),
+  );
+  return itemsByDay(fetched.expand((e) => e), month);
 }
 
 int periods(Iterable<dynamic> items) =>
@@ -124,6 +146,20 @@ LessonPhase? lessonPhase(dynamic item, DateTime now) {
   LessonPhase.xong => ('Xong', Paper.paper),
 };
 
+/// Còn mấy phút nữa tới giờ vào lớp; đã vào rồi hoặc tiết lạ thì null.
+int? phutToiVao(dynamic item, DateTime now) {
+  final dau = batDauPhut(tietNo(item['BeginTime']));
+  if (dau == null) return null;
+  final phut = now.hour * 60 + now.minute;
+  return phut >= dau ? null : dau - phut;
+}
+
+/// Sắp phải đi rồi: còn 15 phút hoặc ít hơn.
+bool sapToiGio(dynamic item, DateTime now) {
+  final con = phutToiVao(item, now);
+  return con != null && con <= 15;
+}
+
 /// Đếm ngược tới giờ vào lớp, hoặc báo đang học. Tiết lạ thì null.
 String? demNguoc(dynamic item, DateTime now) {
   final dau = batDauPhut(tietNo(item['BeginTime']));
@@ -188,7 +224,12 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
     final m = _month;
     try {
       final days = await _fetch(m);
-      if (mounted) setState(() => _cache[_key(m)] = days);
+      if (mounted) {
+        setState(() {
+          _cache[_key(m)] = days;
+          _error = null;
+        });
+      }
     } on PortalError {
       // giữ nguyên lịch cũ
     }
@@ -235,7 +276,10 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
     try {
       final days = await _fetch(m);
       if (!mounted) return false;
-      setState(() => _cache[_key(m)] = days);
+      setState(() {
+        _cache[_key(m)] = days;
+        _error = null;
+      });
       return true;
     } on PortalError catch (e) {
       if (mounted && !quiet) setState(() => _error = e.message);
@@ -243,26 +287,8 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
     }
   }
 
-  Future<Map<int, List<dynamic>>> _fetch(DateTime month) async {
-    final portal = widget.portal ?? Portal();
-    final last = DateTime(month.year, month.month + 1, 0);
-    final (year, term) = yearTermFor(month);
-    final weeks = {
-      for (var d = month; !d.isAfter(last); d = d.add(const Duration(days: 1)))
-        isoWeek(d),
-    };
-    final fetched = await Future.wait(
-      weeks.map(
-        (w) => portal.weekSchedule(
-          widget.session.token,
-          year: year,
-          term: term,
-          week: w,
-        ),
-      ),
-    );
-    return itemsByDay(fetched.expand((e) => e), month);
-  }
+  Future<Map<int, List<dynamic>>> _fetch(DateTime month) =>
+      fetchMonth(widget.portal ?? Portal(), widget.session.token, month);
 
   /// Chép lịch tháng sang app Lịch của máy qua file .ics.
   /// Hỏi trước vì đây là việc bước ra khỏi app.
@@ -911,92 +937,97 @@ class TodayLessons extends StatefulWidget {
 class _TodayLessonsState extends State<TodayLessons>
     with Reloadable<TodayLessons> {
   @override
-  Future<void> reload() => _load();
+  Future<void> reload() => _load(DateTime.now(), lai: true);
 
-  List<dynamic>? _items;
-
-  /// Đếm ngược mà đứng im thì sai ngay sau một phút.
-  Timer? _dongHo;
+  /// Lịch nguyên tháng chứ không riêng hôm nay: 0h00 qua ngày mới là hiện
+  /// luôn tiết hôm sau, không phải hỏi lại portal.
+  Map<int, List<dynamic>>? _days;
+  DateTime? _thang;
+  bool _dangTai = false;
 
   @override
   void initState() {
     super.initState();
-    _load();
-    _dongHo = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) setState(() {});
-    });
+    _load(Clock.instance.value);
   }
 
-  @override
-  void dispose() {
-    _dongHo?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    final now = DateTime.now();
-    final (year, term) = yearTermFor(now);
+  Future<void> _load(DateTime now, {bool lai = false}) async {
+    final thang = DateTime(now.year, now.month);
+    if (_dangTai || (!lai && _thang == thang)) return;
+    _dangTai = true;
     try {
-      final week = await (widget.portal ?? Portal()).weekSchedule(
+      final days = await fetchMonth(
+        widget.portal ?? Portal(),
         widget.session.token,
-        year: year,
-        term: term,
-        week: isoWeek(now),
+        thang,
       );
-      final days = itemsByDay(week, DateTime(now.year, now.month));
-      if (mounted) setState(() => _items = days[now.day] ?? const []);
+      if (mounted) {
+        setState(() {
+          _days = days;
+          _thang = thang;
+        });
+      }
     } on PortalError {
-      if (mounted) setState(() => _items = const []);
+      if (mounted) setState(() => _days ??= const {});
+    } finally {
+      _dangTai = false;
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (_items == null) {
-      return const Padding(
-        padding: EdgeInsets.only(bottom: 20),
-        child: Skeleton(height: 120, radius: 16, ink: true),
-      );
-    }
-    if (_items!.isEmpty) return const SizedBox.shrink();
-    final now = DateTime.now();
-    final ke = tietKe(_items!, now);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Hôm nay',
-            style: TextStyle(
-              fontFamily: 'Baloo',
-              fontWeight: FontWeight.w800,
-              fontSize: 22,
-              color: Paper.ink,
+  Widget build(BuildContext context) => Ticker(
+    builder: (context, now) {
+      // Sang tháng mới thì mới phải gọi portal, còn sang ngày mới thì dữ
+      // liệu đã nằm sẵn trong máy.
+      if (_thang != null && _thang != DateTime(now.year, now.month)) {
+        scheduleMicrotask(() => _load(now));
+      }
+      if (_days == null) {
+        return const Padding(
+          padding: EdgeInsets.only(bottom: 20),
+          child: Skeleton(height: 120, radius: 16, ink: true),
+        );
+      }
+      final items = _days![now.day] ?? const [];
+      if (items.isEmpty) return const SizedBox.shrink();
+      final ke = tietKe(items, now);
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Hôm nay',
+              style: TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                fontSize: 22,
+                color: Paper.ink,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          if (ke != null) ...[
-            _TietKe(item: ke, now: now),
             const SizedBox(height: 10),
-          ],
-          PaperBox(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final (n, i) in _items!.indexed)
-                  _Lesson(
-                    i,
-                    delay: Duration(milliseconds: 70 * n),
-                    now: now,
-                  ),
-              ],
+            if (ke != null) ...[
+              _TietKe(item: ke, now: now),
+              const SizedBox(height: 10),
+            ],
+            PaperBox(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final (n, i) in items.indexed)
+                    _Lesson(
+                      i,
+                      delay: Duration(milliseconds: 70 * n),
+                      now: now,
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
+    },
+  );
 }
 
 /// Thẻ nổi cho buổi sắp tới: mở app ra là biết đi đâu, còn bao lâu.
@@ -1012,16 +1043,25 @@ class _TietKe extends StatelessWidget {
     final gio = khungGio(dau, cuoi);
     final con = demNguoc(item, now);
     final pha = lessonPhase(item, now);
-    final mau = pha == null ? Paper.card : phaseTag(pha).$2;
+    final gap = sapToiGio(item, now);
+    // Còn 15 phút thì đổi cả thẻ sang màu cảnh báo, liếc một cái là thấy.
+    final mau = gap
+        ? Paper.rose
+        : (pha == null ? Paper.card : phaseTag(pha).$2);
     return PaperBox(
-      color: Paper.sun,
+      color: gap ? Paper.peach : Paper.sun,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               // Nhãn theo trạng thái thật: chưa vào lớp / đang học / ra chơi.
-              Pill(pha == null ? 'Sắp tới' : phaseTag(pha).$1, color: mau),
+              Pill(
+                gap
+                    ? 'Sắp vào lớp'
+                    : (pha == null ? 'Sắp tới' : phaseTag(pha).$1),
+                color: mau,
+              ),
               if (con != null) ...[
                 const SizedBox(width: 8),
                 Expanded(
