@@ -96,6 +96,7 @@ class _CurriculumScreenState extends State<CurriculumScreen>
                           ),
                         ),
                       ),
+                      const SizedBox(width: 12),
                       PaperButton(
                         label: 'Quay lại',
                         color: Paper.card,
