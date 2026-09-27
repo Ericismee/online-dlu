@@ -18,6 +18,7 @@ import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
 import 'prefetch.dart';
+import 'update_check.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -414,6 +415,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                 builder: (_, now) => _Header(now: now, session: widget.session),
               ),
               const SizedBox(height: 16),
+              const UpdateBanner(),
               // Các thẻ hiện ra lần lượt cho đỡ khô khan.
               PopIn(
                 child: _Me(session: widget.session, lop: _lop),
