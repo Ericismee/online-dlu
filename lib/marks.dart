@@ -110,6 +110,7 @@ class _MarksScreenState extends State<MarksScreen>
       if (mounted) {
         setState(() {
           _years = years;
+          _error = null;
           if (years.isNotEmpty) _pick = latestScored(years);
         });
       }

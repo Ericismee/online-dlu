@@ -66,7 +66,13 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
   Future<void> _load() async {
     try {
       final e = await (widget.portal ?? Portal()).exams(widget.session.token);
-      if (mounted) setState(() => _exams = e);
+      // Nạp lại được thì hộp lỗi cũ phải biến mất.
+      if (mounted) {
+        setState(() {
+          _exams = e;
+          _error = null;
+        });
+      }
     } on PortalError catch (e) {
       if (mounted) setState(() => _error = e.message);
     }

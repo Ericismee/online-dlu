@@ -110,7 +110,12 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
       final info = await (widget.portal ?? Portal()).studentInfo(
         widget.session.token,
       );
-      if (mounted) setState(() => _info = info);
+      if (mounted) {
+        setState(() {
+          _info = info;
+          _error = null;
+        });
+      }
     } on PortalError catch (e) {
       if (mounted) setState(() => _error = e.message);
     }

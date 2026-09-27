@@ -57,6 +57,7 @@ class _CurriculumScreenState extends State<CurriculumScreen>
       if (mounted) {
         setState(() {
           _rows = rows;
+          _error = null;
           _term ??= byTerm(rows).firstOrNull?.$1;
         });
       }

@@ -71,7 +71,12 @@ class _BehaviorScreenState extends State<BehaviorScreen>
       final s = await (widget.portal ?? Portal()).behaviorScores(
         widget.session.token,
       );
-      if (mounted) setState(() => _scores = s);
+      if (mounted) {
+        setState(() {
+          _scores = s;
+          _error = null;
+        });
+      }
     } on PortalError catch (e) {
       if (mounted) setState(() => _error = e.message);
     }
