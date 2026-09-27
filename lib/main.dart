@@ -602,6 +602,7 @@ class _Menu extends StatelessWidget {
     (3, Icons.menu_book_rounded, 'Học phần', Paper.mint),
     (-1, Icons.grade_rounded, 'Điểm', Paper.accent),
     (-2, Icons.emoji_events_rounded, 'Điểm rèn luyện', Paper.peach),
+    (-4, Icons.fact_check_rounded, 'Phiếu rèn luyện', Paper.mint),
     (-3, Icons.school_rounded, 'Chương trình đào tạo', Paper.sky),
     (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
   ];
@@ -620,6 +621,7 @@ class _Menu extends StatelessWidget {
                       builder: (_) => switch (tab) {
                         -1 => MarksScreen(session: session),
                         -2 => BehaviorScreen(session: session),
+                        -4 => BehaviorDetailScreen(session: session),
                         _ => CurriculumScreen(session: session),
                       },
                     ),

@@ -141,6 +141,13 @@ class Portal {
   Future<List<dynamic>> behaviorScores(String token) =>
       _getList('/api/student/behaviorscoretotal', token);
 
+  /// Phiếu chấm rèn luyện của một kỳ: từng tiêu chí và điểm chốt.
+  Future<Map<String, dynamic>> behaviorDetail(
+    String token, {
+    required String year,
+    required String term,
+  }) => _get('/api/student/BehaviorByStudent?namhoc=$year&hocky=$term', token);
+
   /// Kết quả đăng ký học phần của một học kỳ.
   Future<List<dynamic>> registrations(
     String token, {
