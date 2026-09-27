@@ -85,6 +85,10 @@ class _RootState extends State<Root> {
       final s = await Portal().login(saved.$1, saved.$2);
       await Cache.write('session', s.toMap());
       if (mounted) setState(() => _session = s);
+      // Vào app bằng phiên cũ thì token đã hết hạn (~2h), mọi màn nạp bằng nó
+      // đều hỏng và nằm trống. Có token mới là nạp lại hết, đừng để người
+      // dùng phải kéo xuống mới thấy hôm nay học gì.
+      if (cached != null && mounted) await Cache.refreshAll();
     } on PortalError catch (e) {
       // Mạng hỏng thì cứ xài cache; sai mật khẩu mới đá về màn đăng nhập.
       if (e.offline && _session != null) return;
@@ -180,7 +184,7 @@ class _ShellState extends State<Shell> {
                   session: widget.session,
                   onGo: (i) => setState(() => _tab = i),
                 ),
-                CoursesTab(session: widget.session),
+                MarksScreen(session: widget.session),
                 InfoScreen(session: widget.session, onLogout: widget.onLogout),
               ],
             ),
@@ -236,7 +240,7 @@ class PaperBar extends StatelessWidget {
     (Icons.calendar_month_rounded, null, 'Lịch', Paper.sun, -0.06),
     (Icons.edit_note_rounded, null, 'Thi', Paper.rose, 0.04),
     (null, 'assets/logo_icon.png', 'Trang chủ', Paper.peach, 0.0),
-    (Icons.menu_book_rounded, null, 'Học phần', Paper.mint, -0.04),
+    (Icons.grade_rounded, null, 'Điểm', Paper.accent, -0.04),
     (Icons.badge_rounded, null, 'Hồ sơ', Paper.sky, 0.05),
   ];
 
@@ -599,8 +603,8 @@ class _Menu extends StatelessWidget {
   static const _items = [
     (0, Icons.calendar_month_rounded, 'Thời khoá biểu', Paper.sun),
     (1, Icons.edit_note_rounded, 'Lịch thi', Paper.rose),
-    (3, Icons.menu_book_rounded, 'Học phần', Paper.mint),
-    (-1, Icons.grade_rounded, 'Điểm', Paper.accent),
+    (3, Icons.grade_rounded, 'Điểm', Paper.accent),
+    (-1, Icons.menu_book_rounded, 'Học phần', Paper.mint),
     (-2, Icons.emoji_events_rounded, 'Điểm rèn luyện', Paper.peach),
     (-4, Icons.fact_check_rounded, 'Phiếu rèn luyện', Paper.mint),
     (-3, Icons.school_rounded, 'Chương trình đào tạo', Paper.sky),
@@ -619,7 +623,7 @@ class _Menu extends StatelessWidget {
                     context,
                     MaterialPageRoute<void>(
                       builder: (_) => switch (tab) {
-                        -1 => MarksScreen(session: session),
+                        -1 => CoursesTab(session: session),
                         -2 => BehaviorScreen(session: session),
                         -4 => BehaviorDetailScreen(session: session),
                         _ => CurriculumScreen(session: session),
