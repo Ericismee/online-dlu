@@ -128,6 +128,8 @@ class _MarksScreenState extends State<MarksScreen>
       for (final m in all)
         if (khop(subjectName(m['CurriculumName']), _q)) m,
     ];
+    // Mở từ thanh đáy thì không có gì để pop, và phải chừa chỗ cho thanh đó.
+    final pop = Navigator.of(context).canPop();
     return Scaffold(
       body: DotBackground(
         child: Center(
@@ -139,7 +141,7 @@ class _MarksScreenState extends State<MarksScreen>
                   20,
                   MediaQuery.paddingOf(context).top + 20,
                   20,
-                  MediaQuery.paddingOf(context).bottom + 40,
+                  MediaQuery.paddingOf(context).bottom + (pop ? 40 : 110),
                 ),
                 children: [
                   Row(
@@ -155,12 +157,13 @@ class _MarksScreenState extends State<MarksScreen>
                           ),
                         ),
                       ),
-                      PaperButton(
-                        label: 'Quay lại',
-                        color: Paper.card,
-                        onColor: Paper.ink,
-                        onPressed: () => Navigator.pop(context),
-                      ),
+                      if (pop)
+                        PaperButton(
+                          label: 'Quay lại',
+                          color: Paper.card,
+                          onColor: Paper.ink,
+                          onPressed: () => Navigator.pop(context),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -367,7 +370,9 @@ class _Term extends StatelessWidget {
                   'Không có môn nào khớp.',
                   style: TextStyle(color: Paper.ink2),
                 )
-              : scored
+              // Kỳ đang học chưa có điểm nhưng đã có môn: cứ hiện tên môn,
+              // ô điểm để '—' là đủ hiểu.
+              : subjects.isNotEmpty
               ? Column(children: [for (final m in subjects) _Mark(m)])
               : Container(
                   color: Paper.sun,
