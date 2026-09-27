@@ -100,7 +100,7 @@ app, và không tốn slot trong 3 app mà chứng chỉ miễn phí cho phép.
 Trong LiveContainer, thêm nguồn:
 
 ```
-https://raw.githubusercontent.com/dopaemon/dlu-online/main/lc.json
+https://raw.githubusercontent.com/dopaemon/online-dlu/main/lc.json
 ```
 
 `lc.json` trỏ thẳng vào bản mới nhất ở Releases, nên phát hành tag mới là máy
