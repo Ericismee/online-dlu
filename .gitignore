@@ -56,3 +56,4 @@ app.*.map.json
 # Repo riêng nên keystore nằm luôn trong này; mật khẩu thì không.
 # Trước khi mở public phải rotate upload key, xoá file thôi không đủ.
 /android/key.properties
+.serena/

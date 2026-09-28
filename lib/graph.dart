@@ -79,8 +79,9 @@ const _batDau = <int, int>{
   10: 15 * 60 + 40,
   11: 16 * 60 + 40,
   12: 17 * 60 + 30,
-  13: 18 * 60 + 20,
-  14: 19 * 60 + 10,
+  // Buổi tối cũng có giải lao 18h20 - 18h30, nên tiết 13 vào trễ 10 phút.
+  13: 18 * 60 + 30,
+  14: 19 * 60 + 20,
 };
 
 /// Phút bắt đầu của một tiết; tiết lạ thì null để nơi gọi khỏi bịa giờ.
@@ -117,60 +118,67 @@ dynamic tietKe(List<dynamic> items, DateTime now) {
 /// Buổi học đang ở đoạn nào: chưa tới giờ, trong tiết, nghỉ giữa tiết, đã tan.
 enum LessonPhase { chuaVao, dangHoc, raChoi, xong }
 
-/// Trạng thái của một buổi so với [now]. Tiết lạ thì null để khỏi bịa.
-LessonPhase? lessonPhase(dynamic item, DateTime now) {
+/// Đoạn hiện tại của một buổi. [tiet] là tiết đang học, hoặc tiết sắp vào khi
+/// đang chờ / ra chơi; tan rồi thì null. [conPhut] là số phút còn lại của
+/// chính đoạn đó — hết tiết, hết giờ ra chơi, hay tới giờ vào lớp.
+typedef LessonNow = ({LessonPhase pha, int? tiet, int conPhut});
+
+/// Buổi [item] đang tới đâu so với [now]. Tiết lạ thì null để khỏi bịa giờ.
+///
+/// Đi lần lượt từng tiết trong buổi nên buổi 1, 2, 3 hay 4 tiết đều đúng, và
+/// khoảng trống giữa hai tiết (tiết 2 tan 9h10, tiết 3 vào 9h30) là ra chơi.
+LessonNow? lessonNow(dynamic item, DateTime now) {
   final dau = tietNo(item['BeginTime']);
   final cuoi = tietNo(item['EndTime']);
   final vao = batDauPhut(dau);
   final tietCuoi = batDauPhut(cuoi);
   if (vao == null || tietCuoi == null) return null;
   final phut = now.hour * 60 + now.minute;
-  if (phut < vao) return LessonPhase.chuaVao;
-  if (phut >= tietCuoi + tietPhut) return LessonPhase.xong;
-  // Trong khoảng buổi học mà không nằm trong tiết nào thì đang nghỉ giữa tiết
-  // (tiết 2 tan 9h10, tiết 3 mới vào 9h30).
+  if (phut < vao) {
+    return (pha: LessonPhase.chuaVao, tiet: dau, conPhut: vao - phut);
+  }
   for (var t = dau; t <= cuoi; t++) {
     final s = batDauPhut(t);
-    if (s != null && phut >= s && phut < s + tietPhut) {
-      return LessonPhase.dangHoc;
+    if (s == null) continue;
+    if (phut < s) return (pha: LessonPhase.raChoi, tiet: t, conPhut: s - phut);
+    if (phut < s + tietPhut) {
+      return (pha: LessonPhase.dangHoc, tiet: t, conPhut: s + tietPhut - phut);
     }
   }
-  return LessonPhase.raChoi;
+  return (pha: LessonPhase.xong, tiet: null, conPhut: 0);
 }
 
-/// Nhãn và màu giấy cho từng trạng thái.
-(String, Color) phaseTag(LessonPhase p) => switch (p) {
+/// Nhãn và màu giấy cho đoạn hiện tại — có số tiết để biết đang ở tiết mấy.
+(String, Color) phaseTag(LessonNow n) => switch (n.pha) {
   LessonPhase.chuaVao => ('Chưa vào lớp', Paper.card),
-  LessonPhase.dangHoc => ('Đang học', Paper.mint),
+  LessonPhase.dangHoc => ('Đang học tiết ${n.tiet}', Paper.mint),
   LessonPhase.raChoi => ('Ra chơi', Paper.sun),
   LessonPhase.xong => ('Xong', Paper.paper),
 };
 
-/// Còn mấy phút nữa tới giờ vào lớp; đã vào rồi hoặc tiết lạ thì null.
-int? phutToiVao(dynamic item, DateTime now) {
-  final dau = batDauPhut(tietNo(item['BeginTime']));
-  if (dau == null) return null;
-  final phut = now.hour * 60 + now.minute;
-  return phut >= dau ? null : dau - phut;
-}
-
-/// Sắp phải đi rồi: còn 15 phút hoặc ít hơn.
+/// Sắp phải đi rồi: còn 15 phút hoặc ít hơn tới giờ vào lớp.
 bool sapToiGio(dynamic item, DateTime now) {
-  final con = phutToiVao(item, now);
-  return con != null && con <= 15;
+  final n = lessonNow(item, now);
+  return n != null && n.pha == LessonPhase.chuaVao && n.conPhut <= 15;
 }
 
-/// Đếm ngược tới giờ vào lớp, hoặc báo đang học. Tiết lạ thì null.
+/// '45 phút' / '2 giờ' / '1 giờ 5 phút'.
+String _khoang(int phut) {
+  if (phut < 60) return '$phut phút';
+  final le = phut % 60;
+  return '${phut ~/ 60} giờ${le == 0 ? '' : ' $le phút'}';
+}
+
+/// Còn bao lâu nữa hết đoạn đang chạy. Tan rồi hoặc tiết lạ thì null.
+/// Không nhắc lại số tiết khi đang học — nhãn bên cạnh đã ghi rồi.
 String? demNguoc(dynamic item, DateTime now) {
-  final dau = batDauPhut(tietNo(item['BeginTime']));
-  final cuoi = batDauPhut(tietNo(item['EndTime']));
-  if (dau == null || cuoi == null) return null;
-  final phut = now.hour * 60 + now.minute;
-  if (phut >= dau) return 'Đang học, còn ${cuoi + tietPhut - phut} phút';
-  final con = dau - phut;
-  if (con < 60) return 'Còn $con phút nữa';
-  final le = con % 60;
-  return 'Còn ${con ~/ 60} giờ${le == 0 ? '' : ' $le phút'} nữa';
+  final n = lessonNow(item, now);
+  return switch (n?.pha) {
+    null || LessonPhase.xong => null,
+    LessonPhase.chuaVao => 'Còn ${_khoang(n!.conPhut)} nữa',
+    LessonPhase.dangHoc => 'Còn ${_khoang(n!.conPhut)} nữa',
+    LessonPhase.raChoi => 'Vào tiết ${n!.tiet} sau ${_khoang(n.conPhut)}',
+  };
 }
 
 /// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối).
@@ -653,7 +661,7 @@ class _Lesson extends StatelessWidget {
     final dau = tietNo(i['BeginTime']);
     final cuoi = tietNo(i['EndTime']);
     final gio = khungGio(dau, cuoi);
-    final pha = now == null ? null : lessonPhase(i, now!);
+    final pha = now == null ? null : lessonNow(i, now!);
     return PopIn(
       delay: delay,
       child: Padding(
@@ -989,44 +997,75 @@ class _TodayLessonsState extends State<TodayLessons>
         );
       }
       final items = _days![now.day] ?? const [];
-      if (items.isEmpty) return const SizedBox.shrink();
       final ke = tietKe(items, now);
+      // Hôm nay tan hết (hay hôm nay nghỉ) thì nhìn trước ngày mai luôn. Qua
+      // 0h00 là now.day nhích lên, mục "Ngày mai" tự thành "Hôm nay".
+      // ponytail: ngày cuối tháng thì lịch mai nằm ở tháng chưa nạp nên bỏ
+      // qua; cần thì nạp thêm tháng sau trong _load.
+      final mai = now.add(const Duration(days: 1));
+      final maiItems = ke == null && mai.month == now.month
+          ? (_days![mai.day] ?? const [])
+          : const [];
+      if (items.isEmpty && maiItems.isEmpty) return const SizedBox.shrink();
       return Padding(
         padding: const EdgeInsets.only(bottom: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Hôm nay',
-              style: TextStyle(
-                fontFamily: 'Baloo',
-                fontWeight: FontWeight.w800,
-                fontSize: 22,
-                color: Paper.ink,
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (ke != null) ...[
-              _TietKe(item: ke, now: now),
-              const SizedBox(height: 10),
+            if (items.isNotEmpty)
+              _Ngay(tieuDe: 'Hôm nay', items: items, ke: ke, now: now),
+            if (maiItems.isNotEmpty) ...[
+              if (items.isNotEmpty) const SizedBox(height: 20),
+              _Ngay(tieuDe: 'Ngày mai', items: maiItems),
             ],
-            PaperBox(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final (n, i) in items.indexed)
-                    _Lesson(
-                      i,
-                      delay: Duration(milliseconds: 70 * n),
-                      now: now,
-                    ),
-                ],
-              ),
-            ),
           ],
         ),
       );
     },
+  );
+}
+
+/// Một ngày trên Trang chủ: tiêu đề, thẻ nổi cho buổi sắp tới rồi cả danh
+/// sách. Ngày mai thì [now] để null — chưa tới nên chưa có trạng thái gì.
+class _Ngay extends StatelessWidget {
+  const _Ngay({required this.tieuDe, required this.items, this.ke, this.now});
+  final String tieuDe;
+  final List<dynamic> items;
+  final dynamic ke;
+  final DateTime? now;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        tieuDe,
+        style: const TextStyle(
+          fontFamily: 'Baloo',
+          fontWeight: FontWeight.w800,
+          fontSize: 22,
+          color: Paper.ink,
+        ),
+      ),
+      const SizedBox(height: 10),
+      if (ke != null && now != null) ...[
+        _TietKe(item: ke, now: now!),
+        const SizedBox(height: 10),
+      ],
+      PaperBox(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final (n, i) in items.indexed)
+              _Lesson(
+                i,
+                delay: Duration(milliseconds: 70 * n),
+                now: now,
+              ),
+          ],
+        ),
+      ),
+    ],
   );
 }
 
@@ -1042,7 +1081,7 @@ class _TietKe extends StatelessWidget {
     final cuoi = tietNo(item['EndTime']);
     final gio = khungGio(dau, cuoi);
     final con = demNguoc(item, now);
-    final pha = lessonPhase(item, now);
+    final pha = lessonNow(item, now);
     final gap = sapToiGio(item, now);
     // Còn 15 phút thì đổi cả thẻ sang màu cảnh báo, liếc một cái là thấy.
     final mau = gap

@@ -105,7 +105,7 @@ void main() {
     expect(khungGio(1, 1), ('7h30', '8h20'));
     expect(khungGio(1, 4), ('7h30', '11h10'));
     expect(khungGio(7, 10), ('13h00', '16h30'));
-    expect(khungGio(11, 14), ('16h40', '20h00'));
+    expect(khungGio(11, 14), ('16h40', '20h10'));
     expect(khungGio(0, 3), isNull);
     expect(tietNo('Tiết: 3'), 3);
     expect(buoi(6), 'Sáng');
@@ -122,7 +122,7 @@ void main() {
     // Đang trong tiết thì vẫn là buổi hiện tại, không nhảy sang buổi sau.
     final giua = DateTime(2026, 9, 21, 8, 30);
     expect(tietKe(items, giua), items[0]);
-    expect(demNguoc(items[0], giua), 'Đang học, còn 40 phút');
+    expect(demNguoc(items[0], giua), 'Còn 40 phút nữa');
     final trua = DateTime(2026, 9, 21, 11, 0);
     expect(tietKe(items, trua), items[1]);
     expect(demNguoc(items[1], trua), 'Còn 2 giờ nữa');
@@ -130,21 +130,62 @@ void main() {
     expect(tietKe(items, DateTime(2026, 9, 21, 20, 0)), isNull);
   });
 
-  test('trạng thái buổi học: chưa vào lớp -> đang học -> ra chơi -> xong', () {
-    final buoi = {'BeginTime': 'Tiết: 1', 'EndTime': 'Tiết: 3'}; // 7h30-10h20
-    LessonPhase? pha(int h, int m) =>
-        lessonPhase(buoi, DateTime(2026, 9, 21, h, m));
-    expect(pha(7, 0), LessonPhase.chuaVao);
-    expect(pha(7, 40), LessonPhase.dangHoc);
+  test('buổi 4 tiết đi qua từng tiết một, có cả ra chơi', () {
+    final buoi = {'BeginTime': 'Tiết: 1', 'EndTime': 'Tiết: 4'}; // 7h30-11h10
+    LessonNow? luc(int h, int m) =>
+        lessonNow(buoi, DateTime(2026, 9, 21, h, m));
+
+    expect(luc(7, 0), (pha: LessonPhase.chuaVao, tiet: 1, conPhut: 30));
+    expect(luc(7, 40), (pha: LessonPhase.dangHoc, tiet: 1, conPhut: 40));
+    expect(luc(8, 30), (pha: LessonPhase.dangHoc, tiet: 2, conPhut: 40));
     // Tiết 2 tan 9h10, tiết 3 mới vào 9h30 — ở giữa là ra chơi.
-    expect(pha(9, 15), LessonPhase.raChoi);
-    expect(pha(9, 40), LessonPhase.dangHoc);
-    expect(pha(10, 25), LessonPhase.xong);
-    expect(phaseTag(LessonPhase.dangHoc).$1, 'Đang học');
+    expect(luc(9, 15), (pha: LessonPhase.raChoi, tiet: 3, conPhut: 15));
+    expect(luc(9, 40), (pha: LessonPhase.dangHoc, tiet: 3, conPhut: 40));
+    expect(luc(10, 30), (pha: LessonPhase.dangHoc, tiet: 4, conPhut: 40));
+    expect(luc(11, 10), (pha: LessonPhase.xong, tiet: null, conPhut: 0));
+
+    expect(phaseTag(luc(8, 30)!).$1, 'Đang học tiết 2');
+    expect(
+      demNguoc(buoi, DateTime(2026, 9, 21, 9, 15)),
+      'Vào tiết 3 sau 15 phút',
+    );
+    expect(demNguoc(buoi, DateTime(2026, 9, 21, 11, 10)), isNull);
+  });
+
+  test('buổi ngắn thì hết tiết là tan luôn, không chờ hết buổi', () {
+    // Chỉ một tiết: 13h00 - 13h50.
+    final motTiet = {'BeginTime': 'Tiết: 7', 'EndTime': 'Tiết: 7'};
+    expect(lessonNow(motTiet, DateTime(2026, 9, 21, 13, 30)), (
+      pha: LessonPhase.dangHoc,
+      tiet: 7,
+      conPhut: 20,
+    ));
+    expect(lessonNow(motTiet, DateTime(2026, 9, 21, 13, 50)), (
+      pha: LessonPhase.xong,
+      tiet: null,
+      conPhut: 0,
+    ));
+    // Hai tiết liền nhau thì không có ra chơi ở giữa.
+    final haiTiet = {'BeginTime': 'Tiết: 7', 'EndTime': 'Tiết: 8'};
+    expect(lessonNow(haiTiet, DateTime(2026, 9, 21, 13, 50)), (
+      pha: LessonPhase.dangHoc,
+      tiet: 8,
+      conPhut: 50,
+    ));
     // Tiết lạ thì không bịa trạng thái.
     expect(
-      lessonPhase({'BeginTime': 'x', 'EndTime': 'y'}, DateTime(2026)),
+      lessonNow({'BeginTime': 'x', 'EndTime': 'y'}, DateTime(2026)),
       isNull,
     );
+  });
+
+  test('buổi tối cũng có giải lao 18h20 - 18h30', () {
+    final toi = {'BeginTime': 'Tiết: 11', 'EndTime': 'Tiết: 14'};
+    expect(lessonNow(toi, DateTime(2026, 9, 21, 18, 25)), (
+      pha: LessonPhase.raChoi,
+      tiet: 13,
+      conPhut: 5,
+    ));
+    expect(khungGio(13, 13), ('18h30', '19h20'));
   });
 }
