@@ -58,10 +58,10 @@ class Nhac {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _sanSang = false;
 
-  /// Có bật nhắc không — mặc định bật, tắt hẳn thì dùng công tắc trong app
-  /// hoặc chặn thông báo của app ở phần Cài đặt của máy.
+  /// Có bật nhắc không — mặc định tắt. Thông báo là thứ tự nó chen vào máy
+  /// người ta nên phải do họ bật, đừng bật sẵn hộ.
   static Future<bool> bat() async =>
-      (await SharedPreferences.getInstance()).getBool(_khoa) ?? true;
+      (await SharedPreferences.getInstance()).getBool(_khoa) ?? false;
 
   static Future<void> datBat(bool v) async {
     (await SharedPreferences.getInstance()).setBool(_khoa, v);

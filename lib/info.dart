@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
+import 'graph.dart';
 import 'nhac.dart';
 import 'paper.dart';
 import 'portal.dart';
@@ -193,7 +194,7 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
                 ),
             ],
             const SizedBox(height: 20),
-            const _NhacToggle(),
+            _NhacToggle(session: widget.session, portal: widget.portal),
             const SizedBox(height: 20),
             PaperButton(label: 'Đăng xuất', onPressed: widget.onLogout),
             const SizedBox(height: 40),
@@ -204,10 +205,12 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
   );
 }
 
-/// Công tắc nhắc trước giờ vào lớp. Tắt ở đây thì xoá hết lịch hẹn đang
-/// chờ; bật lại thì lượt nạp sau đặt lại từ đầu.
+/// Công tắc nhắc trước giờ vào lớp. Mặc định tắt, tự bật mới có. Tắt ở đây
+/// thì xoá hết lịch hẹn đang chờ, bật thì hẹn lại ngay từ lịch trong cache.
 class _NhacToggle extends StatefulWidget {
-  const _NhacToggle();
+  const _NhacToggle({required this.session, this.portal});
+  final Session session;
+  final Portal? portal;
 
   @override
   State<_NhacToggle> createState() => _NhacToggleState();
@@ -240,6 +243,27 @@ class _NhacToggleState extends State<_NhacToggle> {
   Future<void> _doi(bool v) async {
     setState(() => _bat = v);
     await Nhac.datBat(v);
+    if (!v) return;
+    // Hẹn ngay chứ không đợi lượt mở app sau: bật xong mà tối nay chưa nhắc
+    // thì người dùng tưởng công tắc hỏng. Lịch đã có trong cache nên thường
+    // không đụng portal.
+    final now = DateTime.now();
+    final p = widget.portal ?? Portal();
+    final ngay = <DateTime, List<dynamic>>{};
+    for (final m in [
+      DateTime(now.year, now.month),
+      DateTime(now.year, now.month + 1),
+    ]) {
+      try {
+        final d = await fetchMonth(p, widget.session.token, m);
+        ngay.addAll({
+          for (final e in d.entries) DateTime(m.year, m.month, e.key): e.value,
+        });
+      } on PortalError {
+        // Thiếu một tháng thì vẫn hẹn được các buổi của tháng còn lại.
+      }
+    }
+    await Nhac.datLai(ngay);
   }
 
   @override
