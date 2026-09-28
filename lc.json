@@ -33,12 +33,12 @@
       },
       "versions": [
         {
-          "version": "1.0.2",
+          "version": "1.0.3",
           "buildVersion": "1",
-          "date": "2026-09-27",
+          "date": "2026-09-28",
           "localizedDescription": "Bản đầu tiên.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 11335571,
+          "size": 11332960,
           "minOSVersion": "15.0"
         }
       ]
