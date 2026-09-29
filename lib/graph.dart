@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 
+import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'clock.dart';
+import 'custom_lich.dart';
 import 'data.dart';
 import 'ics.dart';
 import 'paper.dart';
@@ -565,7 +567,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
   }
 }
 
-class _DayCard extends StatelessWidget {
+class _DayCard extends StatefulWidget {
   const _DayCard({
     required this.day,
     required this.items,
@@ -580,69 +582,464 @@ class _DayCard extends StatelessWidget {
   final VoidCallback? onToday;
 
   @override
-  Widget build(BuildContext context) => PaperBox(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${dayNames[day.weekday]}, ${day.day}/${day.month}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+  State<_DayCard> createState() => _DayCardState();
+}
+
+class _DayCardState extends State<_DayCard> {
+  List<CustomLich>? _rieng;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_DayCard old) {
+    super.didUpdateWidget(old);
+    if (old.day != widget.day) _load();
+  }
+
+  Future<void> _load() async {
+    final d = widget.day;
+    final r = await CustomLichStore.forDay(d);
+    if (mounted && d == widget.day) setState(() => _rieng = r);
+  }
+
+  Future<void> _them() async {
+    final item = await _hoiLichRieng(context);
+    if (item == null) return;
+    await CustomLichStore.add(widget.day, item);
+    await _load();
+  }
+
+  Future<void> _xoa(int i) async {
+    await CustomLichStore.remove(widget.day, i);
+    await _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rieng = _rieng ?? const <CustomLich>[];
+    return PaperBox(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${dayNames[widget.day.weekday]}, ${widget.day.day}/${widget.day.month}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Baloo',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: Paper.ink,
+                  ),
+                ),
+              ),
+              if (widget.onToday != null)
+                PaperButton(
+                  label: 'Xem ngày hôm nay',
+                  fontSize: 13,
+                  color: Paper.sky,
+                  onColor: Paper.ink,
+                  onPressed: widget.onToday!,
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (widget.loading)
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Skeleton(width: 190, height: 16),
+                SizedBox(height: 10),
+                Skeleton(width: 240, height: 24, radius: 12),
+                SizedBox(height: 10),
+                Skeleton(width: 130, height: 12),
+              ],
+            )
+          else if (widget.items.isEmpty && rieng.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Paper.sun,
+                border: Paper.border,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: Paper.shadow(3),
+              ),
+              child: const Text(
+                'Không có tiết',
+                style: TextStyle(
                   fontFamily: 'Baloo',
                   fontWeight: FontWeight.w800,
-                  fontSize: 18,
+                  fontSize: 20,
                   color: Paper.ink,
                 ),
               ),
-            ),
-            if (onToday != null)
-              PaperButton(
-                label: 'Xem ngày hôm nay',
-                fontSize: 13,
-                color: Paper.sky,
-                onColor: Paper.ink,
-                onPressed: onToday!,
+            )
+          else ...[
+            for (final (n, i) in widget.items.indexed)
+              _Lesson(
+                i,
+                delay: Duration(milliseconds: 70 * n),
+                now: widget.now,
               ),
+            for (final (n, c) in rieng.indexed)
+              _CustomLesson(c, onXoa: () => _xoa(n)),
           ],
-        ),
-        const SizedBox(height: 10),
-        if (loading)
-          const Column(
+          if (!widget.loading) ...[
+            const SizedBox(height: 10),
+            PaperButton(
+              label: 'Đặt lịch riêng',
+              fontSize: 13,
+              color: Paper.peach,
+              onColor: Paper.ink,
+              onPressed: _them,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Hỏi tiêu đề, giờ đi (bắt buộc) và giờ về (tuỳ chọn) cho một mục lịch tự đặt.
+Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
+  final ten = TextEditingController();
+  TimeOfDay? di;
+  TimeOfDay? ve;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 340),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Paper.paper,
+            border: Paper.border,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: Paper.shadow(6),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Skeleton(width: 190, height: 16),
-              SizedBox(height: 10),
-              Skeleton(width: 240, height: 24, radius: 12),
-              SizedBox(height: 10),
-              Skeleton(width: 130, height: 12),
+              const Text(
+                'Đặt lịch riêng',
+                style: TextStyle(
+                  fontFamily: 'Baloo',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: Paper.ink,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: Paper.card,
+                  border: Paper.border,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: Paper.shadow(3),
+                ),
+                child: TextField(
+                  controller: ten,
+                  autofocus: true,
+                  style: const TextStyle(
+                    fontFamily: 'Baloo',
+                    fontWeight: FontWeight.w700,
+                    color: Paper.ink,
+                  ),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: 'VD: Lên ATC',
+                    hintStyle: TextStyle(
+                      fontFamily: 'Baloo',
+                      fontWeight: FontWeight.w700,
+                      color: Paper.ink3,
+                    ),
+                    // 12+20+12 = 44pt, đủ ngưỡng chạm mà không phình ô.
+                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  Choice(
+                    label: di == null
+                        ? 'Giờ đi'
+                        : _gio(di!.hour * 60 + di!.minute),
+                    onTap: () async {
+                      final t = await _chonGio(
+                        ctx,
+                        di ?? const TimeOfDay(hour: 7, minute: 0),
+                      );
+                      if (t != null) setState(() => di = t);
+                    },
+                  ),
+                  Choice(
+                    label: ve == null
+                        ? 'Giờ về (tuỳ chọn)'
+                        : _gio(ve!.hour * 60 + ve!.minute),
+                    color: Paper.mint,
+                    onTap: () async {
+                      final t = await _chonGio(
+                        ctx,
+                        ve ?? const TimeOfDay(hour: 9, minute: 0),
+                      );
+                      if (t != null) setState(() => ve = t);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  PaperButton(
+                    label: 'Huỷ',
+                    color: Paper.card,
+                    onColor: Paper.ink,
+                    onPressed: () => Navigator.pop(ctx, false),
+                  ),
+                  const SizedBox(width: 8),
+                  PaperButton(
+                    label: 'Thêm',
+                    color: Paper.sun,
+                    onColor: Paper.ink,
+                    onPressed: () {
+                      if (ten.text.trim().isEmpty || di == null) return;
+                      Navigator.pop(ctx, true);
+                    },
+                  ),
+                ],
+              ),
             ],
-          )
-        else if (items.isEmpty)
-          Container(
-            color: Paper.sun,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-            child: const Text(
-              'Không có tiết',
+          ),
+        ),
+      ),
+    ),
+  );
+  if (ok != true || di == null) return null;
+  return CustomLich(
+    tieuDe: ten.text.trim(),
+    batDau: di!.hour * 60 + di!.minute,
+    ketThuc: ve == null ? null : ve!.hour * 60 + ve!.minute,
+  );
+}
+
+/// Chọn giờ kiểu giấy: hai bánh xe giờ/phút thay cho đồng hồ tròn mặc định
+/// của Material — cái đó không hợp phong cách viền dày, bóng cứng của app.
+Future<TimeOfDay?> _chonGio(BuildContext context, TimeOfDay initial) {
+  var h = initial.hour;
+  var m = initial.minute ~/ 5 * 5;
+  return showDialog<TimeOfDay>(
+    context: context,
+    builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 260),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Paper.paper,
+          border: Paper.border,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: Paper.shadow(6),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Chọn giờ',
               style: TextStyle(
                 fontFamily: 'Baloo',
                 fontWeight: FontWeight.w800,
-                fontSize: 30,
-                height: 1.25,
+                fontSize: 18,
                 color: Paper.ink,
               ),
             ),
-          )
-        else
-          for (final (n, i) in items.indexed)
-            _Lesson(
-              i,
-              delay: Duration(milliseconds: 70 * n),
-              now: now,
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 140,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Vạch giữa đánh dấu giá trị đang chọn, cùng kiểu viền
+                  // ink 2px với phần còn lại của app.
+                  Container(
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      border: Border.symmetric(
+                        horizontal: BorderSide(color: Paper.ink, width: 2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _BanhXeSo(
+                          count: 24,
+                          initial: h,
+                          onChanged: (v) => h = v,
+                        ),
+                      ),
+                      const Text(
+                        ':',
+                        style: TextStyle(
+                          fontFamily: 'Baloo',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 22,
+                          color: Paper.ink,
+                        ),
+                      ),
+                      Expanded(
+                        child: _BanhXeSo(
+                          count: 12,
+                          step: 5,
+                          initial: m,
+                          onChanged: (v) => m = v,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                PaperButton(
+                  label: 'Huỷ',
+                  color: Paper.card,
+                  onColor: Paper.ink,
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+                const SizedBox(width: 8),
+                PaperButton(
+                  label: 'Chọn',
+                  color: Paper.sun,
+                  onColor: Paper.ink,
+                  onPressed: () =>
+                      Navigator.pop(ctx, TimeOfDay(hour: h, minute: m)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Một bánh xe cuộn chọn số, kiểu giấy: chữ Baloo đậm, không viền mặc định
+/// của Cupertino.
+class _BanhXeSo extends StatelessWidget {
+  const _BanhXeSo({
+    required this.count,
+    required this.initial,
+    required this.onChanged,
+    this.step = 1,
+  });
+  final int count;
+  final int initial;
+  final int step;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) => CupertinoPicker(
+    itemExtent: 36,
+    scrollController: FixedExtentScrollController(initialItem: initial ~/ step),
+    onSelectedItemChanged: (i) => onChanged(i * step),
+    selectionOverlay: const SizedBox.shrink(),
+    children: [
+      for (var i = 0; i < count; i++)
+        Center(
+          child: Text(
+            (i * step).toString().padLeft(2, '0'),
+            style: const TextStyle(
+              fontFamily: 'Baloo',
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              color: Paper.ink,
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
+/// Một mục lịch tự đặt trong thẻ ngày — giống hàng buổi học nhưng không có
+/// tiết/phòng/GV, và có nút xoá vì đây là dữ liệu tự tay người dùng gõ.
+class _CustomLesson extends StatelessWidget {
+  const _CustomLesson(this.c, {required this.onXoa});
+  final CustomLich c;
+  final VoidCallback onXoa;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 46,
+          child: Text(
+            _gio(c.batDau),
+            style: const TextStyle(
+              fontFamily: 'Baloo',
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              color: Paper.ink,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                c.tieuDe,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Paper.ink,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Pill(
+                c.ketThuc == null
+                    ? 'Tự đặt · từ ${_gio(c.batDau)}'
+                    : 'Tự đặt · ${_gio(c.batDau)} - ${_gio(c.ketThuc!)}',
+                color: Paper.peach,
+              ),
+            ],
+          ),
+        ),
+        Semantics(
+          button: true,
+          label: 'Xoá lịch riêng',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onXoa,
+            child: const Padding(
+              padding: EdgeInsets.all(13),
+              child: Icon(Icons.close_rounded, size: 18, color: Paper.ink3),
+            ),
+          ),
+        ),
       ],
     ),
   );
