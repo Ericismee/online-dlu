@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
-import 'graph.dart';
-import 'nhac.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -194,8 +192,6 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
                 ),
             ],
             const SizedBox(height: 20),
-            _NhacToggle(session: widget.session, portal: widget.portal),
-            const SizedBox(height: 20),
             PaperButton(label: 'Đăng xuất', onPressed: widget.onLogout),
             const SizedBox(height: 40),
           ],
@@ -203,140 +199,6 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
       ),
     ),
   );
-}
-
-/// Công tắc nhắc trước giờ vào lớp. Mặc định tắt, tự bật mới có. Tắt ở đây
-/// thì xoá hết lịch hẹn đang chờ, bật thì hẹn lại ngay từ lịch trong cache.
-class _NhacToggle extends StatefulWidget {
-  const _NhacToggle({required this.session, this.portal});
-  final Session session;
-  final Portal? portal;
-
-  @override
-  State<_NhacToggle> createState() => _NhacToggleState();
-}
-
-class _NhacToggleState extends State<_NhacToggle> {
-  bool? _bat;
-
-  /// Máy có cho hẹn đúng phút không — không thì nhắc vẫn chạy nhưng được
-  /// phép trễ, nên phải nói thẳng ra chứ đừng hứa suông 15 phút.
-  bool _chinhXac = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _doc();
-  }
-
-  Future<void> _doc() async {
-    final bat = await Nhac.bat();
-    final chinhXac = await Nhac.chinhXacDuoc();
-    if (mounted) {
-      setState(() {
-        _bat = bat;
-        _chinhXac = chinhXac;
-      });
-    }
-  }
-
-  Future<void> _doi(bool v) async {
-    setState(() => _bat = v);
-    await Nhac.datBat(v);
-    if (!v) return;
-    // Hẹn ngay chứ không đợi lượt mở app sau: bật xong mà tối nay chưa nhắc
-    // thì người dùng tưởng công tắc hỏng. Lịch đã có trong cache nên thường
-    // không đụng portal.
-    final now = DateTime.now();
-    final p = widget.portal ?? Portal();
-    final ngay = <DateTime, List<dynamic>>{};
-    for (final m in [
-      DateTime(now.year, now.month),
-      DateTime(now.year, now.month + 1),
-    ]) {
-      try {
-        final d = await fetchMonth(p, widget.session.token, m);
-        ngay.addAll({
-          for (final e in d.entries) DateTime(m.year, m.month, e.key): e.value,
-        });
-      } on PortalError {
-        // Thiếu một tháng thì vẫn hẹn được các buổi của tháng còn lại.
-      }
-    }
-    await Nhac.datLai(ngay);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bat = _bat;
-    if (bat == null) return const Skeleton(height: 64, radius: 16, ink: true);
-    return Column(
-      children: [
-        PaperBox(
-          color: bat ? Paper.mint : Paper.card,
-          child: Row(
-            children: [
-              Icon(
-                bat
-                    ? Icons.notifications_active_rounded
-                    : Icons.notifications_off_rounded,
-                color: Paper.ink,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Nhắc trước giờ vào lớp',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: Paper.ink,
-                      ),
-                    ),
-                    Text(
-                      bat ? 'Báo trước 15 phút' : 'Đang tắt',
-                      style: const TextStyle(fontSize: 13, color: Paper.ink2),
-                    ),
-                  ],
-                ),
-              ),
-              Switch(
-                value: bat,
-                onChanged: _doi,
-                activeThumbColor: Paper.ink,
-                activeTrackColor: Paper.sun,
-              ),
-            ],
-          ),
-        ),
-        if (bat && !_chinhXac) ...[
-          const SizedBox(height: 10),
-          PaperBox(
-            color: Paper.peach,
-            onTap: () async {
-              await Nhac.xinChinhXac();
-              await _doc();
-            },
-            child: const Row(
-              children: [
-                Icon(Icons.alarm_rounded, color: Paper.ink),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Máy đang chặn báo thức chính xác nên nhắc có thể trễ. '
-                    'Bấm để mở phần cấp quyền.',
-                    style: TextStyle(fontSize: 13, color: Paper.ink),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
 }
 
 /// Thẻ đầu trang: tên + mã số + lớp.

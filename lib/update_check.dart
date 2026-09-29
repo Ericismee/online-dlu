@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -113,6 +114,104 @@ class _UpdateBannerState extends State<UpdateBanner> {
                   color: Paper.ink,
                   fontWeight: FontWeight.w700,
                 ),
+              ),
+            ),
+            IconButton(
+              onPressed: _dismiss,
+              icon: const Icon(Icons.close_rounded, color: Paper.ink2),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Changelog của bản đang cài, đọc từ `lc.json` đóng gói sẵn trong app —
+/// cùng nội dung AltStore/LiveContainer hiện lúc cài, khỏi phải gõ hai chỗ.
+class Changelog extends StatefulWidget {
+  const Changelog({super.key});
+
+  @override
+  State<Changelog> createState() => _ChangelogState();
+}
+
+class _ChangelogState extends State<Changelog> {
+  String? _text;
+  String? _version;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final raw = await rootBundle.loadString('lc.json');
+      final versions = (jsonDecode(raw)['apps'][0]['versions'] as List)
+          .cast<Map>();
+      final mine = (await PackageInfo.fromPlatform()).version;
+      final v = versions.firstWhere(
+        (v) => v['version'] == mine,
+        orElse: () => versions.first,
+      );
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getString('dismissed_changelog') == mine) return;
+      if (mounted) {
+        setState(() {
+          _text = v['localizedDescription'] as String;
+          _version = mine;
+        });
+      }
+    } catch (_) {
+      // Thiếu asset (test) hay JSON hỏng thì im lặng, khỏi hiện gì.
+    }
+  }
+
+  Future<void> _dismiss() async {
+    final v = _version;
+    setState(() => _text = null);
+    if (v != null) {
+      (await SharedPreferences.getInstance()).setString(
+        'dismissed_changelog',
+        v,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _text;
+    if (t == null || t.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: PaperBox(
+        color: Paper.card,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.new_releases_rounded, color: Paper.ink),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Có gì mới',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: Paper.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    t,
+                    style: const TextStyle(fontSize: 13, color: Paper.ink2),
+                  ),
+                ],
               ),
             ),
             IconButton(

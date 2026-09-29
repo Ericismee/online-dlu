@@ -1,3 +1,4 @@
+import 'package:dlu_tkb/custom_lich.dart';
 import 'package:dlu_tkb/graph.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -187,5 +188,49 @@ void main() {
       conPhut: 5,
     ));
     expect(khungGio(13, 13), ('18h30', '19h20'));
+  });
+
+  test('customLessonNow đi qua chưa vào / đang học / xong theo phút', () {
+    const c = CustomLich(tieuDe: 'ATC', batDau: 420, ketThuc: 480); // 7h-8h
+    expect(
+      customLessonNow(c, DateTime(2026, 9, 21, 6, 50))?.pha,
+      LessonPhase.chuaVao,
+    );
+    expect(
+      customLessonNow(c, DateTime(2026, 9, 21, 7, 30))?.pha,
+      LessonPhase.dangHoc,
+    );
+    expect(
+      customLessonNow(c, DateTime(2026, 9, 21, 8, 30))?.pha,
+      LessonPhase.xong,
+    );
+    // Không có giờ về thì cứ coi như đang diễn ra, không tự "xong".
+    const moGio = CustomLich(tieuDe: 'ATC', batDau: 420);
+    expect(
+      customLessonNow(moGio, DateTime(2026, 9, 21, 20, 0))?.pha,
+      LessonPhase.dangHoc,
+    );
+  });
+
+  test('ganLichTrongNgay gộp lịch chính quy và tự đặt theo đúng giờ vào', () {
+    final tiet1 = {'BeginTime': 'Tiết: 1', 'EndTime': 'Tiết: 2'}; // 7h30
+    final tiet7 = {'BeginTime': 'Tiết: 7', 'EndTime': 'Tiết: 8'}; // 13h00
+    const somAC = CustomLich(tieuDe: 'ABC', batDau: 420, ketThuc: 540); // 7h00
+    const toiXYZ = CustomLich(tieuDe: 'XYZ', batDau: 1000, ketThuc: 1060);
+    expect(ganLichTrongNgay([tiet1, tiet7], [somAC, toiXYZ]), [
+      somAC,
+      tiet1,
+      tiet7,
+      toiXYZ,
+    ]);
+  });
+
+  test('ketiepRieng chọn mục sớm nhất chưa xong, bỏ mục đã xong', () {
+    final now = DateTime(2026, 9, 21, 9, 0);
+    const daXong = CustomLich(tieuDe: 'Xong', batDau: 420, ketThuc: 480);
+    const dangToi = CustomLich(tieuDe: 'Chiều', batDau: 900, ketThuc: 960);
+    const gioHon = CustomLich(tieuDe: 'Sáng muộn', batDau: 600, ketThuc: 660);
+    expect(ketiepRieng([daXong, dangToi, gioHon], now)?.tieuDe, 'Sáng muộn');
+    expect(ketiepRieng([daXong], now), isNull);
   });
 }

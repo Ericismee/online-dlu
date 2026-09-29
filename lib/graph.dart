@@ -158,6 +158,24 @@ LessonNow? lessonNow(dynamic item, DateTime now) {
   LessonPhase.xong => ('Xong', Paper.paper),
 };
 
+/// Bản [phaseTag] cho lịch tự đặt — không có số tiết nên đừng nhắc "lớp"
+/// hay "tiết", chỉ nói tới giờ đi/về do người dùng tự gõ.
+(String, Color) phaseTagRieng(LessonNow n) => switch (n.pha) {
+  LessonPhase.chuaVao => ('Chưa tới giờ', Paper.card),
+  LessonPhase.dangHoc => ('Đang diễn ra', Paper.mint),
+  LessonPhase.raChoi => ('Ra chơi', Paper.sun),
+  LessonPhase.xong => ('Xong', Paper.paper),
+};
+
+/// Gộp lịch chính quy và lịch tự đặt của một ngày rồi sắp theo giờ vào —
+/// hiển thị đúng thứ tự thời gian thay vì luôn đẩy lịch tự đặt xuống cuối.
+List<Object> ganLichTrongNgay(List<dynamic> items, List<CustomLich> rieng) {
+  int gioVao(Object o) => o is CustomLich
+      ? o.batDau
+      : (batDauPhut(tietNo((o as dynamic)['BeginTime'])) ?? 0);
+  return [...items, ...rieng]..sort((a, b) => gioVao(a).compareTo(gioVao(b)));
+}
+
 /// Sắp phải đi rồi: còn 15 phút hoặc ít hơn tới giờ vào lớp.
 bool sapToiGio(dynamic item, DateTime now) {
   final n = lessonNow(item, now);
@@ -181,6 +199,44 @@ String? demNguoc(dynamic item, DateTime now) {
     LessonPhase.dangHoc => 'Còn ${_khoang(n!.conPhut)} nữa',
     LessonPhase.raChoi => 'Vào tiết ${n!.tiet} sau ${_khoang(n.conPhut)}',
   };
+}
+
+/// Bản [lessonNow] cho lịch tự đặt: giờ tính thẳng bằng phút, không tra bảng
+/// tiết. Không có "ra chơi" vì chỉ có một khối giờ đi-về, không chia tiết.
+/// Không biết giờ về thì coi như đang diễn ra tới khi người dùng tự xoá.
+LessonNow? customLessonNow(CustomLich c, DateTime now) {
+  final phut = now.hour * 60 + now.minute;
+  if (phut < c.batDau) {
+    return (pha: LessonPhase.chuaVao, tiet: null, conPhut: c.batDau - phut);
+  }
+  final ket = c.ketThuc;
+  if (ket == null) return (pha: LessonPhase.dangHoc, tiet: null, conPhut: 0);
+  if (phut < ket) {
+    return (pha: LessonPhase.dangHoc, tiet: null, conPhut: ket - phut);
+  }
+  return (pha: LessonPhase.xong, tiet: null, conPhut: 0);
+}
+
+/// [demNguoc] cho lịch tự đặt.
+String? demNguocRieng(CustomLich c, DateTime now) {
+  final n = customLessonNow(c, now);
+  return switch (n?.pha) {
+    null || LessonPhase.xong => null,
+    LessonPhase.chuaVao || LessonPhase.dangHoc =>
+      c.ketThuc == null && n!.pha == LessonPhase.dangHoc
+          ? null
+          : 'Còn ${_khoang(n!.conPhut)} nữa',
+    LessonPhase.raChoi => null,
+  };
+}
+
+/// Lịch tự đặt còn hiệu lực gần nhất trong ngày (chưa "xong"), theo giờ đi.
+CustomLich? ketiepRieng(List<CustomLich> rieng, DateTime now) {
+  final sorted = [...rieng]..sort((a, b) => a.batDau.compareTo(b.batDau));
+  for (final c in sorted) {
+    if (customLessonNow(c, now)?.pha != LessonPhase.xong) return c;
+  }
+  return null;
 }
 
 /// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối).
@@ -683,14 +739,20 @@ class _DayCardState extends State<_DayCard> {
               ),
             )
           else ...[
-            for (final (n, i) in widget.items.indexed)
-              _Lesson(
-                i,
-                delay: Duration(milliseconds: 70 * n),
-                now: widget.now,
-              ),
-            for (final (n, c) in rieng.indexed)
-              _CustomLesson(c, onXoa: () => _xoa(n)),
+            for (final (n, x) in ganLichTrongNgay(widget.items, rieng).indexed)
+              if (x is CustomLich)
+                _LessonRieng(
+                  x,
+                  delay: Duration(milliseconds: 70 * n),
+                  now: widget.now,
+                  onXoa: () => _xoa(rieng.indexOf(x)),
+                )
+              else
+                _Lesson(
+                  x,
+                  delay: Duration(milliseconds: 70 * n),
+                  now: widget.now,
+                ),
           ],
           if (!widget.loading) ...[
             const SizedBox(height: 10),
@@ -980,71 +1042,6 @@ class _BanhXeSo extends StatelessWidget {
   );
 }
 
-/// Một mục lịch tự đặt trong thẻ ngày — giống hàng buổi học nhưng không có
-/// tiết/phòng/GV, và có nút xoá vì đây là dữ liệu tự tay người dùng gõ.
-class _CustomLesson extends StatelessWidget {
-  const _CustomLesson(this.c, {required this.onXoa});
-  final CustomLich c;
-  final VoidCallback onXoa;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 46,
-          child: Text(
-            _gio(c.batDau),
-            style: const TextStyle(
-              fontFamily: 'Baloo',
-              fontWeight: FontWeight.w800,
-              fontSize: 13,
-              color: Paper.ink,
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                c.tieuDe,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Paper.ink,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Pill(
-                c.ketThuc == null
-                    ? 'Tự đặt · từ ${_gio(c.batDau)}'
-                    : 'Tự đặt · ${_gio(c.batDau)} - ${_gio(c.ketThuc!)}',
-                color: Paper.peach,
-              ),
-            ],
-          ),
-        ),
-        Semantics(
-          button: true,
-          label: 'Xoá lịch riêng',
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onXoa,
-            child: const Padding(
-              padding: EdgeInsets.all(13),
-              child: Icon(Icons.close_rounded, size: 18, color: Paper.ink3),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 class _Lesson extends StatelessWidget {
   const _Lesson(this.i, {this.delay = Duration.zero, this.now});
   final dynamic i;
@@ -1135,6 +1132,185 @@ class _Lesson extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Một lịch tự đặt — cùng khung timeline và nhãn trạng thái/đếm ngược như
+/// [_Lesson], không có tiết/phòng/GV. Có [onXoa] thì hiện nút xoá (thẻ ngày
+/// trong Lịch), không thì thôi (danh sách hôm nay/mai ở Trang chủ).
+class _LessonRieng extends StatelessWidget {
+  const _LessonRieng(
+    this.c, {
+    this.delay = Duration.zero,
+    this.now,
+    this.onXoa,
+  });
+  final CustomLich c;
+  final Duration delay;
+  final DateTime? now;
+  final VoidCallback? onXoa;
+
+  @override
+  Widget build(BuildContext context) {
+    final pha = now == null ? null : customLessonNow(c, now!);
+    return PopIn(
+      delay: delay,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 46,
+                child: Column(
+                  children: [
+                    Text(
+                      _gio(c.batDau),
+                      style: const TextStyle(
+                        fontFamily: 'Baloo',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: Paper.ink,
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Container(
+                          width: 2,
+                          margin: const EdgeInsets.symmetric(vertical: 3),
+                          color: Paper.ink3,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      c.ketThuc == null ? '—' : _gio(c.ketThuc!),
+                      style: const TextStyle(fontSize: 13, color: Paper.ink3),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      c.tieuDe,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Paper.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        if (pha != null)
+                          Pill(
+                            phaseTagRieng(pha).$1,
+                            color: phaseTagRieng(pha).$2,
+                          ),
+                        const Pill('Tự đặt', color: Paper.peach),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (onXoa != null)
+                Semantics(
+                  button: true,
+                  label: 'Xoá lịch riêng',
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onXoa,
+                    child: const Padding(
+                      padding: EdgeInsets.all(13),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: Paper.ink3,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bản [_TietKe] cho lịch tự đặt — chỉ hiện khi lịch chính quy hôm nay đã
+/// tan hết, vẫn giữ đúng ưu tiên lịch chính quy phía trên.
+class _TietKeRieng extends StatelessWidget {
+  const _TietKeRieng({required this.c, required this.now});
+  final CustomLich c;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final con = demNguocRieng(c, now);
+    final pha = customLessonNow(c, now);
+    final mau = pha == null ? Paper.card : phaseTagRieng(pha).$2;
+    return PaperBox(
+      color: Paper.sun,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Pill(pha == null ? 'Sắp tới' : phaseTagRieng(pha).$1, color: mau),
+              if (con != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    con,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Baloo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Paper.ink,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            c.tieuDe,
+            style: const TextStyle(
+              fontFamily: 'Baloo',
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              height: 1.15,
+              color: Paper.ink,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              Pill(
+                c.ketThuc == null
+                    ? 'Từ ${_gio(c.batDau)}'
+                    : '${_gio(c.batDau)} - ${_gio(c.ketThuc!)}',
+                color: Paper.card,
+              ),
+              const Pill('Tự đặt', color: Paper.card),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1351,6 +1527,12 @@ class _TodayLessonsState extends State<TodayLessons>
   DateTime? _thang;
   bool _dangTai = false;
 
+  /// Lịch tự đặt của đúng ngày đang hiện — nạp lại mỗi khi qua ngày mới.
+  DateTime? _riengNgay;
+  List<CustomLich> _riengHomNay = const [];
+  List<CustomLich> _riengMai = const [];
+  bool _riengDangTai = false;
+
   @override
   void initState() {
     super.initState();
@@ -1397,6 +1579,22 @@ class _TodayLessonsState extends State<TodayLessons>
     };
   }
 
+  Future<void> _loadRieng(DateTime homNay) async {
+    _riengDangTai = true;
+    final homNayList = await CustomLichStore.forDay(homNay);
+    final maiList = await CustomLichStore.forDay(
+      homNay.add(const Duration(days: 1)),
+    );
+    _riengDangTai = false;
+    if (mounted) {
+      setState(() {
+        _riengNgay = homNay;
+        _riengHomNay = homNayList;
+        _riengMai = maiList;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Ticker(
     builder: (context, now) {
@@ -1419,17 +1617,40 @@ class _TodayLessonsState extends State<TodayLessons>
       final maiItems = ke == null
           ? (_ngay![homNay.add(const Duration(days: 1))] ?? const [])
           : const [];
-      if (items.isEmpty && maiItems.isEmpty) return const SizedBox.shrink();
+      if (_riengNgay != homNay && !_riengDangTai) {
+        scheduleMicrotask(() => _loadRieng(homNay));
+      }
+      final riengHomNay = _riengNgay == homNay
+          ? _riengHomNay
+          : const <CustomLich>[];
+      final riengMai = _riengNgay == homNay ? _riengMai : const <CustomLich>[];
+      // Lịch chính quy luôn ưu tiên: chỉ nhìn qua lịch tự đặt khi hôm nay đã
+      // tan hết (hoặc trống lịch chính) mà chưa có mục tự đặt nào xong.
+      final keRieng = ke == null ? ketiepRieng(riengHomNay, now) : null;
+      if (items.isEmpty &&
+          maiItems.isEmpty &&
+          riengHomNay.isEmpty &&
+          riengMai.isEmpty) {
+        return const SizedBox.shrink();
+      }
       return Padding(
         padding: const EdgeInsets.only(bottom: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (items.isNotEmpty)
-              _Ngay(tieuDe: 'Hôm nay', items: items, ke: ke, now: now),
-            if (maiItems.isNotEmpty) ...[
-              if (items.isNotEmpty) const SizedBox(height: 20),
-              _Ngay(tieuDe: 'Ngày mai', items: maiItems),
+            if (items.isNotEmpty || riengHomNay.isNotEmpty)
+              _Ngay(
+                tieuDe: 'Hôm nay',
+                items: items,
+                rieng: riengHomNay,
+                ke: ke,
+                keRieng: keRieng,
+                now: now,
+              ),
+            if (maiItems.isNotEmpty || riengMai.isNotEmpty) ...[
+              if (items.isNotEmpty || riengHomNay.isNotEmpty)
+                const SizedBox(height: 20),
+              _Ngay(tieuDe: 'Ngày mai', items: maiItems, rieng: riengMai),
             ],
           ],
         ),
@@ -1441,10 +1662,19 @@ class _TodayLessonsState extends State<TodayLessons>
 /// Một ngày trên Trang chủ: tiêu đề, thẻ nổi cho buổi sắp tới rồi cả danh
 /// sách. Ngày mai thì [now] để null — chưa tới nên chưa có trạng thái gì.
 class _Ngay extends StatelessWidget {
-  const _Ngay({required this.tieuDe, required this.items, this.ke, this.now});
+  const _Ngay({
+    required this.tieuDe,
+    required this.items,
+    this.rieng = const [],
+    this.ke,
+    this.keRieng,
+    this.now,
+  });
   final String tieuDe;
   final List<dynamic> items;
+  final List<CustomLich> rieng;
   final dynamic ke;
+  final CustomLich? keRieng;
   final DateTime? now;
 
   @override
@@ -1464,20 +1694,31 @@ class _Ngay extends StatelessWidget {
       if (ke != null && now != null) ...[
         _TietKe(item: ke, now: now!),
         const SizedBox(height: 10),
+      ] else if (keRieng != null && now != null) ...[
+        _TietKeRieng(c: keRieng!, now: now!),
+        const SizedBox(height: 10),
       ],
-      PaperBox(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final (n, i) in items.indexed)
-              _Lesson(
-                i,
-                delay: Duration(milliseconds: 70 * n),
-                now: now,
-              ),
-          ],
+      if (items.isNotEmpty || rieng.isNotEmpty)
+        PaperBox(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (n, x) in ganLichTrongNgay(items, rieng).indexed)
+                if (x is CustomLich)
+                  _LessonRieng(
+                    x,
+                    delay: Duration(milliseconds: 70 * n),
+                    now: now,
+                  )
+                else
+                  _Lesson(
+                    x,
+                    delay: Duration(milliseconds: 70 * n),
+                    now: now,
+                  ),
+            ],
+          ),
         ),
-      ),
     ],
   );
 }

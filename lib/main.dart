@@ -18,6 +18,7 @@ import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
 import 'prefetch.dart';
+import 'settings.dart';
 import 'update_check.dart';
 
 Future<void> main() async {
@@ -69,6 +70,9 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   String? _error;
   bool _checking = true;
 
+  /// Đang bị khoá (đã bật khoá sinh trắc học và vừa quay lại từ nền).
+  bool _locked = false;
+
   @override
   void initState() {
     super.initState();
@@ -86,12 +90,25 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   /// tải chạy song song. Token còn hạn thì khỏi đăng nhập lại.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Xuống nền thì khoá ngay nếu đã bật — đợi tới lúc resumed mới khoá thì
+    // app đã kịp hiện lại một khung hình dữ liệu trước khi khoá.
+    if (state == AppLifecycleState.paused) {
+      unawaited(_khoaNeuBat());
+      return;
+    }
     if (state != AppLifecycleState.resumed) return;
+    if (_locked) return; // đợi mở khoá xong mới nạp lại số mới
     final s = _session;
     if (s == null || !s.valid) {
       _resume();
     } else {
       unawaited(_napSan(s));
+    }
+  }
+
+  Future<void> _khoaNeuBat() async {
+    if (_session != null && await Settings.khoaBat() && mounted) {
+      setState(() => _locked = true);
     }
   }
 
@@ -172,6 +189,9 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
           }
         },
       );
+    }
+    if (_locked) {
+      return AppLockScreen(onUnlocked: () => setState(() => _locked = false));
     }
     return Shell(
       session: _session!,
@@ -416,6 +436,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
               ),
               const SizedBox(height: 16),
               const UpdateBanner(),
+              const Changelog(),
               // Các thẻ hiện ra lần lượt cho đỡ khô khan.
               PopIn(
                 child: _Me(session: widget.session, lop: _lop),
@@ -645,6 +666,8 @@ class _Menu extends StatelessWidget {
     (-4, Icons.fact_check_rounded, 'Phiếu rèn luyện', Paper.mint),
     (-3, Icons.school_rounded, 'Chương trình đào tạo', Paper.sky),
     (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
+    // Luôn để cuối danh sách: đây là mục cấu hình, không phải dữ liệu trường.
+    (-5, Icons.settings_rounded, 'Cài đặt', Paper.card),
   ];
 
   @override
@@ -679,6 +702,7 @@ class _Menu extends StatelessWidget {
                         -1 => CoursesTab(session: session),
                         -2 => BehaviorScreen(session: session),
                         -4 => BehaviorDetailScreen(session: session),
+                        -5 => SettingsScreen(session: session),
                         _ => CurriculumScreen(session: session),
                       },
                     ),
