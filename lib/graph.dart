@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'cache.dart';
 import 'clock.dart';
 import 'custom_lich.dart';
 import 'data.dart';
@@ -667,11 +668,13 @@ class _DayCardState extends State<_DayCard> {
     if (item == null) return;
     await CustomLichStore.add(widget.day, item);
     await _load();
+    Cache.reloadAll();
   }
 
   Future<void> _xoa(int i) async {
     await CustomLichStore.remove(widget.day, i);
     await _load();
+    Cache.reloadAll();
   }
 
   @override
@@ -1518,7 +1521,11 @@ class TodayLessons extends StatefulWidget {
 class _TodayLessonsState extends State<TodayLessons>
     with Reloadable<TodayLessons> {
   @override
-  Future<void> reload() => _load(DateTime.now(), lai: true);
+  Future<void> reload() async {
+    // Lịch tự đặt có thể vừa bị xoá/thêm ở tab khác — huỷ cache để nạp lại.
+    _riengNgay = null;
+    await _load(DateTime.now(), lai: true);
+  }
 
   /// Lịch theo ngày tuyệt đối, gồm tháng này và tháng sau. Nạp sẵn cả khối
   /// nên 0h00 qua ngày mới là hiện luôn tiết hôm sau, và ngày cuối tháng
@@ -1624,9 +1631,9 @@ class _TodayLessonsState extends State<TodayLessons>
           ? _riengHomNay
           : const <CustomLich>[];
       final riengMai = _riengNgay == homNay ? _riengMai : const <CustomLich>[];
-      // Lịch chính quy luôn ưu tiên: chỉ nhìn qua lịch tự đặt khi hôm nay đã
-      // tan hết (hoặc trống lịch chính) mà chưa có mục tự đặt nào xong.
-      final keRieng = ke == null ? ketiepRieng(riengHomNay, now) : null;
+      // Cả hai đều đáng nhắc: lịch chính quy hiện trước, lịch tự đặt thêm
+      // bên dưới chứ không bị lịch chính quy che mất.
+      final keRieng = ketiepRieng(riengHomNay, now);
       if (items.isEmpty &&
           maiItems.isEmpty &&
           riengHomNay.isEmpty &&
@@ -1657,6 +1664,14 @@ class _TodayLessonsState extends State<TodayLessons>
       );
     },
   );
+}
+
+/// Lịch tự đặt có tới trước lịch chính quy không — quyết định thẻ nào hiện
+/// trước trong [_Ngay].
+bool _riengTruoc(dynamic ke, CustomLich? keRieng) {
+  if (keRieng == null) return false;
+  if (ke == null) return true;
+  return keRieng.batDau < (batDauPhut(tietNo(ke['BeginTime'])) ?? 0);
 }
 
 /// Một ngày trên Trang chủ: tiêu đề, thẻ nổi cho buổi sắp tới rồi cả danh
@@ -1691,10 +1706,17 @@ class _Ngay extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 10),
+      // Giờ nào tới trước thì thẻ đó hiện trước, không cố định lịch chính
+      // quy luôn ở trên.
+      if (now != null && _riengTruoc(ke, keRieng)) ...[
+        _TietKeRieng(c: keRieng!, now: now!),
+        const SizedBox(height: 10),
+      ],
       if (ke != null && now != null) ...[
         _TietKe(item: ke, now: now!),
         const SizedBox(height: 10),
-      ] else if (keRieng != null && now != null) ...[
+      ],
+      if (now != null && keRieng != null && !_riengTruoc(ke, keRieng)) ...[
         _TietKeRieng(c: keRieng!, now: now!),
         const SizedBox(height: 10),
       ],
