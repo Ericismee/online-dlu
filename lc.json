@@ -33,12 +33,12 @@
       },
       "versions": [
         {
-          "version": "1.0.5",
+          "version": "1.0.6",
           "buildVersion": "1",
           "date": "2026-09-29",
           "localizedDescription": "Đặt lịch riêng cho ngày trống hoặc ngày đã có lịch học, xoá được lịch riêng, giao diện chọn giờ và ô nhập theo đúng phong cách app.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 11564877,
+          "size": 11620377,
           "minOSVersion": "15.0"
         }
       ]
