@@ -41,9 +41,12 @@ class Cache {
   static Future<void> refreshAll() async {
     refreshedAt = DateTime.now();
     bypass = true;
-    // Vòng làm mới này giao lại số cho mọi màn đang mở; màn nào hỏng thì
-    // không ghi mốc, chip lùi về mốc cũ nhất còn lại.
-    served.clear();
+    // Không xoá `served` trước — mỗi đường dẫn tự ghi đè mốc của nó khi
+    // `_cached` chạy xong (số mới nếu thành công, số cũ nếu lỗi), nên
+    // không cần dọn trước. Xoá trước sẽ để lại một khoảng trống: màn nào
+    // đọc syncedAt đúng lúc đang làm mới (vd Trang chủ tự vẽ lại mỗi giây)
+    // sẽ thấy map rỗng hoặc chỉ mới vài đường dẫn ghi lại, hiện sai mốc
+    // thay vì mốc cũ ổn định.
     try {
       await Future.wait(refreshers.map((f) => f()));
     } finally {

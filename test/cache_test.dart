@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -110,6 +111,38 @@ void main() {
     final cu = await portal.behaviorScores('t');
     expect(calls, 3);
     expect(cu.first['LastScore'], 90);
+  });
+
+  test('đang làm mới thì syncedAt vẫn đứng yên, không rớt về rỗng', () async {
+    final portal = Portal(
+      client: MockClient((_) async {
+        return http.Response.bytes(
+          utf8.encode(
+            jsonEncode([
+              {'LastScore': 90},
+            ]),
+          ),
+          200,
+        );
+      }),
+    );
+    await portal.behaviorScores('t');
+    final truoc = Cache.syncedAt;
+    expect(truoc, isNotNull);
+
+    // Refresher cố tình chờ lâu để lộ khoảng hở giữa lúc bắt đầu làm mới
+    // và lúc portal trả về — đúng lúc này mà màn nào đó đọc syncedAt thì
+    // không được thấy rỗng hay mốc lạ.
+    final cho = Completer<void>();
+    Cache.refreshers.add(() async {
+      await cho.future;
+      await portal.behaviorScores('t');
+    });
+    final dangChay = Cache.refreshAll();
+    expect(Cache.syncedAt, truoc);
+    cho.complete();
+    await dangChay;
+    Cache.refreshers.clear();
   });
 
   test('portal lỗi giữa lượt làm mới thì giữ số cũ, không xoá màn', () async {
