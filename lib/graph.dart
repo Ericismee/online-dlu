@@ -204,7 +204,9 @@ String? demNguoc(dynamic item, DateTime now) {
 
 /// Bản [lessonNow] cho lịch tự đặt: giờ tính thẳng bằng phút, không tra bảng
 /// tiết. Không có "ra chơi" vì chỉ có một khối giờ đi-về, không chia tiết.
-/// Không biết giờ về thì coi như đang diễn ra tới khi người dùng tự xoá.
+/// Không biết giờ về thì coi như đang diễn ra cả ngày lưu nó — lưu theo
+/// khoá ngày nên qua hôm sau tự không còn hiện nữa; đánh dấu xong sớm hơn
+/// trong ngày thì bấm nút "Đã xong".
 LessonNow? customLessonNow(CustomLich c, DateTime now) {
   final phut = now.hour * 60 + now.minute;
   if (phut < c.batDau) {
@@ -1253,9 +1255,13 @@ class _LessonRieng extends StatelessWidget {
 /// Bản [_TietKe] cho lịch tự đặt — chỉ hiện khi lịch chính quy hôm nay đã
 /// tan hết, vẫn giữ đúng ưu tiên lịch chính quy phía trên.
 class _TietKeRieng extends StatelessWidget {
-  const _TietKeRieng({required this.c, required this.now});
+  const _TietKeRieng({required this.c, required this.now, this.onXong});
   final CustomLich c;
   final DateTime now;
+
+  /// Đánh dấu xong ngay — chỉ đưa vào khi mục này chưa đặt giờ về, vì có
+  /// giờ về rồi thì tự "xong" đúng lúc, khỏi cần bấm.
+  final VoidCallback? onXong;
 
   @override
   Widget build(BuildContext context) {
@@ -1313,6 +1319,16 @@ class _TietKeRieng extends StatelessWidget {
               const Pill('Tự đặt', color: Paper.card),
             ],
           ),
+          if (c.ketThuc == null && onXong != null) ...[
+            const SizedBox(height: 10),
+            PaperButton(
+              label: 'Đã xong',
+              fontSize: 13,
+              color: Paper.mint,
+              onColor: Paper.ink,
+              onPressed: onXong!,
+            ),
+          ],
         ],
       ),
     );
@@ -1602,6 +1618,26 @@ class _TodayLessonsState extends State<TodayLessons>
     }
   }
 
+  /// Đánh dấu một mục tự đặt chưa có giờ về là xong ngay bây giờ, thay vì
+  /// chờ tự "xong" lúc 0h — gán luôn giờ về là giờ hiện tại.
+  Future<void> _danhDauXongRieng(DateTime homNay, int index) async {
+    final list = await CustomLichStore.forDay(homNay);
+    if (index >= list.length) return;
+    final c = list[index];
+    final gio = DateTime.now();
+    await CustomLichStore.update(
+      homNay,
+      index,
+      CustomLich(
+        tieuDe: c.tieuDe,
+        batDau: c.batDau,
+        ketThuc: gio.hour * 60 + gio.minute,
+      ),
+    );
+    await _loadRieng(homNay);
+    Cache.reloadAll();
+  }
+
   @override
   Widget build(BuildContext context) => Ticker(
     builder: (context, now) {
@@ -1634,6 +1670,7 @@ class _TodayLessonsState extends State<TodayLessons>
       // Cả hai đều đáng nhắc: lịch chính quy hiện trước, lịch tự đặt thêm
       // bên dưới chứ không bị lịch chính quy che mất.
       final keRieng = ketiepRieng(riengHomNay, now);
+      final keRiengIdx = keRieng == null ? -1 : riengHomNay.indexOf(keRieng);
       if (items.isEmpty &&
           maiItems.isEmpty &&
           riengHomNay.isEmpty &&
@@ -1652,6 +1689,9 @@ class _TodayLessonsState extends State<TodayLessons>
                 rieng: riengHomNay,
                 ke: ke,
                 keRieng: keRieng,
+                onXongRieng: keRiengIdx < 0
+                    ? null
+                    : () => _danhDauXongRieng(homNay, keRiengIdx),
                 now: now,
               ),
             if (maiItems.isNotEmpty || riengMai.isNotEmpty) ...[
@@ -1683,6 +1723,7 @@ class _Ngay extends StatelessWidget {
     this.rieng = const [],
     this.ke,
     this.keRieng,
+    this.onXongRieng,
     this.now,
   });
   final String tieuDe;
@@ -1690,6 +1731,7 @@ class _Ngay extends StatelessWidget {
   final List<CustomLich> rieng;
   final dynamic ke;
   final CustomLich? keRieng;
+  final VoidCallback? onXongRieng;
   final DateTime? now;
 
   @override
@@ -1709,7 +1751,7 @@ class _Ngay extends StatelessWidget {
       // Giờ nào tới trước thì thẻ đó hiện trước, không cố định lịch chính
       // quy luôn ở trên.
       if (now != null && _riengTruoc(ke, keRieng)) ...[
-        _TietKeRieng(c: keRieng!, now: now!),
+        _TietKeRieng(c: keRieng!, now: now!, onXong: onXongRieng),
         const SizedBox(height: 10),
       ],
       if (ke != null && now != null) ...[
@@ -1717,7 +1759,7 @@ class _Ngay extends StatelessWidget {
         const SizedBox(height: 10),
       ],
       if (now != null && keRieng != null && !_riengTruoc(ke, keRieng)) ...[
-        _TietKeRieng(c: keRieng!, now: now!),
+        _TietKeRieng(c: keRieng!, now: now!, onXong: onXongRieng),
         const SizedBox(height: 10),
       ],
       if (items.isNotEmpty || rieng.isNotEmpty)

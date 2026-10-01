@@ -33,4 +33,18 @@ void main() {
     expect(list, hasLength(1));
     expect(list.first.tieuDe, 'B');
   });
+
+  test('update ghi đè đúng mục theo chỉ số, không đụng mục khác', () async {
+    final d = DateTime(2026, 9, 29);
+    await CustomLichStore.add(d, const CustomLich(tieuDe: 'A', batDau: 420));
+    await CustomLichStore.add(d, const CustomLich(tieuDe: 'B', batDau: 480));
+    await CustomLichStore.update(
+      d,
+      0,
+      const CustomLich(tieuDe: 'A', batDau: 420, ketThuc: 500),
+    );
+    final list = await CustomLichStore.forDay(d);
+    expect(list[0].ketThuc, 500);
+    expect(list[1].tieuDe, 'B');
+  });
 }

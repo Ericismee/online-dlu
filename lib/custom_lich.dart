@@ -65,4 +65,12 @@ class CustomLichStore {
     if (list.isEmpty) all.remove(_key(d));
     await _save(all);
   }
+
+  static Future<void> update(DateTime d, int index, CustomLich item) async {
+    final all = await _all();
+    final list = all[_key(d)];
+    if (list == null || index >= list.length) return;
+    list[index] = item;
+    await _save(all);
+  }
 }
