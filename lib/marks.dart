@@ -660,7 +660,6 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
   }
 }
 
-
 /// Cải thiện GPA: nơi gợi ý, không phải máy tính. Tự xếp hạng môn đang kéo
 /// GPA xuống mạnh nhất và chọn sẵn mấy môn đáng học lại nhất; thêm được môn
 /// tự do (chưa học) để xem học thêm thì GPA đi tới đâu.
@@ -719,9 +718,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
 
   dynamic get _record {
     final keys = termKeys(_years ?? const []);
-    return keys.isEmpty
-        ? null
-        : subjectsOf(_years!, keys.first).firstOrNull;
+    return keys.isEmpty ? null : subjectsOf(_years!, keys.first).firstOrNull;
   }
 
   double get _gpa => toNum(_record?['TB_TL_TN']).toDouble();
@@ -1044,11 +1041,9 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                   label: 'Điểm dự kiến $diem',
                   color: Paper.mint,
                   onTap: () async {
-                    final g = await chooseOption(
-                      ctx,
-                      [for (final t in thang4) t.$1],
-                      diem,
-                    );
+                    final g = await chooseOption(ctx, [
+                      for (final t in thang4) t.$1,
+                    ], diem);
                     if (g != null) setState(() => diem = g);
                   },
                 ),
@@ -1247,10 +1242,7 @@ class _GoiYCard extends StatelessWidget {
                     ),
                     Text(
                       '${goiY.ky} · ${goiY.tc} TC',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Paper.ink3,
-                      ),
+                      style: const TextStyle(fontSize: 12, color: Paper.ink3),
                     ),
                   ],
                 ),
