@@ -112,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         PaperLabel('Mã sinh viên'),
                         PaperField(
+                          nhan: 'Mã sinh viên',
                           controller: _user,
                           enabled: !_busy,
                           keyboardType: TextInputType.number,
@@ -122,6 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 14),
                         PaperLabel('Mật khẩu'),
                         PaperField(
+                          nhan: 'Mật khẩu',
                           controller: _pass,
                           enabled: !_busy,
                           obscure: _hidePass,

@@ -367,7 +367,7 @@ class _Tab extends StatelessWidget {
                       : Icon(
                           icon,
                           size: 22,
-                          color: on ? Paper.ink : Paper.ink3,
+                          color: on ? Paper.ink : Paper.ink2,
                         ),
                 ),
               ),
@@ -378,7 +378,7 @@ class _Tab extends StatelessWidget {
                   fontFamily: 'Baloo',
                   fontSize: 12,
                   fontWeight: on ? FontWeight.w800 : FontWeight.w600,
-                  color: on ? Paper.ink : Paper.ink3,
+                  color: on ? Paper.ink : Paper.ink2,
                 ),
               ),
             ],
@@ -793,7 +793,7 @@ class _MenuState extends State<_Menu> {
       ),
       const Text(
         'Nhấn giữ rồi kéo để sắp xếp lại',
-        style: TextStyle(fontSize: 12, color: Paper.ink3),
+        style: TextStyle(fontSize: 12, color: Paper.ink2),
       ),
       const SizedBox(height: 10),
       PaperBox(

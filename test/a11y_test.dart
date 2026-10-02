@@ -20,6 +20,25 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('ô nhập giấy có nhãn cho trình đọc màn hình', (t) async {
+    // Ô nhập không có labelText/hintText nên nhãn phải tới từ Semantics; thiếu
+    // nó là VoiceOver đọc ô mật khẩu thành "ô nhập, trống".
+    final handle = t.ensureSemantics();
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PaperField(
+            nhan: 'Mật khẩu LMS',
+            controller: TextEditingController(),
+            onSubmit: () {},
+          ),
+        ),
+      ),
+    );
+    expect(find.bySemanticsLabel('Mật khẩu LMS'), findsOneWidget);
+    handle.dispose();
+  });
+
   testWidgets('tắt hiệu ứng thì PopIn hiện thẳng, không mờ', (t) async {
     await t.pumpWidget(
       const MediaQuery(

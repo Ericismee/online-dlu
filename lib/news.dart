@@ -363,7 +363,7 @@ class _Message extends StatelessWidget {
                 Pill('LMS · ${clean(n.sender)}', color: Paper.mint),
                 Text(
                   n.date,
-                  style: const TextStyle(fontSize: 12, color: Paper.ink3),
+                  style: const TextStyle(fontSize: 12, color: Paper.ink2),
                 ),
                 if (onXem != null)
                   PaperButton(
@@ -410,7 +410,7 @@ class _Message extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 m['CreationDate'] as String? ?? '',
-                style: const TextStyle(fontSize: 12, color: Paper.ink3),
+                style: const TextStyle(fontSize: 12, color: Paper.ink2),
               ),
             ],
           ),
@@ -439,7 +439,7 @@ class _ChiTiet extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Pill('LMS · ${clean(n.sender)}', color: Paper.mint),
-          Text(n.date, style: const TextStyle(fontSize: 12, color: Paper.ink3)),
+          Text(n.date, style: const TextStyle(fontSize: 12, color: Paper.ink2)),
         ],
       ),
       const SizedBox(height: 12),

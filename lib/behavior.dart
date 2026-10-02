@@ -419,7 +419,7 @@ class _Group extends StatelessWidget {
           if (co.isEmpty)
             const Text(
               'Không có tiêu chí nào được tính điểm.',
-              style: TextStyle(fontSize: 13, color: Paper.ink3),
+              style: TextStyle(fontSize: 13, color: Paper.ink2),
             )
           else
             for (final i in co)

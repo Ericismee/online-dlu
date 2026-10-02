@@ -467,7 +467,7 @@ class _Mark extends StatelessWidget {
                 isCondition(m['CurriculumName'])
                     ? '${toNum(m['Credits'])} TC · không tính điểm TB'
                     : '${toNum(m['Credits'])} TC',
-                style: const TextStyle(fontSize: 12, color: Paper.ink3),
+                style: const TextStyle(fontSize: 12, color: Paper.ink2),
               ),
             ],
           ),
@@ -556,7 +556,7 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '${widget.term} · số dự đoán, không phải điểm thật',
-                  style: const TextStyle(fontSize: 13, color: Paper.ink3),
+                  style: const TextStyle(fontSize: 13, color: Paper.ink2),
                 ),
                 const SizedBox(height: 16),
                 PaperBox(
@@ -618,7 +618,7 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
                                       '${toNum(m['Credits'])} TC',
                                       style: const TextStyle(
                                         fontSize: 12,
-                                        color: Paper.ink3,
+                                        color: Paper.ink2,
                                       ),
                                     ),
                                   ],
@@ -795,7 +795,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                 const Text(
                   'Môn nào đang kéo GPA xuống nhiều nhất thì gợi ý trước — '
                   'số dự đoán, không phải điểm thật',
-                  style: TextStyle(fontSize: 13, color: Paper.ink3),
+                  style: TextStyle(fontSize: 13, color: Paper.ink2),
                 ),
                 const SizedBox(height: 16),
                 if (_error != null)
@@ -822,7 +822,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                     children: [
                       const Text(
                         'Học lại được',
-                        style: TextStyle(fontSize: 13, color: Paper.ink3),
+                        style: TextStyle(fontSize: 13, color: Paper.ink2),
                       ),
                       const SizedBox(width: 8),
                       Choice(
@@ -893,7 +893,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                   const SizedBox(height: 4),
                   const Text(
                     'Môn chưa học, thêm vào xem có kéo GPA lên được không',
-                    style: TextStyle(fontSize: 13, color: Paper.ink3),
+                    style: TextStyle(fontSize: 13, color: Paper.ink2),
                   ),
                   const SizedBox(height: 8),
                   if (_tuDo.isNotEmpty)
@@ -923,7 +923,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                                           '${m.$2} TC · dự kiến ${m.$3}',
                                           style: const TextStyle(
                                             fontSize: 12,
-                                            color: Paper.ink3,
+                                            color: Paper.ink2,
                                           ),
                                         ),
                                       ],
@@ -1015,7 +1015,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                       hintStyle: TextStyle(
                         fontFamily: 'Baloo',
                         fontWeight: FontWeight.w700,
-                        color: Paper.ink3,
+                        color: Paper.ink2,
                       ),
                       contentPadding: EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -1031,7 +1031,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                       isDense: true,
                       border: InputBorder.none,
                       hintText: 'Số tín chỉ',
-                      hintStyle: TextStyle(color: Paper.ink3),
+                      hintStyle: TextStyle(color: Paper.ink2),
                       contentPadding: EdgeInsets.symmetric(vertical: 12),
                     ),
                   ),
@@ -1129,7 +1129,7 @@ class _KeHoach extends StatelessWidget {
                   fontFamily: 'Baloo',
                   fontWeight: FontWeight.w800,
                   fontSize: 24,
-                  color: Paper.ink3,
+                  color: Paper.ink2,
                 ),
               ),
               const Padding(
@@ -1242,7 +1242,7 @@ class _GoiYCard extends StatelessWidget {
                     ),
                     Text(
                       '${goiY.ky} · ${goiY.tc} TC',
-                      style: const TextStyle(fontSize: 12, color: Paper.ink3),
+                      style: const TextStyle(fontSize: 12, color: Paper.ink2),
                     ),
                   ],
                 ),
@@ -1253,7 +1253,7 @@ class _GoiYCard extends StatelessWidget {
                     ? Icons.check_circle_rounded
                     : Icons.radio_button_unchecked_rounded,
                 size: 22,
-                color: chon ? Paper.ink : Paper.ink3,
+                color: chon ? Paper.ink : Paper.ink2,
               ),
             ],
           ),

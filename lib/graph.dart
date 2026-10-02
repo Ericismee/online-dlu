@@ -536,7 +536,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                           _error!,
                           maxLines: 2,
                           style: const TextStyle(
-                            color: Paper.ink3,
+                            color: Paper.ink2,
                             fontSize: 12,
                           ),
                         ),
@@ -565,7 +565,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Paper.ink3,
+                            color: Paper.ink2,
                           ),
                         ),
                       ),
@@ -622,7 +622,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                       Text(
                         '${periods(_days!.values.expand((e) => e))} tiết',
                         style: const TextStyle(
-                          color: Paper.ink3,
+                          color: Paper.ink2,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -885,7 +885,7 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                     hintStyle: TextStyle(
                       fontFamily: 'Baloo',
                       fontWeight: FontWeight.w700,
-                      color: Paper.ink3,
+                      color: Paper.ink2,
                     ),
                     // 12+20+12 = 44pt, đủ ngưỡng chạm mà không phình ô.
                     contentPadding: EdgeInsets.symmetric(vertical: 12),
@@ -908,7 +908,7 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                     isDense: true,
                     border: InputBorder.none,
                     hintText: 'Vị trí (vd: P301) — tuỳ chọn',
-                    hintStyle: TextStyle(color: Paper.ink3),
+                    hintStyle: TextStyle(color: Paper.ink2),
                     contentPadding: EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
@@ -1171,7 +1171,7 @@ class _Lesson extends StatelessWidget {
                       ),
                       Text(
                         gio.$2,
-                        style: const TextStyle(fontSize: 13, color: Paper.ink3),
+                        style: const TextStyle(fontSize: 13, color: Paper.ink2),
                       ),
                     ],
                   ),
@@ -1272,7 +1272,7 @@ class _LessonRieng extends StatelessWidget {
                     ),
                     Text(
                       c.ketThuc == null ? '—' : _gio(c.ketThuc!),
-                      style: const TextStyle(fontSize: 13, color: Paper.ink3),
+                      style: const TextStyle(fontSize: 13, color: Paper.ink2),
                     ),
                   ],
                 ),
@@ -1456,7 +1456,7 @@ class _Legend extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 5),
-      Text(label, style: const TextStyle(color: Paper.ink3, fontSize: 12)),
+      Text(label, style: const TextStyle(color: Paper.ink2, fontSize: 12)),
     ],
   );
 }

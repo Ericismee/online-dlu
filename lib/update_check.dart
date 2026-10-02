@@ -516,7 +516,7 @@ class _BanCard extends StatelessWidget {
             const Spacer(),
             Text(
               ban.date,
-              style: const TextStyle(fontSize: 12, color: Paper.ink3),
+              style: const TextStyle(fontSize: 12, color: Paper.ink2),
             ),
           ],
         ),

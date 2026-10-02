@@ -1,6 +1,17 @@
 {
   "versions": [
     {
+      "version": "1.10.0",
+      "build": 11,
+      "date": "2026-10-03",
+      "changes": [
+        "Ô nhập mã sinh viên và mật khẩu đã có nhãn cho VoiceOver/TalkBack, trước đây chỉ đọc được là ô trống.",
+        "Chữ phụ trong toàn app đậm lên cho đủ tương phản, đọc được ngoài nắng và trên màn hình chỉnh sáng thấp.",
+        "Nút Điểm danh ngay và các nút nền cam đổi sang chữ mực cho rõ hơn.",
+        "Sửa nhãn ngày của Sự kiện sắp đến bị lệch khi app mở qua nửa đêm."
+      ]
+    },
+    {
       "version": "1.0.9",
       "build": 10,
       "date": "2026-10-03",

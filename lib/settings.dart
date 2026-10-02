@@ -387,6 +387,7 @@ class _LmsLoginDialogState extends State<LmsLoginDialog> {
             const SizedBox(height: 14),
             const PaperLabel('Tài khoản LMS'),
             PaperField(
+              nhan: 'Tài khoản LMS',
               controller: _user,
               enabled: !_dangThu,
               autofocus: true,
@@ -396,6 +397,7 @@ class _LmsLoginDialogState extends State<LmsLoginDialog> {
             const SizedBox(height: 14),
             const PaperLabel('Mật khẩu LMS'),
             PaperField(
+              nhan: 'Mật khẩu LMS',
               controller: _pass,
               enabled: !_dangThu,
               obscure: _an,

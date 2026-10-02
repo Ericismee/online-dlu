@@ -339,7 +339,7 @@ class _Row extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(color: Paper.ink3, fontSize: 12),
+                  style: const TextStyle(color: Paper.ink2, fontSize: 12),
                 ),
                 Text(
                   value,

@@ -140,7 +140,9 @@ class PaperButton extends StatefulWidget {
     required this.label,
     required this.onPressed,
     this.color = Paper.accent,
-    this.onColor = Paper.card,
+    // Mực trên cam đo được 4.9:1, kem trên cam chỉ 3.03:1 — chữ nhãn 14 đậm
+    // vẫn phải đạt 4.5:1 nên mặc định là mực.
+    this.onColor = Paper.ink,
     this.fontSize,
   });
   final String label;
@@ -598,6 +600,7 @@ class PaperLabel extends StatelessWidget {
 class PaperField extends StatelessWidget {
   const PaperField({
     super.key,
+    required this.nhan,
     required this.controller,
     required this.onSubmit,
     this.enabled = true,
@@ -608,6 +611,12 @@ class PaperField extends StatelessWidget {
     this.autofillHints,
     this.action = TextInputAction.done,
   });
+
+  /// Nhãn cho trình đọc màn hình. Ô nhập này cố tình không có labelText hay
+  /// hintText (giữ hình), nên nếu không gắn nhãn thì VoiceOver/TalkBack chỉ
+  /// đọc được "ô nhập, trống" — bắt buộc truyền, thường là chữ của
+  /// [PaperLabel] đứng ngay trên.
+  final String nhan;
 
   final TextEditingController controller;
   final VoidCallback onSubmit;
@@ -627,28 +636,32 @@ class PaperField extends StatelessWidget {
       borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide(color: c, width: 2),
     );
-    return TextField(
-      controller: controller,
-      enabled: enabled,
-      obscureText: obscure,
-      autofocus: autofocus,
-      keyboardType: keyboardType,
-      autofillHints: autofillHints,
-      textInputAction: action,
-      onSubmitted: (_) => onSubmit(),
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: Paper.paper,
-        suffixIcon: suffix,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
+    return Semantics(
+      label: nhan,
+      textField: true,
+      child: TextField(
+        controller: controller,
+        enabled: enabled,
+        obscureText: obscure,
+        autofocus: autofocus,
+        keyboardType: keyboardType,
+        autofillHints: autofillHints,
+        textInputAction: action,
+        onSubmitted: (_) => onSubmit(),
+        decoration: InputDecoration(
+          isDense: true,
+          filled: true,
+          fillColor: Paper.paper,
+          suffixIcon: suffix,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+          border: border(Paper.ink),
+          enabledBorder: border(Paper.ink),
+          disabledBorder: border(Paper.ink3),
+          focusedBorder: border(Paper.accent),
         ),
-        border: border(Paper.ink),
-        enabledBorder: border(Paper.ink),
-        disabledBorder: border(Paper.ink3),
-        focusedBorder: border(Paper.accent),
       ),
     );
   }
@@ -775,7 +788,7 @@ class _SearchBoxState extends State<SearchBox> {
               isDense: true,
               border: InputBorder.none,
               hintText: widget.hint,
-              hintStyle: const TextStyle(color: Paper.ink3, fontSize: 15),
+              hintStyle: const TextStyle(color: Paper.ink2, fontSize: 15),
               // 12+20+12 = 44pt, đủ ngưỡng chạm mà không phình ô.
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
             ),

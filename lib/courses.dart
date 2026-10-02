@@ -148,7 +148,7 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: Paper.ink3,
+                              color: Paper.ink2,
                               fontSize: 12,
                             ),
                           ),

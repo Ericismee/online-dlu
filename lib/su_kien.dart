@@ -217,7 +217,6 @@ class _Buoi extends StatelessWidget {
             PaperButton(
               label: mo ? 'Điểm danh ngay' : 'Mở trên LMS',
               color: mo ? Paper.accent : Paper.card,
-              onColor: mo ? Paper.card : Paper.ink,
               onPressed: () => launchUrl(
                 Uri.parse(url),
                 mode: LaunchMode.externalApplication,
