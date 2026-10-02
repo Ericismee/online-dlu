@@ -38,7 +38,7 @@
           "date": "2026-10-02",
           "localizedDescription": "• Mục Cập nhật liệt kê đầy đủ lịch sử phiên bản và changelog.\n• Kéo làm mới để kiểm tra bản cập nhật mới; khi mở app, bản mới được thông báo một lần.\n• Sửa Trang chủ tự nhảy lên khi cuộn trong lúc hiển thị thẻ Có gì mới.\n• Bổ sung nền tảng đăng nhập Moodle qua form và đọc lịch tháng; chưa kết nối vào giao diện app.\n• Tập trung khai báo phiên bản và changelog trong version.json; đồng bộ tự động sang pubspec.yaml và lc.json, kiểm tra tag khi phát hành.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 11620377,
+          "size": 11676239,
           "minOSVersion": "15.0"
         }
       ],
