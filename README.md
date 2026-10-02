@@ -24,6 +24,15 @@ không đăng ký học phần hộ ai.
 - Xem được khi mất mạng: dữ liệu đã xem nằm trong máy, kèm mốc "dữ liệu lúc
   mấy giờ"; kéo xuống là làm mới toàn bộ app
 
+## Ảnh màn hình
+
+<p align="center">
+  <img src="store/screenshot-1.png" width="24%" alt="Thời khoá biểu" />
+  <img src="store/screenshot-2.png" width="24%" alt="Lịch thi" />
+  <img src="store/screenshot-3.png" width="24%" alt="Điểm số" />
+  <img src="store/screenshot-4.png" width="24%" alt="Thông tin học tập" />
+</p>
+
 ## Chạy thử
 
 ```bash
