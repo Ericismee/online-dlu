@@ -266,7 +266,10 @@ bool trungGioChinhQuy(CustomLich c, Iterable<dynamic> items) {
 /// màu cảnh báo; không đụng giờ thì màu theo buổi chính quy vẫn giữ nguyên
 /// (quan trọng hơn); ngày trống lịch chính quy nhưng có lịch tự đặt thì tô
 /// màu riêng để biết ngày đó không hẳn là nghỉ.
-Color dayColor(Iterable<dynamic> items, [Iterable<CustomLich> rieng = const []]) {
+Color dayColor(
+  Iterable<dynamic> items, [
+  Iterable<CustomLich> rieng = const [],
+]) {
   final buoiTrongNgay = items
       .map((i) => buoi(toNum(i['PeriodID']).toInt()))
       .toSet();
@@ -284,7 +287,8 @@ const _motBuoi = Paper.mint; // xanh lá — học 1 buổi
 const _haiBuoi = Paper.sky; // xanh dương — học 2 buổi
 const _baBuoi = Paper.rose; // đỏ — học cả 3 buổi
 const _tuDat = Paper.peach; // cam — chỉ có lịch tự đặt, không có tiết chính quy
-const _trungGio = Paper.accent; // đỏ cam đậm — lịch tự đặt đụng giờ tiết chính quy
+const _trungGio =
+    Paper.accent; // đỏ cam đậm — lịch tự đặt đụng giờ tiết chính quy
 
 /// Năm học / học kỳ của một tháng. HK01 tháng 8-1, HK02 tháng 2-6, HK03 tháng 7.
 // ponytail: suy từ lịch chung của trường; nếu trường đổi mốc học kỳ thì sửa ở đây.
@@ -341,7 +345,8 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
   late DateTime _month = DateTime(widget.now.year, widget.now.month);
 
   Map<int, List<dynamic>>? get _days => _cache[_key(_month)];
-  Map<int, List<CustomLich>> get _rieng => _riengCache[_key(_month)] ?? const {};
+  Map<int, List<CustomLich>> get _rieng =>
+      _riengCache[_key(_month)] ?? const {};
   static String _key(DateTime m) => '${m.year}-${m.month}';
 
   @override
@@ -684,8 +689,15 @@ class _DayCard extends StatefulWidget {
   State<_DayCard> createState() => _DayCardState();
 }
 
-class _DayCardState extends State<_DayCard> {
+/// Màn Lịch nằm trong IndexedStack nên không bị huỷ khi qua tab khác: sửa
+/// lịch tự đặt ở Trang chủ (vd bấm "Đã xong") mà thẻ này không nạp lại thì
+/// nó còn giữ bản cũ và vẫn báo "Đang diễn ra". Reloadable để lượt
+/// `Cache.reloadAll()` sau mỗi lần sửa chạm tới nó.
+class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
   List<CustomLich>? _rieng;
+
+  @override
+  Future<void> reload() => _load();
 
   @override
   void initState() {
@@ -1749,14 +1761,10 @@ class _TodayLessonsState extends State<TodayLessons>
     await CustomLichStore.update(
       homNay,
       index,
-      CustomLich(
-        tieuDe: c.tieuDe,
-        batDau: c.batDau,
-        ketThuc: gio.hour * 60 + gio.minute,
-      ),
+      c.xongLuc(gio.hour * 60 + gio.minute),
     );
     await _loadRieng(homNay);
-    Cache.reloadAll();
+    await Cache.reloadAll();
   }
 
   @override

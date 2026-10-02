@@ -27,6 +27,16 @@ class CustomLich {
 
   Color get color => Color(mau);
 
+  /// Bản sao đã chốt giờ về là [phut] — nút "Đã xong". Chỉ giờ về đổi, màu
+  /// và vị trí người dùng chọn phải còn nguyên.
+  CustomLich xongLuc(int phut) => CustomLich(
+    tieuDe: tieuDe,
+    batDau: batDau,
+    ketThuc: phut,
+    mau: mau,
+    viTri: viTri,
+  );
+
   Map<String, dynamic> toJson() => {
     'tieuDe': tieuDe,
     'batDau': batDau,
@@ -74,8 +84,7 @@ class CustomLichStore {
 
   /// Toàn bộ lịch tự đặt trong một tháng, theo ngày — để tô màu lịch tháng.
   static Future<Map<int, List<CustomLich>>> forMonth(DateTime month) async {
-    final prefix =
-        '${month.year}-${month.month.toString().padLeft(2, '0')}-';
+    final prefix = '${month.year}-${month.month.toString().padLeft(2, '0')}-';
     final out = <int, List<CustomLich>>{};
     for (final e in (await _all()).entries) {
       if (!e.key.startsWith(prefix)) continue;
