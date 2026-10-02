@@ -1,3 +1,4 @@
+import 'package:dlu_tkb/db.dart';
 import 'package:dlu_tkb/lms.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,6 +30,29 @@ void main() {
     final ds = await LmsKho.doc();
     expect(ds.firstWhere((n) => n.id == '1').unread, isFalse);
     expect(ds.firstWhere((n) => n.id == '2').unread, isTrue);
+  });
+
+  test('giống dòng đang có thì không ghi lại, khác mới ghi', () async {
+    await LmsKho.luu([tb('1')]);
+    final luc = (await Db.i.dong(nhomThongBao, '1'))!.luc;
+
+    // Mẻ y hệt: bỏ qua, mốc "về từ lúc nào" còn nguyên.
+    await LmsKho.luu([tb('1')]);
+    expect((await Db.i.dong(nhomThongBao, '1'))!.luc, luc);
+
+    // Moodle sửa nội dung thì phải ghi lại.
+    final n = tb('1');
+    await LmsKho.luu([
+      (
+        id: n.id,
+        subject: 'Đã đổi',
+        sender: n.sender,
+        date: n.date,
+        body: n.body,
+        unread: n.unread,
+      ),
+    ]);
+    expect((await LmsKho.doc()).single.subject, 'Đã đổi');
   });
 
   test('đánh dấu tất cả khi không nói id nào', () async {

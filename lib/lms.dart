@@ -57,27 +57,34 @@ class LmsKho {
     return out;
   }
 
-  /// Nhập mẻ vừa lấy về. Thông báo đã có thì giữ nguyên cờ đã xem: server
-  /// không biết mình đã xem trong app, ghi đè là nó chưa đọc lại lần nữa.
+  /// Nhập mẻ vừa lấy về: khác dòng đang có thì ghi, giống thì bỏ qua. Cứ 90
+  /// giây Moodle lại trả về gần như y hệt mẻ trước, ghi lại cả 30 dòng mỗi
+  /// lượt là chép đè vô ích — mà [KhoData.luc] còn bị dí thành giờ hiện tại,
+  /// mất luôn dấu "thông báo này về từ lúc nào".
+  ///
+  /// Thông báo đã có thì giữ nguyên cờ đã xem: server không biết mình đã xem
+  /// trong app, ghi đè là nó chưa đọc lại lần nữa.
   static Future<void> luu(Iterable<LmsNotification> moi) async {
     final cu = {
-      for (final d in await Db.i.nhomDang(nhomThongBao)) d.khoa: _tu(d),
+      for (final d in await Db.i.nhomDang(nhomThongBao)) d.khoa: d.giaTri,
     };
     for (final n in moi) {
       if (n.id.isEmpty) continue;
-      await Db.i.ghi(
-        nhomThongBao,
-        n.id,
-        giaTri: jsonEncode({
-          'subject': n.subject,
-          'sender': n.sender,
-          'date': n.date,
-          'body': n.body,
-          _daXem: cu[n.id]?.unread == false,
-        }),
-      );
+      // Cùng một hàm dựng JSON nên so chuỗi là đủ, khỏi so từng khoá.
+      final json = jsonEncode({
+        'subject': n.subject,
+        'sender': n.sender,
+        'date': n.date,
+        'body': n.body,
+        _daXem: cu[n.id] != null && _daXemTrong(cu[n.id]!),
+      });
+      if (cu[n.id] == json) continue;
+      await Db.i.ghi(nhomThongBao, n.id, giaTri: json);
     }
   }
+
+  static bool _daXemTrong(String giaTri) =>
+      (jsonDecode(giaTri) as Map<String, dynamic>)[_daXem] == true;
 
   /// Đánh dấu đã xem một thông báo, hay tất cả khi [id] để trống.
   static Future<void> danhDauDaXem([String? id]) async {
