@@ -1,6 +1,20 @@
 {
   "versions": [
     {
+      "version": "1.0.9",
+      "build": 10,
+      "date": "2026-10-03",
+      "changes": [
+        "Nối hẳn LMS của trường vào app: đăng nhập LMS trong Cài đặt, hộp đăng nhập dựng lại theo phong cách app.",
+        "Thẻ Điểm danh nằm trên cùng Trang chủ: đủ môn, khung giờ và còn bao lâu; chỉ hiện buổi hôm nay còn kịp điểm, hết cửa sổ là tự rụng.",
+        "Buổi điểm danh giáo viên mở ngay tại lớp cũng bắt được, khỏi thoát ra mở lại app.",
+        "Thông báo LMS vào chuông cùng thông báo trường, lưu lại trong máy nên Moodle dọn rồi vẫn còn và mất mạng vẫn mở được.",
+        "Mỗi thông báo LMS có nút Xem để đọc nội dung đầy đủ và nút Đã xem để dẹp huy hiệu.",
+        "Sự kiện sắp đến chuyển từ Trang chủ vào chuông, gom theo từng ngày, mặc định ba mục gần nhất, bấm Xem thêm mới trải hết.",
+        "App đang mở thì tự làm mới LMS mỗi 90–120 giây, chỉ ghi lại khi có gì khác lượt trước."
+      ]
+    },
+    {
       "version": "1.0.8",
       "build": 9,
       "date": "2026-10-02",

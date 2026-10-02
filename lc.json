@@ -33,16 +33,16 @@
       },
       "versions": [
         {
-          "version": "1.0.8",
-          "buildVersion": "9",
-          "date": "2026-10-02",
-          "localizedDescription": "• Mục Cập nhật liệt kê đầy đủ lịch sử phiên bản và changelog.\n• Kéo làm mới để kiểm tra bản cập nhật mới; khi mở app, bản mới được thông báo một lần.\n• Sửa Trang chủ tự nhảy lên khi cuộn trong lúc hiển thị thẻ Có gì mới.\n• Bổ sung nền tảng đăng nhập Moodle qua form và đọc lịch tháng; chưa kết nối vào giao diện app.\n• Tập trung khai báo phiên bản và changelog trong version.json; đồng bộ tự động sang pubspec.yaml và lc.json, kiểm tra tag khi phát hành.",
+          "version": "1.0.9",
+          "buildVersion": "10",
+          "date": "2026-10-03",
+          "localizedDescription": "• Nối hẳn LMS của trường vào app: đăng nhập LMS trong Cài đặt, hộp đăng nhập dựng lại theo phong cách app.\n• Thẻ Điểm danh nằm trên cùng Trang chủ: đủ môn, khung giờ và còn bao lâu; chỉ hiện buổi hôm nay còn kịp điểm, hết cửa sổ là tự rụng.\n• Buổi điểm danh giáo viên mở ngay tại lớp cũng bắt được, khỏi thoát ra mở lại app.\n• Thông báo LMS vào chuông cùng thông báo trường, lưu lại trong máy nên Moodle dọn rồi vẫn còn và mất mạng vẫn mở được.\n• Mỗi thông báo LMS có nút Xem để đọc nội dung đầy đủ và nút Đã xem để dẹp huy hiệu.\n• Sự kiện sắp đến chuyển từ Trang chủ vào chuông, gom theo từng ngày, mặc định ba mục gần nhất, bấm Xem thêm mới trải hết.\n• App đang mở thì tự làm mới LMS mỗi 90–120 giây, chỉ ghi lại khi có gì khác lượt trước.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
           "size": 11676239,
           "minOSVersion": "15.0"
         }
       ],
-      "version": "1.0.8"
+      "version": "1.0.9"
     }
   ],
   "news": []
