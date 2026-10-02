@@ -20,7 +20,6 @@ import 'paper.dart';
 import 'portal.dart';
 import 'prefetch.dart';
 import 'settings.dart';
-import 'su_kien.dart';
 import 'update_check.dart';
 
 Future<void> main() async {
@@ -457,12 +456,8 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                       _NextExam(session: widget.session, now: now),
                 ),
               ),
-              const PopIn(
-                delay: Duration(milliseconds: 180),
-                child: SuKienSapToi(),
-              ),
               PopIn(
-                delay: const Duration(milliseconds: 220),
+                delay: const Duration(milliseconds: 180),
                 child: _Menu(onGo: widget.onGo, session: widget.session),
               ),
             ],

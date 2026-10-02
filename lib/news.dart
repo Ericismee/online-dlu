@@ -4,6 +4,7 @@ import 'data.dart';
 import 'lms.dart';
 import 'paper.dart';
 import 'portal.dart';
+import 'su_kien.dart';
 
 int unread(Iterable<dynamic> messages) => messages
     .where((m) => m is LmsNotification ? m.unread : m['IsRead'] == 0)
@@ -11,9 +12,12 @@ int unread(Iterable<dynamic> messages) => messages
 
 /// Chuông + popup hộp thư, dán ở góc phải top bar.
 class Bell extends StatefulWidget {
-  const Bell({super.key, required this.session, this.portal});
+  const Bell({super.key, required this.session, this.portal, this.suKien});
   final Session session;
   final Portal? portal;
+
+  /// Nguồn sự kiện LMS; để trống là lấy thật. Chỉ test mới truyền vào.
+  final Future<List<LmsEvent>> Function(DateTime now)? suKien;
 
   @override
   State<Bell> createState() => _BellState();
@@ -37,6 +41,11 @@ class _BellState extends State<Bell>
   Future<void> reload() => _load();
 
   List<dynamic>? _msgs;
+
+  /// Sự kiện sắp đến từ LMS. Nằm cùng chuông vì cũng là "việc đang đến với
+  /// mình", chỉ khác là chưa xảy ra; để riêng một khối trên Trang chủ thì
+  /// người chưa bật LMS phải cuộn qua một chỗ trống.
+  List<LmsEvent> _suKien = const [];
 
   @override
   void initState() {
@@ -67,8 +76,19 @@ class _BellState extends State<Bell>
     } on PortalError {
       // Online messages remain visible when LMS is unavailable.
     }
+    // Hai lượt gọi riêng: hộp thư hỏng thì sự kiện vẫn lên, và ngược lại.
+    // `suKienSapToi` tự trả rỗng khi chưa bật LMS nên khỏi hỏi lại ở đây.
+    var suKien = _suKien;
+    try {
+      suKien = await (widget.suKien ?? suKienSapToi)(DateTime.now());
+    } on PortalError {
+      // Giữ danh sách lần trước, mất mạng không được dọn sạch hộp thư.
+    }
     if (mounted) {
-      setState(() => _msgs = combined);
+      setState(() {
+        _msgs = combined;
+        _suKien = suKien;
+      });
       if (unread(combined) > 0) _wiggle.forward(from: 0);
     }
   }
@@ -146,13 +166,14 @@ class _BellState extends State<Bell>
 
   void _open(BuildContext context) => showDialog(
     context: context,
-    builder: (_) => _Inbox(messages: _msgs!),
+    builder: (_) => _Inbox(messages: _msgs!, suKien: _suKien),
   );
 }
 
 class _Inbox extends StatelessWidget {
-  const _Inbox({required this.messages});
+  const _Inbox({required this.messages, required this.suKien});
   final List<dynamic> messages;
+  final List<LmsEvent> suKien;
 
   @override
   Widget build(BuildContext context) => Dialog(
@@ -193,18 +214,51 @@ class _Inbox extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          if (messages.isEmpty)
-            const Text('Hộp thư trống.', style: TextStyle(color: Paper.ink2))
-          else
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: messages.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _Message(messages[i]),
-              ),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                // Việc chưa tới lên trước việc đã xong: hạn nộp bài đáng
+                // nhìn hơn cái thư báo "đã nhận bài của bạn".
+                if (suKien.isNotEmpty) ...[
+                  const _Muc('Sự kiện sắp đến'),
+                  SuKienNhom(suKien: suKien),
+                  const SizedBox(height: 18),
+                  const _Muc('Hộp thư'),
+                ],
+                if (messages.isEmpty)
+                  const Text(
+                    'Hộp thư trống.',
+                    style: TextStyle(color: Paper.ink2),
+                  ),
+                for (final (i, m) in messages.indexed) ...[
+                  if (i > 0) const SizedBox(height: 10),
+                  _Message(m),
+                ],
+              ],
             ),
+          ),
         ],
+      ),
+    ),
+  );
+}
+
+/// Tiêu đề một mục trong hộp thư.
+class _Muc extends StatelessWidget {
+  const _Muc(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontFamily: 'Baloo',
+        fontWeight: FontWeight.w800,
+        fontSize: 16,
+        color: Paper.ink,
       ),
     ),
   );

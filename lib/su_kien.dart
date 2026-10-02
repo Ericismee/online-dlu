@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'data.dart';
 import 'lms.dart';
 import 'paper.dart';
-import 'portal.dart';
 
 /// Gom sự kiện theo ngày, giữ nguyên thứ tự thời gian đã sắp.
 Map<DateTime, List<LmsEvent>> theoNgay(List<LmsEvent> suKien) {
@@ -27,95 +26,86 @@ String nhanNgay(DateTime ngay, DateTime now) {
 String gioPhut(DateTime t) =>
     '${t.hour}h${t.minute.toString().padLeft(2, '0')}';
 
-/// Khối "Sự kiện sắp đến" của LMS trên Trang chủ, gom theo ngày. Chưa bật
-/// LMS thì không hiện gì — không phải lỗi, chỉ là không có nguồn.
-class SuKienSapToi extends StatefulWidget {
-  const SuKienSapToi({super.key, this.nap});
+/// Danh sách sự kiện gom theo ngày. Mặc định chỉ hiện [gon] mục gần nhất,
+/// bấm "Xem thêm" mới trải hết — hộp thư còn phải chừa chỗ cho thông báo.
+class SuKienNhom extends StatefulWidget {
+  const SuKienNhom({super.key, required this.suKien, this.gon = 3});
 
-  /// Nguồn sự kiện; để trống là lấy từ LMS thật. Chỉ test mới truyền vào.
-  final Future<List<LmsEvent>> Function(DateTime now)? nap;
+  final List<LmsEvent> suKien;
+  final int gon;
 
   @override
-  State<SuKienSapToi> createState() => _SuKienSapToiState();
+  State<SuKienNhom> createState() => _SuKienNhomState();
 }
 
-class _SuKienSapToiState extends State<SuKienSapToi>
-    with Reloadable<SuKienSapToi> {
-  List<LmsEvent>? _suKien;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  Future<void> reload() => _load();
-
-  Future<void> _load() async {
-    try {
-      final s = await (widget.nap ?? suKienSapToi)(DateTime.now());
-      if (mounted) setState(() => _suKien = s);
-    } on PortalError {
-      // LMS hỏng thì giữ danh sách cũ, mất mạng không được xoá sạch màn hình.
-      if (mounted) setState(() => _suKien ??= const []);
-    }
-  }
+class _SuKienNhomState extends State<SuKienNhom> {
+  bool _het = false;
 
   @override
   Widget build(BuildContext context) {
-    final suKien = _suKien;
-    // Chưa nạp xong hay không có gì: im lặng. Khối này chỉ là thêm, đừng
-    // chiếm chỗ bằng ô xương cá cho người chưa bật LMS.
-    if (suKien == null || suKien.isEmpty) return const SizedBox.shrink();
+    final con = widget.suKien.length - widget.gon;
+    final hien = _het ? widget.suKien : widget.suKien.take(widget.gon).toList();
     final now = DateTime.now();
-    final nhom = theoNgay(suKien);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Sự kiện sắp đến',
-            style: TextStyle(
-              fontFamily: 'Baloo',
-              fontWeight: FontWeight.w800,
-              fontSize: 22,
-              color: Paper.ink,
-            ),
-          ),
-          const SizedBox(height: 10),
-          PaperBox(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final (n, ngay) in nhom.keys.indexed) ...[
-                  if (n > 0) const SizedBox(height: 14),
-                  Text(
-                    nhanNgay(ngay, now),
-                    style: const TextStyle(
-                      fontFamily: 'Baloo',
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      color: Paper.ink2,
-                    ),
+    final nhom = theoNgay(hien);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PaperBox(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (n, ngay) in nhom.keys.indexed) ...[
+                if (n > 0) const SizedBox(height: 14),
+                Text(
+                  nhanNgay(ngay, now),
+                  style: const TextStyle(
+                    fontFamily: 'Baloo',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: Paper.ink2,
                   ),
-                  const SizedBox(height: 8),
-                  for (final e in nhom[ngay]!) _SuKien(e),
-                ],
+                ),
+                const SizedBox(height: 8),
+                for (final e in nhom[ngay]!) SuKienHang(e),
+              ],
+            ],
+          ),
+        ),
+        if (con > 0) ...[
+          const SizedBox(height: 8),
+          Pressable(
+            onTap: () => setState(() => _het = !_het),
+            builder: (_) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _het ? 'Thu gọn' : 'Xem thêm $con sự kiện',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: Paper.ink2,
+                  ),
+                ),
+                Icon(
+                  _het
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: Paper.ink2,
+                ),
               ],
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
 
 /// Một sự kiện: giờ bên trái, tên với môn bên phải. Bấm là mở thẳng hoạt
 /// động đó trên LMS.
-class _SuKien extends StatelessWidget {
-  const _SuKien(this.e);
+class SuKienHang extends StatelessWidget {
+  const SuKienHang(this.e, {super.key});
   final LmsEvent e;
 
   @override

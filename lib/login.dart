@@ -110,8 +110,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _Label('Mã sinh viên'),
-                        _Input(
+                        PaperLabel('Mã sinh viên'),
+                        PaperField(
                           controller: _user,
                           enabled: !_busy,
                           keyboardType: TextInputType.number,
@@ -120,8 +120,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           onSubmit: () => FocusScope.of(context).nextFocus(),
                         ),
                         const SizedBox(height: 14),
-                        _Label('Mật khẩu'),
-                        _Input(
+                        PaperLabel('Mật khẩu'),
+                        PaperField(
                           controller: _pass,
                           enabled: !_busy,
                           obscure: _hidePass,
@@ -209,75 +209,6 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     ),
   );
-}
-
-class _Label extends StatelessWidget {
-  const _Label(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 5),
-    child: Text(
-      text,
-      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-    ),
-  );
-}
-
-class _Input extends StatelessWidget {
-  const _Input({
-    required this.controller,
-    required this.onSubmit,
-    this.enabled = true,
-    this.obscure = false,
-    this.suffix,
-    this.keyboardType,
-    this.autofillHints,
-    this.action = TextInputAction.done,
-  });
-
-  final TextEditingController controller;
-  final VoidCallback onSubmit;
-  final bool enabled;
-  final bool obscure;
-  final Widget? suffix;
-  final TextInputType? keyboardType;
-  final Iterable<String>? autofillHints;
-
-  /// Ô cuối là 'done' để gửi luôn, ô trên là 'next' để xuống ô kế.
-  final TextInputAction action;
-
-  @override
-  Widget build(BuildContext context) {
-    OutlineInputBorder border(Color c) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(color: c, width: 2),
-    );
-    return TextField(
-      controller: controller,
-      enabled: enabled,
-      obscureText: obscure,
-      keyboardType: keyboardType,
-      autofillHints: autofillHints,
-      textInputAction: action,
-      onSubmitted: (_) => onSubmit(),
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: Paper.paper,
-        suffixIcon: suffix,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 12,
-        ),
-        border: border(Paper.ink),
-        enabledBorder: border(Paper.ink),
-        disabledBorder: border(Paper.ink3),
-        focusedBorder: border(Paper.accent),
-      ),
-    );
-  }
 }
 
 class _Check extends StatelessWidget {

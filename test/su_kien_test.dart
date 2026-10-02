@@ -63,43 +63,61 @@ void main() {
     expect(gioPhut(DateTime(2026, 10, 8, 7, 5)), '7h05');
   });
 
-  testWidgets('Trang chủ gom sự kiện dưới tiêu đề từng ngày', (t) async {
-    await t.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SuKienSapToi(
-            nap: (now) async => [
-              sk(
-                now.add(const Duration(hours: 2)),
-                name: 'Nộp bài Lab 4 đến hạn',
-                course: 'Phát triển ứng dụng Web nâng cao',
-              ),
-              sk(
-                now.add(const Duration(days: 1)),
-                name: 'Điểm danh',
-                course: 'Mẫu Thiết kế CTK47',
-              ),
-            ],
+  Future<void> dung(WidgetTester t, List<LmsEvent> suKien, {int gon = 3}) =>
+      t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SuKienNhom(suKien: suKien, gon: gon),
           ),
         ),
+      );
+
+  testWidgets('gom sự kiện dưới tiêu đề từng ngày', (t) async {
+    final now = DateTime.now();
+    await dung(t, [
+      sk(
+        now.add(const Duration(hours: 2)),
+        name: 'Nộp bài Lab 4 đến hạn',
+        course: 'Phát triển ứng dụng Web nâng cao',
       ),
-    );
+      sk(
+        now.add(const Duration(days: 1)),
+        name: 'Điểm danh',
+        course: 'Mẫu Thiết kế CTK47',
+      ),
+    ]);
     await t.pumpAndSettle();
 
-    expect(find.text('Sự kiện sắp đến'), findsOneWidget);
     expect(find.text('Hôm nay'), findsOneWidget);
     expect(find.text('Ngày mai'), findsOneWidget);
     expect(find.text('Nộp bài Lab 4 đến hạn'), findsOneWidget);
     expect(find.text('Mẫu Thiết kế CTK47'), findsOneWidget);
   });
 
-  testWidgets('chưa bật LMS thì không chiếm chỗ nào trên Trang chủ', (t) async {
-    await t.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: SuKienSapToi(nap: (_) async => const [])),
-      ),
-    );
+  testWidgets('quá tầm thì gói lại, bấm Xem thêm mới trải hết', (t) async {
+    final now = DateTime.now();
+    await dung(t, [
+      for (var i = 1; i <= 5; i++)
+        sk(now.add(Duration(days: i)), name: 'Việc $i'),
+    ], gon: 2);
     await t.pumpAndSettle();
-    expect(find.text('Sự kiện sắp đến'), findsNothing);
+
+    expect(find.text('Việc 2'), findsOneWidget);
+    expect(find.text('Việc 5'), findsNothing);
+
+    await t.tap(find.text('Xem thêm 3 sự kiện'));
+    await t.pumpAndSettle();
+    expect(find.text('Việc 5'), findsOneWidget);
+
+    await t.tap(find.text('Thu gọn'));
+    await t.pumpAndSettle();
+    expect(find.text('Việc 5'), findsNothing);
+  });
+
+  testWidgets('vừa đủ tầm thì không mọc nút Xem thêm', (t) async {
+    final now = DateTime.now();
+    await dung(t, [sk(now.add(const Duration(days: 1)))], gon: 3);
+    await t.pumpAndSettle();
+    expect(find.textContaining('Xem thêm'), findsNothing);
   });
 }

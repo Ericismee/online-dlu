@@ -144,7 +144,9 @@ class PaperButton extends StatefulWidget {
     this.fontSize,
   });
   final String label;
-  final VoidCallback onPressed;
+
+  /// null là đang tắt: bạc màu, không bóng, không nhận chạm.
+  final VoidCallback? onPressed;
   final Color color;
   final Color onColor;
 
@@ -156,17 +158,17 @@ class PaperButton extends StatefulWidget {
 }
 
 class _PaperButtonState extends State<PaperButton> {
-  @override
-  Widget build(BuildContext context) => Pressable(
-    onTap: widget.onPressed,
-    shift: 3,
-    builder: (down) => Container(
+  Widget _than(bool down) {
+    final tat = widget.onPressed == null;
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: widget.color,
+        color: tat ? Paper.card : widget.color,
         border: Paper.border,
         borderRadius: BorderRadius.circular(999),
-        boxShadow: Paper.shadow(down ? 0 : 4),
+        // Nút tắt nằm bẹt xuống giấy: không bóng là thấy ngay nó không bấm
+        // được, khỏi cần chữ mờ mới hiểu.
+        boxShadow: Paper.shadow(tat || down ? 0 : 4),
       ),
       child: Text(
         widget.label,
@@ -175,11 +177,18 @@ class _PaperButtonState extends State<PaperButton> {
           fontFamily: 'Baloo',
           fontWeight: FontWeight.w800,
           fontSize: widget.fontSize,
-          color: widget.onColor,
+          color: tat ? Paper.ink3 : widget.onColor,
         ),
       ),
-    ),
-  );
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onPressed = widget.onPressed;
+    if (onPressed == null) return _than(false);
+    return Pressable(onTap: onPressed, shift: 3, builder: _than);
+  }
 }
 
 /// The dotted paper backdrop.
@@ -374,89 +383,46 @@ Future<bool> confirmDialog(
 }) async =>
     await showDialog<bool>(
       context: context,
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 340),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Paper.paper,
-            border: Paper.border,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: Paper.shadow(6),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Huy hiệu cùng kiểu với các ô trong app, để hộp thoại
-                  // trông như một thẻ giấy nữa chứ không phải popup hệ thống.
-                  Container(
-                    padding: const EdgeInsets.all(9),
-                    decoration: BoxDecoration(
-                      color: color,
-                      border: Paper.border,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: Paper.shadow(3),
-                    ),
-                    child: Icon(icon, size: 22, color: Paper.ink),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontFamily: 'Baloo',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 20,
-                        height: 1.15,
-                        color: Paper.ink,
-                      ),
-                    ),
-                  ),
-                ],
+      builder: (_) => PaperDialog(
+        title: title,
+        icon: icon,
+        color: color,
+        children: [
+          // Lời dẫn nằm trong thẻ giấy: chữ xám trên nền kem trơn
+          // bị chìm, có viền với bóng thì đọc ra ngay.
+          PaperBox(
+            padding: const EdgeInsets.all(14),
+            child: Text(
+              body,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.45,
+                fontWeight: FontWeight.w500,
+                color: Paper.ink2,
               ),
-              const SizedBox(height: 14),
-              // Lời dẫn nằm trong thẻ giấy: chữ xám trên nền kem trơn
-              // bị chìm, có viền với bóng thì đọc ra ngay.
-              PaperBox(
-                padding: const EdgeInsets.all(14),
-                child: Text(
-                  body,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.45,
-                    fontWeight: FontWeight.w500,
-                    color: Paper.ink2,
-                  ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: PaperButton(
+                  label: 'Huỷ',
+                  color: Paper.card,
+                  onColor: Paper.ink,
+                  onPressed: () => Navigator.pop(context, false),
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: PaperButton(
-                      label: 'Huỷ',
-                      color: Paper.card,
-                      onColor: Paper.ink,
-                      onPressed: () => Navigator.pop(context, false),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: PaperButton(
-                      label: ok,
-                      onPressed: () => Navigator.pop(context, true),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: PaperButton(
+                  label: ok,
+                  onPressed: () => Navigator.pop(context, true),
+                ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     ) ??
     false;
@@ -611,6 +577,154 @@ class PopIn extends StatelessWidget {
       child: child,
     );
   }
+}
+
+/// Nhãn trên một ô nhập.
+class PaperLabel extends StatelessWidget {
+  const PaperLabel(this.text, {super.key});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 5),
+    child: Text(
+      text,
+      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+    ),
+  );
+}
+
+/// Ô nhập kiểu giấy: viền mực dày, nền kem, viền đổi màu nhấn khi đang gõ.
+class PaperField extends StatelessWidget {
+  const PaperField({
+    super.key,
+    required this.controller,
+    required this.onSubmit,
+    this.enabled = true,
+    this.obscure = false,
+    this.autofocus = false,
+    this.suffix,
+    this.keyboardType,
+    this.autofillHints,
+    this.action = TextInputAction.done,
+  });
+
+  final TextEditingController controller;
+  final VoidCallback onSubmit;
+  final bool enabled;
+  final bool obscure;
+  final bool autofocus;
+  final Widget? suffix;
+  final TextInputType? keyboardType;
+  final Iterable<String>? autofillHints;
+
+  /// Ô cuối là 'done' để gửi luôn, ô trên là 'next' để xuống ô kế.
+  final TextInputAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder border(Color c) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(color: c, width: 2),
+    );
+    return TextField(
+      controller: controller,
+      enabled: enabled,
+      obscureText: obscure,
+      autofocus: autofocus,
+      keyboardType: keyboardType,
+      autofillHints: autofillHints,
+      textInputAction: action,
+      onSubmitted: (_) => onSubmit(),
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: Paper.paper,
+        suffixIcon: suffix,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
+        border: border(Paper.ink),
+        enabledBorder: border(Paper.ink),
+        disabledBorder: border(Paper.ink3),
+        focusedBorder: border(Paper.accent),
+      ),
+    );
+  }
+}
+
+/// Vỏ hộp thoại kiểu giấy: huy hiệu + tiêu đề, phần thân do nơi gọi dựng.
+/// [confirmDialog] và hộp đăng nhập LMS dùng chung cái này nên hai hộp thoại
+/// không bao giờ lệch nhau một vài pixel.
+class PaperDialog extends StatelessWidget {
+  const PaperDialog({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.children,
+    this.color = Paper.sun,
+    this.maxWidth = 340,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+  final Color color;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+    backgroundColor: Colors.transparent,
+    child: Container(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Paper.paper,
+        border: Paper.border,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: Paper.shadow(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Huy hiệu cùng kiểu với các ô trong app, để hộp thoại
+              // trông như một thẻ giấy nữa chứ không phải popup hệ thống.
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: color,
+                  border: Paper.border,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: Paper.shadow(3),
+                ),
+                child: Icon(icon, size: 22, color: Paper.ink),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Baloo',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                    height: 1.15,
+                    color: Paper.ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    ),
+  );
 }
 
 /// Ô tìm kiếm mặc kiểu giấy. Giữ chữ trong controller của chính nó,

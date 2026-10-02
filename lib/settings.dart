@@ -67,6 +67,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool? _nguyHiem;
   bool? _khoa;
   bool? _lms;
+
+  /// Tài khoản LMS đang nối, để nói rõ "đang nối với ai" chứ không chỉ bật/tắt.
+  String? _lmsUser;
   bool _dangLamMoi = false;
   bool _dangKiemTra = false;
 
@@ -81,12 +84,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final nguyHiem = await Settings.nguyHiem();
     final khoa = await Settings.khoaBat();
     final lms = await Settings.lmsBat();
+    final tk = lms ? await LmsVault.read() : null;
     if (mounted) {
       setState(() {
         _dev = dev;
         _nguyHiem = nguyHiem;
         _khoa = khoa;
         _lms = lms;
+        _lmsUser = tk?.$1;
       });
     }
   }
@@ -145,24 +150,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!v) {
       await LmsVault.clear();
       await Settings.datLmsBat(false);
-      if (mounted) setState(() => _lms = false);
+      if (mounted) {
+        setState(() {
+          _lms = false;
+          _lmsUser = null;
+        });
+      }
       return;
     }
+    // Hộp thoại tự thử đăng nhập rồi mới đóng: sai mật khẩu thì báo ngay
+    // trong ô người ta đang gõ, không phải đóng hộp rồi mới hiện snackbar
+    // và bắt gõ lại từ đầu.
     final credentials = await showDialog<(String, String)>(
       context: context,
-      builder: (_) => const _LmsLoginDialog(),
+      barrierDismissible: false,
+      builder: (_) => const LmsLoginDialog(),
     );
     if (credentials == null || !mounted) return;
-    try {
-      await Lms().login(credentials.$1, credentials.$2);
-      await LmsVault.save(credentials.$1, credentials.$2);
-      await Settings.datLmsBat(true);
-      if (mounted) setState(() => _lms = true);
-    } on PortalError catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
-      }
+    await LmsVault.save(credentials.$1, credentials.$2);
+    await Settings.datLmsBat(true);
+    if (mounted) {
+      setState(() {
+        _lms = true;
+        _lmsUser = credentials.$1;
+      });
     }
   }
 
@@ -207,6 +218,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _CongTac(
               icon: Icons.school_rounded,
               label: 'Thông báo từ LMS',
+              phu: _lms == true && _lmsUser != null
+                  ? 'Đã nối tài khoản $_lmsUser'
+                  : 'Hạn nộp bài và thông báo từ lms.dlu.edu.vn',
               color: Paper.mint,
               value: _lms,
               onChanged: _doiLms,
@@ -297,16 +311,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   );
 }
 
-class _LmsLoginDialog extends StatefulWidget {
-  const _LmsLoginDialog();
+/// Đăng nhập LMS, cùng kiểu giấy với màn đăng nhập Online: nhãn trên ô,
+/// viền mực dày, nút nổi. Tự thử đăng nhập trước khi đóng nên chỉ trả về
+/// tài khoản đã chắc chắn dùng được.
+class LmsLoginDialog extends StatefulWidget {
+  const LmsLoginDialog({super.key, this.lms});
+
+  /// Chỉ test mới truyền vào.
+  final Lms? lms;
 
   @override
-  State<_LmsLoginDialog> createState() => _LmsLoginDialogState();
+  State<LmsLoginDialog> createState() => _LmsLoginDialogState();
 }
 
-class _LmsLoginDialogState extends State<_LmsLoginDialog> {
+class _LmsLoginDialogState extends State<LmsLoginDialog> {
   final _user = TextEditingController();
   final _pass = TextEditingController();
+  bool _an = true;
+  bool _dangThu = false;
+  String? _loi;
 
   @override
   void dispose() {
@@ -315,40 +338,124 @@ class _LmsLoginDialogState extends State<_LmsLoginDialog> {
     super.dispose();
   }
 
+  Future<void> _thu() async {
+    final username = _user.text.trim();
+    final password = _pass.text;
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _loi = 'Nhập cả tài khoản và mật khẩu LMS.');
+      return;
+    }
+    setState(() {
+      _dangThu = true;
+      _loi = null;
+    });
+    try {
+      await (widget.lms ?? Lms()).login(username, password);
+      if (mounted) Navigator.pop(context, (username, password));
+    } on PortalError catch (e) {
+      if (mounted) {
+        setState(() {
+          _dangThu = false;
+          _loi = e.message;
+        });
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Đăng nhập LMS'),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextField(
-          controller: _user,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Tài khoản LMS'),
+  Widget build(BuildContext context) => PaperDialog(
+    title: 'Đăng nhập LMS',
+    icon: Icons.school_rounded,
+    color: Paper.mint,
+    maxWidth: 380,
+    children: [
+      PaperBox(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Tài khoản LMS riêng, không phải tài khoản Online DLU. '
+              'Mật khẩu chỉ nằm trong máy bạn.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+                color: Paper.ink2,
+              ),
+            ),
+            const SizedBox(height: 14),
+            const PaperLabel('Tài khoản LMS'),
+            PaperField(
+              controller: _user,
+              enabled: !_dangThu,
+              autofocus: true,
+              action: TextInputAction.next,
+              onSubmit: () => FocusScope.of(context).nextFocus(),
+            ),
+            const SizedBox(height: 14),
+            const PaperLabel('Mật khẩu LMS'),
+            PaperField(
+              controller: _pass,
+              enabled: !_dangThu,
+              obscure: _an,
+              onSubmit: _thu,
+              suffix: IconButton(
+                onPressed: () => setState(() => _an = !_an),
+                icon: Icon(
+                  _an
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: Paper.ink2,
+                ),
+                tooltip: _an ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+              ),
+            ),
+          ],
         ),
-        TextField(
-          controller: _pass,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: 'Mật khẩu LMS'),
-        ),
-        const SizedBox(height: 8),
-        const Text('Tài khoản LMS riêng, không dùng tài khoản Online DLU.'),
-      ],
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Huỷ'),
       ),
-      FilledButton(
-        onPressed: () {
-          final username = _user.text.trim();
-          final password = _pass.text;
-          if (username.isNotEmpty && password.isNotEmpty) {
-            Navigator.pop(context, (username, password));
-          }
-        },
-        child: const Text('Đăng nhập'),
+      if (_loi != null) ...[
+        const SizedBox(height: 12),
+        PaperBox(
+          color: Paper.rose,
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _loi!,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Paper.ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+      const SizedBox(height: 16),
+      Row(
+        children: [
+          Expanded(
+            child: PaperButton(
+              label: 'Huỷ',
+              color: Paper.card,
+              onColor: Paper.ink,
+              onPressed: _dangThu ? null : () => Navigator.pop(context),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: PaperButton(
+              label: _dangThu ? 'Đang kiểm tra…' : 'Đăng nhập',
+              onPressed: _dangThu ? null : _thu,
+            ),
+          ),
+        ],
       ),
     ],
   );
@@ -361,6 +468,7 @@ class _CongTac extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.color = Paper.card,
+    this.phu,
   });
   final IconData icon;
   final String label;
@@ -368,10 +476,14 @@ class _CongTac extends StatelessWidget {
   final ValueChanged<bool> onChanged;
   final Color color;
 
+  /// Dòng phụ dưới nhãn: nói rõ cờ này làm gì, hay đang nối với tài khoản nào.
+  final String? phu;
+
   @override
   Widget build(BuildContext context) {
     final v = value;
     if (v == null) return const Skeleton(height: 60, radius: 16, ink: true);
+    final phu = this.phu;
     return PaperBox(
       color: v ? color : Paper.card,
       child: Row(
@@ -379,12 +491,24 @@ class _CongTac extends StatelessWidget {
           Icon(icon, color: Paper.ink),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                color: Paper.ink,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Paper.ink,
+                  ),
+                ),
+                if (phu != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    phu,
+                    style: const TextStyle(fontSize: 12, color: Paper.ink2),
+                  ),
+                ],
+              ],
             ),
           ),
           Switch(
