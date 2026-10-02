@@ -109,13 +109,20 @@ class Lms {
     final me = await _send(
       http.Request('GET', Uri.parse('$_base/my/'))..headers['cookie'] = cookie,
     );
-    final config = RegExp(r'M\.cfg\s*=\s*(\{[^;]+\})')
-        .firstMatch(_text(me))
+    final trang = _text(me);
+    // sesskey luôn có trong M.cfg; `userid` thì tuỳ bản Moodle — lms.dlu
+    // (theme lambda) không in nó ở đó, phải bắt trong phần JS của trang.
+    final sesskey = RegExp(r'"sesskey":"([A-Za-z0-9]+)"')
+        .firstMatch(trang)
         ?.group(1);
-    if (config == null) throw _sai();
-    final cfg = jsonDecode(config) as Map<String, dynamic>;
-    final sesskey = cfg['sesskey'] as String?;
-    final userId = (cfg['userid'] as num?)?.toInt();
+    final userId = int.tryParse(
+      RegExp(
+            r'userid["\s:=]+(\d+)',
+            caseSensitive: false,
+          ).firstMatch(trang)?.group(1) ??
+          RegExp(r'/user/profile\.php\?id=(\d+)').firstMatch(trang)?.group(1) ??
+          '',
+    );
     if (sesskey == null || userId == null) throw _sai();
     return (cookie: cookie, sesskey: sesskey, userId: userId);
   }
@@ -184,7 +191,9 @@ class Lms {
               item['smallmessage'] as String? ??
               item['fullmessage'] as String? ??
               '',
-          unread: item['read'] == false || item['read'] == 0,
+          // Đã lọc `read: 0` nên mọi thứ trả về đều là chưa đọc; bản Moodle
+          // của trường không in lại cờ `read` trong bản ghi, đừng đoán ngược.
+          unread: item['read'] != true && item['read'] != 1,
         ),
     ];
   }

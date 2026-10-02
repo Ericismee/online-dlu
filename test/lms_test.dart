@@ -40,7 +40,10 @@ MockClient moodle({
       // Chỉ cookie mới mới được coi là đã đăng nhập.
       return http.Response(
         req.headers['cookie'] == 'MoodleSession=thatsu'
-            ? 'M.cfg = {"sesskey":"KEY123","userid":7,"wwwroot":"x"};'
+            // Giống lms.dlu thật: M.cfg không có `userid`, id nằm trong JS
+            // của trang.
+            ? 'M.cfg = {"sesskey":"KEY123","wwwroot":"x"};'
+                  '<div data-userid="7"></div>'
             : 'Bạn chưa đăng nhập',
         200,
       );
