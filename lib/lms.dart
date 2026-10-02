@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'db.dart';
 import 'portal.dart' show PortalError;
 import 'settings.dart' show Settings;
 
@@ -10,6 +11,9 @@ import 'settings.dart' show Settings;
 typedef LmsSession = ({String cookie, String sesskey, int userId});
 
 typedef LmsNotification = ({
+  /// Id Moodle, dùng làm khoá trong SQLite nên phải là của server, không
+  /// được tự sinh: cùng một thông báo lấy lại lần sau phải trùng khoá cũ.
+  String id,
   String subject,
   String sender,
   String date,
@@ -35,6 +39,67 @@ class LmsVault {
     Lms.boPhien();
     await _storage.delete(key: 'lms_username');
     await _storage.delete(key: 'lms_password');
+  }
+}
+
+/// Thông báo LMS cất trong SQLite: Moodle chỉ trả về 30 cái mới nhất và chỉ
+/// loại chưa đọc, nên không giữ lại thì cái nào trôi khỏi danh sách đó là mất.
+/// Mỗi dòng một thông báo, nội dung là JSON kèm cờ [_daXem]; "đã xem" chỉ đổi
+/// cờ, không xoá dòng nào.
+class LmsKho {
+  static const _daXem = 'da_xem';
+
+  /// Mọi thông báo đã từng lấy về, mới nhất lên trước. [KhoData.luc] là lúc
+  /// ghi nên không dùng để sắp — sắp theo ngày của chính thông báo.
+  static Future<List<LmsNotification>> doc() async {
+    final out = [for (final d in await Db.i.nhomDang(nhomThongBao)) _tu(d)]
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return out;
+  }
+
+  /// Nhập mẻ vừa lấy về. Thông báo đã có thì giữ nguyên cờ đã xem: server
+  /// không biết mình đã xem trong app, ghi đè là nó chưa đọc lại lần nữa.
+  static Future<void> luu(Iterable<LmsNotification> moi) async {
+    final cu = {
+      for (final d in await Db.i.nhomDang(nhomThongBao)) d.khoa: _tu(d),
+    };
+    for (final n in moi) {
+      if (n.id.isEmpty) continue;
+      await Db.i.ghi(
+        nhomThongBao,
+        n.id,
+        giaTri: jsonEncode({
+          'subject': n.subject,
+          'sender': n.sender,
+          'date': n.date,
+          'body': n.body,
+          _daXem: cu[n.id]?.unread == false,
+        }),
+      );
+    }
+  }
+
+  /// Đánh dấu đã xem một thông báo, hay tất cả khi [id] để trống.
+  static Future<void> danhDauDaXem([String? id]) async {
+    for (final d in await Db.i.nhomDang(nhomThongBao)) {
+      if (id != null && d.khoa != id) continue;
+      final m = jsonDecode(d.giaTri) as Map<String, dynamic>;
+      if (m[_daXem] == true) continue;
+      m[_daXem] = true;
+      await Db.i.ghi(nhomThongBao, d.khoa, giaTri: jsonEncode(m));
+    }
+  }
+
+  static LmsNotification _tu(KhoData d) {
+    final m = jsonDecode(d.giaTri) as Map<String, dynamic>;
+    return (
+      id: d.khoa,
+      subject: m['subject'] as String? ?? '',
+      sender: m['sender'] as String? ?? '',
+      date: m['date'] as String? ?? '',
+      body: m['body'] as String? ?? '',
+      unread: m[_daXem] != true,
+    );
   }
 }
 
@@ -202,6 +267,7 @@ class Lms {
     return [
       for (final item in items)
         (
+          id: item['id']?.toString() ?? '',
           subject: item['subject'] as String? ?? '',
           sender:
               item['userfrom']?['fullname'] as String? ??

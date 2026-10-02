@@ -8,10 +8,12 @@ import 'custom_lich.dart' show CustomLich, customLichMauMacDinh;
 
 part 'db.g.dart';
 
-/// Nhóm khoá trong [Kho]: cache JSON của portal, cờ cài đặt, mốc "đã xem".
+/// Nhóm khoá trong [Kho]: cache JSON của portal, cờ cài đặt, mốc "đã xem",
+/// thông báo LMS.
 const nhomCache = 'cache';
 const nhomCaiDat = 'cai_dat';
 const nhomMoc = 'moc';
+const nhomThongBao = 'thong_bao';
 
 /// Mọi thứ app lưu lâu dài đều nằm trong một tệp SQLite, không có gì bị xoá
 /// thật: mỗi dòng mang cờ [bat]. `bat = false` nghĩa là "ẩn đi" — người dùng
