@@ -164,10 +164,19 @@ jobs:
           ref: main
           path: repo
 
-      - name: Cập nhật lc.json cho LiveContainer
+      - name: Đồng bộ lc.json theo version.json
+        id: ban
         run: |
           cd repo
-          python3 tool/lc_bump.py "$(ls ../files/ios/*.ipa | head -1)" "$GITHUB_REF_NAME"
+          # Tag mà lệch version.json là phát hành nhầm bản — dừng sớm hơn là
+          # để Releases và app nói hai số khác nhau.
+          python3 tool/version.py check "$GITHUB_REF_NAME"
+          python3 tool/version.py sync --ipa "$(ls ../files/ios/*.ipa | head -1)"
+          {
+            echo 'notes<<EOF'
+            python3 tool/version.py notes
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
           git config user.name github-actions
           git config user.email github-actions@github.com
           git commit -sqm "lc.json: $GITHUB_REF_NAME" lc.json || exit 0
@@ -179,6 +188,12 @@ jobs:
           generate_release_notes: true
           body: |
             Ứng dụng không chính thức cho sinh viên Trường Đại học Đà Lạt.
+
+            ## Có gì mới
+
+            ${{ steps.ban.outputs.notes }}
+
+            ## Tải về
 
             - `.apk` — cài thẳng lên Android 7.0 trở lên
             - `.aab` — bản nộp Google Play

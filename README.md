@@ -82,12 +82,29 @@ Không có `key.properties` thì Gradle tự rơi về debug key, đủ để
 
 ## Phát hành tự động
 
-Đẩy một tag `v*` là GitHub Actions build cả hai nền tảng rồi tạo Release kèm
-file:
+Số phiên bản và changelog khai ở **`version.json`** — chỉ sửa đúng file này:
+
+```json
+{
+  "version": "1.0.8",
+  "build": 9,
+  "changelog": [
+    { "version": "1.0.8", "date": "2026-10-02", "changes": ["Thêm cái này."] }
+  ]
+}
+```
+
+Rồi chạy `python3 tool/version.py sync` để chép sang `pubspec.yaml` và
+`lc.json`, và đẩy tag:
 
 ```bash
-git tag v1.0.0 && git push origin v1.0.0
+git tag v1.0.8 && git push origin v1.0.8
 ```
+
+GitHub Actions build cả hai nền tảng, kiểm tag có khớp `version.json` không,
+dán changelog vào phần mô tả Release, rồi commit lại `lc.json` kèm kích thước
+IPA. App đọc thẳng `version.json` nên màn **Cập nhật** và thẻ *Có gì mới* cũng
+ăn theo, không phải gõ lại chỗ nào.
 
 Chi tiết secrets cần khai ở `.github/workflows/release.yml`.
 
@@ -104,8 +121,8 @@ https://raw.githubusercontent.com/dopaemon/online-dlu/main/lc.json
 ```
 
 `lc.json` trỏ thẳng vào bản mới nhất ở Releases, nên phát hành tag mới là máy
-hiện nút cập nhật — workflow tự ghi lại số phiên bản trong file đó sau mỗi lần
-build (`tool/lc_bump.py`).
+hiện nút cập nhật — workflow tự chép số phiên bản vào file đó sau mỗi lần build
+(`tool/version.py sync`).
 
 Nguồn này chỉ hoạt động khi repo để **public**; repo private thì cả
 `raw.githubusercontent.com` lẫn file trong Releases đều đòi đăng nhập.

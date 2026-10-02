@@ -43,20 +43,22 @@ class UpdateCheck {
     }
   }
 
-  /// `lc.json` trên nhánh main — đúng file CI đẩy lúc phát hành, có cả bản vừa
-  /// ra. Mạng hỏng thì lấy bản đóng gói sẵn trong app, cũ hơn nhưng vẫn đọc
-  /// được lịch sử tới lúc đóng gói.
+  /// `version.json` trên nhánh main — chỗ duy nhất khai số bản và changelog,
+  /// nên có cả bản vừa ra. Mạng hỏng thì lấy bản đóng gói sẵn trong app, cũ
+  /// hơn nhưng vẫn đọc được lịch sử tới lúc đóng gói.
   static Future<List<BanGhi>> lichSu({http.Client? client}) async {
     final c = client ?? http.Client();
     try {
       final res = await c
           .get(
-            Uri.parse('https://raw.githubusercontent.com/$repo/main/lc.json'),
+            Uri.parse(
+              'https://raw.githubusercontent.com/$repo/main/version.json',
+            ),
           )
           .timeout(const Duration(seconds: 8));
       if (res.statusCode == 200) {
-        // Bản lc.json cũ chưa có mục 'changelog' — rỗng thì coi như chưa đọc
-        // được, rơi xuống bản đóng gói chứ đừng hiện màn trống.
+        // Rỗng thì coi như chưa đọc được, rơi xuống bản đóng gói chứ đừng
+        // hiện màn trống.
         final m = _doc(utf8.decode(res.bodyBytes));
         if (m.isNotEmpty) return m;
       }
@@ -66,7 +68,7 @@ class UpdateCheck {
       if (client == null) c.close();
     }
     try {
-      return _doc(await rootBundle.loadString('lc.json'));
+      return _doc(await rootBundle.loadString('version.json'));
     } catch (_) {
       return const [];
     }
@@ -77,7 +79,8 @@ class UpdateCheck {
       (
         version: m['version'] as String,
         date: m['date'] as String? ?? '',
-        text: m['text'] as String? ?? '',
+        text: [for (final c in (m['changes'] as List? ?? const [])) '• $c']
+            .join('\n'),
       ),
   ];
 
@@ -234,8 +237,8 @@ class _UpdateBannerState extends State<UpdateBanner>
   }
 }
 
-/// Changelog của bản đang cài, đọc từ `lc.json` đóng gói sẵn trong app —
-/// cùng nội dung AltStore/LiveContainer hiện lúc cài, khỏi phải gõ hai chỗ.
+/// Changelog của bản đang cài, đọc từ `version.json` đóng gói sẵn trong app —
+/// cùng nguồn với màn Cập nhật, khỏi phải gõ hai chỗ.
 class Changelog extends StatefulWidget {
   const Changelog({super.key});
 
@@ -256,19 +259,19 @@ class _ChangelogState extends State<Changelog>
 
   Future<void> _load() async {
     try {
-      final raw = await rootBundle.loadString('lc.json');
-      final versions = (jsonDecode(raw)['apps'][0]['versions'] as List)
-          .cast<Map>();
+      final lichSu = UpdateCheck._doc(
+        await rootBundle.loadString('version.json'),
+      );
       final mine = (await PackageInfo.fromPlatform()).version;
-      final v = versions.firstWhere(
-        (v) => v['version'] == mine,
-        orElse: () => versions.first,
+      final v = lichSu.firstWhere(
+        (v) => v.version == mine,
+        orElse: () => lichSu.first,
       );
       final prefs = await SharedPreferences.getInstance();
       if (prefs.getString('dismissed_changelog') == mine) return;
       if (mounted) {
         setState(() {
-          _text = v['localizedDescription'] as String;
+          _text = v.text;
           _version = mine;
         });
       }
@@ -339,7 +342,7 @@ class _ChangelogState extends State<Changelog>
 }
 
 /// Màn 'Cập nhật': bản đang dùng, nút tải nếu có bản mới, và lịch sử thay đổi
-/// của mọi bản. Nguồn là `lc.json` nên khỏi gõ changelog ở chỗ thứ hai.
+/// của mọi bản. Nguồn là `version.json` nên khỏi gõ changelog ở chỗ thứ hai.
 class ChangelogScreen extends StatefulWidget {
   const ChangelogScreen({
     super.key,

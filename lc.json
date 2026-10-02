@@ -34,57 +34,16 @@
       "versions": [
         {
           "version": "1.0.7",
-          "buildVersion": "1",
+          "buildVersion": "8",
           "date": "2026-10-02",
-          "localizedDescription": "Thêm mục Cải thiện: xếp hạng môn đang kéo GPA xuống và cho thấy học lại thì GPA nhích lên bao nhiêu. Nhấn giữ rồi kéo để sắp xếp lại menu Trang chủ. Lịch tự đặt chọn được màu, vị trí, có nút Đã xong và cảnh báo trùng giờ học chính quy. Sửa mốc \"Dữ liệu lúc\" nhảy sai khi làm mới lúc mất mạng.",
+          "localizedDescription": "• Thêm mục Cải thiện: xếp hạng môn đang kéo GPA xuống, cho thấy học lại thì GPA nhích lên bao nhiêu.\n• Nhấn giữ rồi kéo để sắp xếp lại menu Trang chủ, thứ tự được nhớ.\n• Lịch tự đặt chọn được màu và vị trí, có nút Đã xong cho lịch chưa có giờ về.\n• Cảnh báo khi lịch tự đặt trùng giờ học chính quy.\n• Màu ô lịch tháng tính luôn lịch tự đặt, bỏ chọn màu thủ công.\n• Cảnh báo đỏ không tắt được khi dữ liệu quá 1 ngày chưa làm mới.\n• Sửa mốc \"Dữ liệu lúc\" nhảy sai khi kéo làm mới lúc mất mạng.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 11671216,
+          "size": 11620377,
           "minOSVersion": "15.0"
         }
-      ]
+      ],
+      "version": "1.0.7"
     }
   ],
-  "news": [],
-  "changelog": [
-    {
-      "version": "1.0.7",
-      "date": "2026-10-02",
-      "text": "• Thêm mục Cải thiện: xếp hạng môn đang kéo GPA xuống, cho thấy học lại thì GPA nhích lên bao nhiêu.\n• Nhấn giữ rồi kéo để sắp xếp lại menu Trang chủ, thứ tự được nhớ.\n• Lịch tự đặt chọn được màu và vị trí, có nút Đã xong cho lịch chưa có giờ về.\n• Cảnh báo khi lịch tự đặt trùng giờ học chính quy.\n• Màu ô lịch tháng tính luôn lịch tự đặt, bỏ chọn màu thủ công.\n• Cảnh báo đỏ không tắt được khi dữ liệu quá 1 ngày chưa làm mới.\n• Sửa mốc \"Dữ liệu lúc\" nhảy sai khi kéo làm mới lúc mất mạng."
-    },
-    {
-      "version": "1.0.6",
-      "date": "2026-09-29",
-      "text": "• Màn hình Cài đặt: khoá app bằng vân tay/FaceID, tắt được thẻ Có gì mới.\n• Xoá lịch tự đặt là Trang chủ cập nhật ngay.\n• Thẻ đếm ngược sắp xếp theo giờ."
-    },
-    {
-      "version": "1.0.5",
-      "date": "2026-09-29",
-      "text": "• Đặt lịch riêng cho ngày trống hoặc ngày đã có lịch học, xoá được.\n• Giao diện chọn giờ và ô nhập theo đúng phong cách app.\n• Nhắc trước giờ vào lớp mặc định tắt."
-    },
-    {
-      "version": "1.0.4",
-      "date": "2026-09-28",
-      "text": "• Nhắc trước giờ vào lớp 15 phút, chỉ rung không kêu.\n• Xem trước ngày mai kể cả khi đang ở ngày cuối tháng.\n• Menu Trang chủ có tiêu đề."
-    },
-    {
-      "version": "1.0.3",
-      "date": "2026-09-28",
-      "text": "• Trạng thái lịch học bám theo từng tiết: chưa vào lớp, đang học, ra chơi, đã xong.\n• Xem trước lịch ngày mai."
-    },
-    {
-      "version": "1.0.2",
-      "date": "2026-09-27",
-      "text": "• Báo khi có bản mới trên GitHub Releases.\n• Mở app lần nào cũng lấy số mới, mốc dữ liệu nhích theo.\n• Kéo ngược lên là huỷ lượt kéo-xuống-làm-mới.\n• Bỏ thẻ GPA tổng quan khỏi Trang chủ cho màn gọn lại."
-    },
-    {
-      "version": "1.0.1",
-      "date": "2026-09-27",
-      "text": "• Nạp sẵn dữ liệu khi mở app để xem được lúc mất mạng.\n• Đồng hồ chung: Trang chủ tự qua ngày, cảnh báo sắp vào lớp.\n• Lịch đánh dấu chưa vào lớp / đang học / ra chơi / xong.\n• Hồ sơ: thẻ sinh viên mã vạch và QR, nhấn giữ để copy.\n• Điểm: kỳ chưa chấm vẫn hiện tên môn.\n• Thanh đáy đổi Học phần lấy Điểm.\n• Có token mới là nạp lại, không chờ kéo xuống.\n• Portal hỏng giữa lượt làm mới thì giữ số cũ, xoá được hộp lỗi khi nạp lại được."
-    },
-    {
-      "version": "1.0.0",
-      "date": "2026-09-27",
-      "text": "• Bản đầu tiên: đăng nhập portal Đại Học Đà Lạt, thời khoá biểu theo tháng.\n• Lịch thi, nạp trước 3 tháng, chuông thông báo và chọn tháng/năm.\n• Điểm: thẻ tích luỹ GPA, chọn năm / học kỳ, kỳ chưa có điểm báo thẳng.\n• Kết quả đăng ký học phần theo năm / học kỳ.\n• Chương trình đào tạo: gom đúng học kỳ, đánh dấu học phần điều kiện.\n• Điểm rèn luyện và phiếu rèn luyện chi tiết.\n• Hồ sơ sinh viên, ảnh và thông tin lớp.\n• Trang chủ: tiết hôm nay, tiết sắp tới, biểu đồ số tiết trong tháng, thẻ menu.\n• Lưu dữ liệu vào máy: giữ đăng nhập và xem được khi mất mạng, kéo xuống làm mới.\n• Xuất lịch ra .ics, chia sẻ ảnh lịch, tìm môn, bấm ô lịch xem ngày đó.\n• Chi tiết tiết học có giờ vào - giờ ra kiểu timeline.\n• Giao diện giấy cắt: bóng chéo, bấm lún, pop-in, chuông lắc, nền chấm.\n• Nguồn cài LiveContainer/AltStore và workflow phát hành theo tag."
-    }
-  ]
+  "news": []
 }

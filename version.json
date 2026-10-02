@@ -1,0 +1,97 @@
+{
+  "version": "1.0.7",
+  "build": 8,
+  "changelog": [
+    {
+      "version": "1.0.7",
+      "date": "2026-10-02",
+      "changes": [
+        "Thêm mục Cải thiện: xếp hạng môn đang kéo GPA xuống, cho thấy học lại thì GPA nhích lên bao nhiêu.",
+        "Nhấn giữ rồi kéo để sắp xếp lại menu Trang chủ, thứ tự được nhớ.",
+        "Lịch tự đặt chọn được màu và vị trí, có nút Đã xong cho lịch chưa có giờ về.",
+        "Cảnh báo khi lịch tự đặt trùng giờ học chính quy.",
+        "Màu ô lịch tháng tính luôn lịch tự đặt, bỏ chọn màu thủ công.",
+        "Cảnh báo đỏ không tắt được khi dữ liệu quá 1 ngày chưa làm mới.",
+        "Sửa mốc \"Dữ liệu lúc\" nhảy sai khi kéo làm mới lúc mất mạng."
+      ]
+    },
+    {
+      "version": "1.0.6",
+      "date": "2026-09-29",
+      "changes": [
+        "Màn hình Cài đặt: khoá app bằng vân tay/FaceID, tắt được thẻ Có gì mới.",
+        "Xoá lịch tự đặt là Trang chủ cập nhật ngay.",
+        "Thẻ đếm ngược sắp xếp theo giờ."
+      ]
+    },
+    {
+      "version": "1.0.5",
+      "date": "2026-09-29",
+      "changes": [
+        "Đặt lịch riêng cho ngày trống hoặc ngày đã có lịch học, xoá được.",
+        "Giao diện chọn giờ và ô nhập theo đúng phong cách app.",
+        "Nhắc trước giờ vào lớp mặc định tắt."
+      ]
+    },
+    {
+      "version": "1.0.4",
+      "date": "2026-09-28",
+      "changes": [
+        "Nhắc trước giờ vào lớp 15 phút, chỉ rung không kêu.",
+        "Xem trước ngày mai kể cả khi đang ở ngày cuối tháng.",
+        "Menu Trang chủ có tiêu đề."
+      ]
+    },
+    {
+      "version": "1.0.3",
+      "date": "2026-09-28",
+      "changes": [
+        "Trạng thái lịch học bám theo từng tiết: chưa vào lớp, đang học, ra chơi, đã xong.",
+        "Xem trước lịch ngày mai."
+      ]
+    },
+    {
+      "version": "1.0.2",
+      "date": "2026-09-27",
+      "changes": [
+        "Báo khi có bản mới trên GitHub Releases.",
+        "Mở app lần nào cũng lấy số mới, mốc dữ liệu nhích theo.",
+        "Kéo ngược lên là huỷ lượt kéo-xuống-làm-mới.",
+        "Bỏ thẻ GPA tổng quan khỏi Trang chủ cho màn gọn lại."
+      ]
+    },
+    {
+      "version": "1.0.1",
+      "date": "2026-09-27",
+      "changes": [
+        "Nạp sẵn dữ liệu khi mở app để xem được lúc mất mạng.",
+        "Đồng hồ chung: Trang chủ tự qua ngày, cảnh báo sắp vào lớp.",
+        "Lịch đánh dấu chưa vào lớp / đang học / ra chơi / xong.",
+        "Hồ sơ: thẻ sinh viên mã vạch và QR, nhấn giữ để copy.",
+        "Điểm: kỳ chưa chấm vẫn hiện tên môn.",
+        "Thanh đáy đổi Học phần lấy Điểm.",
+        "Có token mới là nạp lại, không chờ kéo xuống.",
+        "Portal hỏng giữa lượt làm mới thì giữ số cũ, xoá được hộp lỗi khi nạp lại được."
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-09-27",
+      "changes": [
+        "Bản đầu tiên: đăng nhập portal Đại Học Đà Lạt, thời khoá biểu theo tháng.",
+        "Lịch thi, nạp trước 3 tháng, chuông thông báo và chọn tháng/năm.",
+        "Điểm: thẻ tích luỹ GPA, chọn năm / học kỳ, kỳ chưa có điểm báo thẳng.",
+        "Kết quả đăng ký học phần theo năm / học kỳ.",
+        "Chương trình đào tạo: gom đúng học kỳ, đánh dấu học phần điều kiện.",
+        "Điểm rèn luyện và phiếu rèn luyện chi tiết.",
+        "Hồ sơ sinh viên, ảnh và thông tin lớp.",
+        "Trang chủ: tiết hôm nay, tiết sắp tới, biểu đồ số tiết trong tháng, thẻ menu.",
+        "Lưu dữ liệu vào máy: giữ đăng nhập và xem được khi mất mạng, kéo xuống làm mới.",
+        "Xuất lịch ra .ics, chia sẻ ảnh lịch, tìm môn, bấm ô lịch xem ngày đó.",
+        "Chi tiết tiết học có giờ vào - giờ ra kiểu timeline.",
+        "Giao diện giấy cắt: bóng chéo, bấm lún, pop-in, chuông lắc, nền chấm.",
+        "Nguồn cài LiveContainer/AltStore và workflow phát hành theo tag."
+      ]
+    }
+  ]
+}
