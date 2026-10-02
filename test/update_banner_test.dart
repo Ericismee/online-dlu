@@ -42,6 +42,38 @@ void main() {
     expect(find.textContaining('1.0.3'), findsOneWidget);
   });
 
+  testWidgets('kéo thẻ khỏi màn rồi quay lại thì không dựng lại từ đầu', (
+    t,
+  ) async {
+    // Dựng lại là thẻ cao 0 một nhịp rồi phình ra, cả trang nhảy ngược lên.
+    var lan = 0;
+    await t.pumpWidget(
+      MaterialApp(
+        home: ListView(
+          children: [
+            UpdateBanner(
+              check: () async {
+                lan++;
+                return '1.0.2';
+              },
+              notes: (v) async => null,
+            ),
+            const SizedBox(height: 3000),
+          ],
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(lan, 1);
+
+    await t.drag(find.byType(ListView), const Offset(0, -2000));
+    await t.pumpAndSettle();
+    await t.drag(find.byType(ListView), const Offset(0, 2000));
+    await t.pumpAndSettle();
+    expect(lan, 1);
+    expect(find.textContaining('1.0.2'), findsOneWidget);
+  });
+
   testWidgets('đã mới nhất rồi thì không hiện gì', (t) async {
     await t.pumpWidget(
       MaterialApp(home: UpdateBanner(check: () async => null)),

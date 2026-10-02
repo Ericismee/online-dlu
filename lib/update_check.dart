@@ -101,7 +101,8 @@ class UpdateBanner extends StatefulWidget {
   State<UpdateBanner> createState() => _UpdateBannerState();
 }
 
-class _UpdateBannerState extends State<UpdateBanner> {
+class _UpdateBannerState extends State<UpdateBanner>
+    with AutomaticKeepAliveClientMixin {
   String? _version;
   String? _notes;
 
@@ -121,6 +122,12 @@ class _UpdateBannerState extends State<UpdateBanner> {
     if (notes != null && mounted) setState(() => _notes = notes);
   }
 
+  // Kéo khỏi màn hình là ListView huỷ thẻ, lúc quay lại nó dựng lại từ đầu nên
+  // cao 0 một nhịp: cả trang tụt đúng chiều cao thẻ rồi phình lại, nhìn như bị
+  // nhảy ngược lên trên. Giữ state là hết.
+  @override
+  bool get wantKeepAlive => true;
+
   Future<void> _dismiss() async {
     final v = _version;
     setState(() => _version = null);
@@ -131,6 +138,7 @@ class _UpdateBannerState extends State<UpdateBanner> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final v = _version;
     if (v == null) return const SizedBox.shrink();
     return Padding(
@@ -188,7 +196,8 @@ class Changelog extends StatefulWidget {
   State<Changelog> createState() => _ChangelogState();
 }
 
-class _ChangelogState extends State<Changelog> {
+class _ChangelogState extends State<Changelog>
+    with AutomaticKeepAliveClientMixin {
   String? _text;
   String? _version;
 
@@ -221,6 +230,10 @@ class _ChangelogState extends State<Changelog> {
     }
   }
 
+  // Như [UpdateBanner]: dựng lại mất một nhịp, thẻ co về 0 làm trang nhảy.
+  @override
+  bool get wantKeepAlive => true;
+
   Future<void> _dismiss() async {
     final v = _version;
     setState(() => _text = null);
@@ -234,6 +247,7 @@ class _ChangelogState extends State<Changelog> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final t = _text;
     if (t == null || t.isEmpty) return const SizedBox.shrink();
     return Padding(
