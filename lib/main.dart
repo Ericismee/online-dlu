@@ -705,6 +705,7 @@ class _Menu extends StatefulWidget {
     (-4, Icons.fact_check_rounded, 'Phiếu rèn luyện', Paper.mint),
     (-3, Icons.school_rounded, 'Chương trình đào tạo', Paper.sky),
     (-6, Icons.trending_up_rounded, 'Cải thiện', Paper.rose),
+    (-7, Icons.system_update_rounded, 'Cập nhật', Paper.sky),
     (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
     // Mặc định để cuối: đây là mục cấu hình, không phải dữ liệu trường. Người
     // dùng kéo lên trên được, thứ tự họ chọn mới là thứ tự cuối cùng.
@@ -764,6 +765,7 @@ class _MenuState extends State<_Menu> {
           -4 => BehaviorDetailScreen(session: session),
           -5 => SettingsScreen(session: session),
           -6 => ImprovementScreen(session: session),
+          -7 => const ChangelogScreen(),
           _ => CurriculumScreen(session: session),
         },
       ),

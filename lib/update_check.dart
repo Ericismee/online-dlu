@@ -10,6 +10,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'paper.dart';
 
+/// Một dòng lịch sử cập nhật: bản nào, ra ngày nào, đổi những gì.
+typedef BanGhi = ({String version, String date, String text});
+
 /// So bản đang cài với bản mới nhất trên GitHub Releases của repo. Không
 /// đụng gì tới portal trường hay Cache — gọi thẳng GitHub, và im lặng bỏ
 /// qua nếu mạng hỏng hay GitHub chặn (rate-limit).
@@ -40,10 +43,10 @@ class UpdateCheck {
     }
   }
 
-  /// Changelog của bản [version], đọc `lc.json` trên nhánh main — đúng file CI
-  /// vừa đẩy lúc phát hành, cùng nội dung AltStore hiện. Lấy không được thì
-  /// null, thẻ vẫn báo có bản mới như cũ.
-  static Future<String?> notesFor(String version, {http.Client? client}) async {
+  /// `lc.json` trên nhánh main — đúng file CI đẩy lúc phát hành, có cả bản vừa
+  /// ra. Mạng hỏng thì lấy bản đóng gói sẵn trong app, cũ hơn nhưng vẫn đọc
+  /// được lịch sử tới lúc đóng gói.
+  static Future<List<BanGhi>> lichSu({http.Client? client}) async {
     final c = client ?? http.Client();
     try {
       final res = await c
@@ -51,21 +54,40 @@ class UpdateCheck {
             Uri.parse('https://raw.githubusercontent.com/$repo/main/lc.json'),
           )
           .timeout(const Duration(seconds: 8));
-      if (res.statusCode != 200) return null;
-      final v =
-          (jsonDecode(utf8.decode(res.bodyBytes))['apps'][0]['versions']
-                  as List)
-              .first;
-      // lc.json chậm hơn Release vài giây thì bỏ qua, đừng dán changelog của
-      // bản cũ lên thẻ báo bản mới.
-      return v['version'] == version
-          ? v['localizedDescription'] as String?
-          : null;
+      if (res.statusCode == 200) {
+        // Bản lc.json cũ chưa có mục 'changelog' — rỗng thì coi như chưa đọc
+        // được, rơi xuống bản đóng gói chứ đừng hiện màn trống.
+        final m = _doc(utf8.decode(res.bodyBytes));
+        if (m.isNotEmpty) return m;
+      }
     } catch (_) {
-      return null;
+      // mạng hỏng, rơi xuống bản đóng gói
     } finally {
       if (client == null) c.close();
     }
+    try {
+      return _doc(await rootBundle.loadString('lc.json'));
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static List<BanGhi> _doc(String raw) => [
+    for (final m in (jsonDecode(raw)['changelog'] as List? ?? const []))
+      (
+        version: m['version'] as String,
+        date: m['date'] as String? ?? '',
+        text: m['text'] as String? ?? '',
+      ),
+  ];
+
+  /// Changelog của bản [version], null nếu lịch sử chưa có bản đó — thà không
+  /// hiện còn hơn dán nhầm mô tả bản cũ lên thẻ báo bản mới.
+  static Future<String?> notesFor(String version, {http.Client? client}) async {
+    for (final m in await lichSu(client: client)) {
+      if (m.version == version) return m.text;
+    }
+    return null;
   }
 
   /// So 'x.y.z' theo từng số — đủ dùng cho kiểu versioning ba số của app này.
@@ -102,17 +124,22 @@ class UpdateBanner extends StatefulWidget {
 }
 
 class _UpdateBannerState extends State<UpdateBanner>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, Reloadable<UpdateBanner> {
   String? _version;
   String? _notes;
+
+  /// Kéo xuống làm mới là hỏi GitHub lại luôn — người dùng kéo vì muốn mọi thứ
+  /// mới, bản app cũng là một thứ.
+  @override
+  Future<void> reload() => _check();
 
   @override
   void initState() {
     super.initState();
-    _check();
+    _check(moApp: true);
   }
 
-  Future<void> _check() async {
+  Future<void> _check({bool moApp = false}) async {
     final v = await widget.check();
     if (v == null || !mounted) return;
     final prefs = await SharedPreferences.getInstance();
@@ -120,6 +147,26 @@ class _UpdateBannerState extends State<UpdateBanner>
     if (mounted) setState(() => _version = v);
     final notes = await widget.notes(v);
     if (notes != null && mounted) setState(() => _notes = notes);
+    // Mở app mà có bản mới thì nói thẳng một lần, đừng để thẻ nằm im dưới
+    // cuộn rồi chẳng ai thấy. Lần sau mở lại cùng bản đó thì thôi, còn thẻ.
+    if (moApp && mounted && prefs.getString('shown_update') != v) {
+      await prefs.setString('shown_update', v);
+      if (!mounted) return;
+      final tai = await confirmDialog(
+        context,
+        title: 'Có bản mới v$v',
+        body: notes ?? 'Bấm tải về để cập nhật.',
+        ok: 'Tải về',
+        icon: Icons.rocket_launch_rounded,
+        color: Paper.mint,
+      );
+      if (tai) {
+        await launchUrl(
+          Uri.parse(UpdateCheck.releasesUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    }
   }
 
   // Kéo khỏi màn hình là ListView huỷ thẻ, lúc quay lại nó dựng lại từ đầu nên
@@ -289,4 +336,195 @@ class _ChangelogState extends State<Changelog>
       ),
     );
   }
+}
+
+/// Màn 'Cập nhật': bản đang dùng, nút tải nếu có bản mới, và lịch sử thay đổi
+/// của mọi bản. Nguồn là `lc.json` nên khỏi gõ changelog ở chỗ thứ hai.
+class ChangelogScreen extends StatefulWidget {
+  const ChangelogScreen({
+    super.key,
+    this.check = UpdateCheck.newerVersion,
+    this.lichSu = UpdateCheck.lichSu,
+  });
+
+  /// Cách kiểm tra bản mới — thay bằng giả lập lúc test.
+  final Future<String?> Function() check;
+
+  /// Nguồn lịch sử, cũng thay được lúc test.
+  final Future<List<BanGhi>> Function() lichSu;
+
+  @override
+  State<ChangelogScreen> createState() => _ChangelogScreenState();
+}
+
+class _ChangelogScreenState extends State<ChangelogScreen>
+    with Reloadable<ChangelogScreen> {
+  @override
+  Future<void> reload() => _load();
+
+  List<BanGhi>? _lichSu;
+  String? _dangDung;
+  String? _moi;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final lichSu = await widget.lichSu();
+    final moi = await widget.check();
+    if (!mounted) return;
+    setState(() {
+      _lichSu = lichSu;
+      _moi = moi;
+    });
+    // Số bản đang dùng chỉ để gắn nhãn, đừng để nó chặn danh sách: không có
+    // nền tảng thật (test) thì PackageInfo treo luôn.
+    try {
+      final v = (await PackageInfo.fromPlatform()).version;
+      if (mounted) setState(() => _dangDung = v);
+    } catch (_) {
+      // thôi, khỏi khoe số bản
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lichSu = _lichSu;
+    final moi = _moi;
+    return Scaffold(
+      body: DotBackground(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 940),
+            child: PullRefresh(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  MediaQuery.paddingOf(context).top + 20,
+                  20,
+                  MediaQuery.paddingOf(context).bottom + 40,
+                ),
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Cập nhật',
+                          style: TextStyle(
+                            fontFamily: 'Baloo',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 30,
+                            color: Paper.ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      PaperButton(
+                        label: 'Quay lại',
+                        color: Paper.card,
+                        onColor: Paper.ink,
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (moi != null)
+                    PaperBox(
+                      color: Paper.mint,
+                      onTap: () => launchUrl(
+                        Uri.parse(UpdateCheck.releasesUrl),
+                        mode: LaunchMode.externalApplication,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.rocket_launch_rounded,
+                            color: Paper.ink,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Có bản mới v$moi — bấm để tải',
+                              style: const TextStyle(
+                                color: Paper.ink,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (_dangDung != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Pill('Đang dùng v$_dangDung'),
+                    ),
+                  const SizedBox(height: 20),
+                  if (lichSu == null)
+                    const Skeleton(height: 120, radius: 16, ink: true)
+                  else
+                    for (final m in lichSu)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _BanCard(
+                          ban: m,
+                          dangDung: m.version == _dangDung,
+                        ),
+                      ),
+                  if (lichSu != null && lichSu.isEmpty)
+                    const Text(
+                      'Chưa đọc được lịch sử cập nhật.',
+                      style: TextStyle(color: Paper.ink2),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BanCard extends StatelessWidget {
+  const _BanCard({required this.ban, required this.dangDung});
+  final BanGhi ban;
+  final bool dangDung;
+
+  @override
+  Widget build(BuildContext context) => PaperBox(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'v${ban.version}',
+              style: const TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                color: Paper.ink,
+              ),
+            ),
+            const SizedBox(width: 10),
+            if (dangDung) const Pill('Đang dùng', color: Paper.mint),
+            const Spacer(),
+            Text(
+              ban.date,
+              style: const TextStyle(fontSize: 12, color: Paper.ink3),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          ban.text,
+          style: const TextStyle(fontSize: 13, color: Paper.ink2, height: 1.45),
+        ),
+      ],
+    ),
+  );
 }

@@ -44,5 +44,47 @@
       ]
     }
   ],
-  "news": []
+  "news": [],
+  "changelog": [
+    {
+      "version": "1.0.7",
+      "date": "2026-10-02",
+      "text": "Thêm mục Cải thiện: xếp hạng môn đang kéo GPA xuống và cho thấy học lại thì GPA nhích lên bao nhiêu. Nhấn giữ rồi kéo để sắp xếp lại menu Trang chủ. Lịch tự đặt chọn được màu, vị trí, có nút Đã xong và cảnh báo trùng giờ học chính quy. Sửa mốc \"Dữ liệu lúc\" nhảy sai khi làm mới lúc mất mạng."
+    },
+    {
+      "version": "1.0.6",
+      "date": "2026-09-29",
+      "text": "Màn hình Cài đặt với khoá vân tay/FaceID, tắt được thẻ Có gì mới. Xoá lịch tự đặt là Trang chủ cập nhật ngay, thẻ đếm ngược xếp theo giờ."
+    },
+    {
+      "version": "1.0.5",
+      "date": "2026-09-29",
+      "text": "Đặt lịch riêng cho ngày trống hoặc ngày đã có lịch học, xoá được lịch riêng, giao diện chọn giờ và ô nhập theo đúng phong cách app. Nhắc trước giờ vào lớp mặc định tắt."
+    },
+    {
+      "version": "1.0.4",
+      "date": "2026-09-28",
+      "text": "Nhắc trước giờ vào lớp 15 phút, chỉ rung không kêu. Xem trước ngày mai kể cả ngày cuối tháng."
+    },
+    {
+      "version": "1.0.3",
+      "date": "2026-09-28",
+      "text": "Trạng thái lịch học bám theo từng tiết: chưa vào lớp, đang học, ra chơi, đã xong."
+    },
+    {
+      "version": "1.0.2",
+      "date": "2026-09-27",
+      "text": "Báo khi có bản mới trên GitHub. Mở app lần nào cũng lấy số mới. Bỏ thẻ GPA khỏi Trang chủ cho màn gọn lại."
+    },
+    {
+      "version": "1.0.1",
+      "date": "2026-09-27",
+      "text": "Nạp sẵn dữ liệu khi mở app để xem được lúc mất mạng. Trang chủ tự qua ngày, cảnh báo sắp vào lớp. Hồ sơ thêm thẻ sinh viên mã vạch/QR, nhấn giữ để copy."
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-09-27",
+      "text": "Bản đầu tiên: thời khoá biểu theo tháng, lịch thi, điểm và GPA, kết quả đăng ký học phần, chương trình đào tạo, điểm rèn luyện. Xem được khi mất mạng, xuất lịch ra ứng dụng Lịch."
+    }
+  ]
 }
