@@ -704,6 +704,7 @@ class _Menu extends StatelessWidget {
     (-2, Icons.emoji_events_rounded, 'Điểm rèn luyện', Paper.peach),
     (-4, Icons.fact_check_rounded, 'Phiếu rèn luyện', Paper.mint),
     (-3, Icons.school_rounded, 'Chương trình đào tạo', Paper.sky),
+    (-6, Icons.trending_up_rounded, 'Cải thiện', Paper.rose),
     (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
     // Luôn để cuối danh sách: đây là mục cấu hình, không phải dữ liệu trường.
     (-5, Icons.settings_rounded, 'Cài đặt', Paper.card),
@@ -742,6 +743,7 @@ class _Menu extends StatelessWidget {
                         -2 => BehaviorScreen(session: session),
                         -4 => BehaviorDetailScreen(session: session),
                         -5 => SettingsScreen(session: session),
+                        -6 => ImprovementScreen(session: session),
                         _ => CurriculumScreen(session: session),
                       },
                     ),
