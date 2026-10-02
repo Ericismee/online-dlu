@@ -246,10 +246,13 @@ class _SuKienNhomState extends State<SuKienNhom> {
   bool _het = false;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Ticker(builder: _than);
+
+  /// Nhãn ngày đọc giờ từ đồng hồ chung: app mở qua nửa đêm thì "Hôm nay"
+  /// phải đổi thành "Ngày mai", chứ không giữ nhãn của lúc dựng màn.
+  Widget _than(BuildContext context, DateTime now) {
     final con = widget.suKien.length - widget.gon;
     final hien = _het ? widget.suKien : widget.suKien.take(widget.gon).toList();
-    final now = DateTime.now();
     final nhom = theoNgay(hien);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -190,17 +190,21 @@ void main() {
     expect(find.text('Điểm danh'), findsNothing);
   });
 
-  Future<void> dung(WidgetTester t, List<LmsEvent> suKien, {int gon = 3}) =>
-      t.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SuKienNhom(suKien: suKien, gon: gon),
-          ),
+  Future<void> dung(WidgetTester t, List<LmsEvent> suKien, {int gon = 3}) {
+    // Giờ cố định: lấy DateTime.now() thì chạy lúc gần nửa đêm là "hôm nay +
+    // 2 giờ" nhảy sang mai, nhãn ngày lệch và test đổ oan.
+    Clock.instance.set(now);
+    Clock.instance.stop();
+    return t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SuKienNhom(suKien: suKien, gon: gon),
         ),
-      );
+      ),
+    );
+  }
 
   testWidgets('gom sự kiện dưới tiêu đề từng ngày', (t) async {
-    final now = DateTime.now();
     await dung(t, [
       sk(
         now.add(const Duration(hours: 2)),
@@ -222,7 +226,6 @@ void main() {
   });
 
   testWidgets('quá tầm thì gói lại, bấm Xem thêm mới trải hết', (t) async {
-    final now = DateTime.now();
     await dung(t, [
       for (var i = 1; i <= 5; i++)
         sk(now.add(Duration(days: i)), name: 'Việc $i'),
@@ -242,7 +245,6 @@ void main() {
   });
 
   testWidgets('vừa đủ tầm thì không mọc nút Xem thêm', (t) async {
-    final now = DateTime.now();
     await dung(t, [sk(now.add(const Duration(days: 1)))], gon: 3);
     await t.pumpAndSettle();
     expect(find.textContaining('Xem thêm'), findsNothing);

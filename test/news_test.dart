@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dlu_tkb/clock.dart';
 import 'package:dlu_tkb/lms.dart';
 import 'package:dlu_tkb/news.dart';
 import 'package:dlu_tkb/portal.dart';
@@ -55,6 +56,10 @@ void main() {
     List<LmsEvent> suKien = const [],
   }) async {
     final now = DateTime.now();
+    // Nhãn ngày của sự kiện đọc đồng hồ chung; tắt nhịp của nó cho khỏi còn
+    // Timer treo lúc test xong.
+    Clock.instance.set(now);
+    Clock.instance.stop();
     await t.pumpWidget(
       MaterialApp(
         home: Scaffold(
