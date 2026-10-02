@@ -435,6 +435,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                 builder: (_, now) => _Header(now: now, session: widget.session),
               ),
               const SizedBox(height: 16),
+              Ticker(builder: (_, now) => StaleDataWarning(now: now)),
               const UpdateBanner(),
               const Changelog(),
               // Các thẻ hiện ra lần lượt cho đỡ khô khan.
@@ -508,6 +509,44 @@ class _Header extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// Quá lâu không có mạng để làm mới thì cảnh báo đỏ ngay trên Trang chủ —
+/// không có nút tắt, vì số đang hiện có thể đã sai lệch nhiều so với thực tế.
+class StaleDataWarning extends StatelessWidget {
+  const StaleDataWarning({super.key, required this.now});
+  final DateTime now;
+
+  static const limit = Duration(days: 1);
+
+  @override
+  Widget build(BuildContext context) {
+    final at = Cache.syncedAt;
+    if (at == null || now.difference(at) <= limit) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: PaperBox(
+        color: Paper.accent,
+        child: Row(
+          children: [
+            const Icon(Icons.warning_rounded, color: Paper.paper),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Đã hơn 1 ngày chưa làm mới — kéo xuống để cập nhật dữ liệu mới',
+                style: const TextStyle(
+                  color: Paper.paper,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _Me extends StatelessWidget {
