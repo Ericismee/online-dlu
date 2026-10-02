@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "1.0.8",
+      "build": 9,
+      "date": "2026-10-02",
+      "changes": [
+        "Mục Cập nhật liệt kê đầy đủ lịch sử phiên bản và changelog.",
+        "Kéo làm mới để kiểm tra bản cập nhật mới; khi mở app, bản mới được thông báo một lần.",
+        "Sửa Trang chủ tự nhảy lên khi cuộn trong lúc hiển thị thẻ Có gì mới.",
+        "Bổ sung nền tảng đăng nhập Moodle qua form và đọc lịch tháng; chưa kết nối vào giao diện app.",
+        "Tập trung khai báo phiên bản và changelog trong version.json; đồng bộ tự động sang pubspec.yaml và lc.json, kiểm tra tag khi phát hành."
+      ]
+    },
+    {
       "version": "1.0.7",
       "build": 8,
       "date": "2026-10-02",
