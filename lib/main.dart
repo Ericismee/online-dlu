@@ -20,6 +20,7 @@ import 'paper.dart';
 import 'portal.dart';
 import 'prefetch.dart';
 import 'settings.dart';
+import 'su_kien.dart';
 import 'update_check.dart';
 
 Future<void> main() async {
@@ -440,6 +441,9 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
               Ticker(builder: (_, now) => StaleDataWarning(now: now)),
               const UpdateBanner(),
               const Changelog(),
+              // Điểm danh đứng trước mọi thẻ khác: cả ngày chỉ có mấy phút
+              // để điểm. Không có buổi nào hôm nay thì nó không chiếm chỗ.
+              const DiemDanhCard(),
               // Các thẻ hiện ra lần lượt cho đỡ khô khan.
               PopIn(
                 child: _Me(session: widget.session, lop: _lop),

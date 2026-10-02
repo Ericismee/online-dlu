@@ -1,4 +1,6 @@
+import 'package:dlu_tkb/clock.dart';
 import 'package:dlu_tkb/lms.dart';
+import 'package:dlu_tkb/paper.dart';
 import 'package:dlu_tkb/su_kien.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,7 +9,26 @@ LmsEvent sk(
   DateTime start, {
   String name = 'Nộp bài',
   String course = 'CNPM',
-}) => (name: name, course: course, start: start, url: null, instance: 0);
+  Duration keoDai = Duration.zero,
+  String loai = 'assign',
+}) => (
+  name: name,
+  course: course,
+  start: start,
+  keoDai: keoDai,
+  loai: loai,
+  url: null,
+  instance: 0,
+);
+
+/// Buổi điểm danh thật của trường: cửa sổ 5 phút, modulename 'attendance'.
+LmsEvent dd(DateTime start, {String name = 'Điểm danh'}) => sk(
+  start,
+  name: name,
+  course: 'DPctk47',
+  keoDai: const Duration(minutes: 5),
+  loai: 'attendance',
+);
 
 void main() {
   final now = DateTime(2026, 10, 3, 8);
@@ -61,6 +82,89 @@ void main() {
   test('giờ hiển thị theo kiểu của app, phút luôn hai số', () {
     expect(gioPhut(DateTime(2026, 10, 6, 23, 59)), '23h59');
     expect(gioPhut(DateTime(2026, 10, 8, 7, 5)), '7h05');
+  });
+
+  test('đếm ngược làm tròn lên phút, quá giờ thì ghi theo giờ', () {
+    expect(conLai(const Duration(seconds: 30)), '1 phút');
+    expect(conLai(const Duration(minutes: 4, seconds: 10)), '5 phút');
+    expect(conLai(const Duration(hours: 1, minutes: 20)), '1h20');
+    expect(conLai(const Duration(hours: 2, minutes: 5)), '2h05');
+  });
+
+  test('điểm danh chỉ lấy buổi hôm nay và còn trong cửa sổ', () {
+    final ds = diemDanh([
+      dd(DateTime(2026, 10, 2, 7, 45)), // hôm qua
+      dd(DateTime(2026, 10, 3, 7, 45)), // hôm nay nhưng đã đóng từ 7h50
+      dd(DateTime(2026, 10, 3, 8, 2)), // đang mở
+      dd(DateTime(2026, 10, 3, 13, 0)), // chiều nay
+      dd(DateTime(2026, 10, 4, 7, 45)), // mai
+    ], now);
+    expect(ds.map((e) => e.start), [
+      DateTime(2026, 10, 3, 8, 2),
+      DateTime(2026, 10, 3, 13, 0),
+    ]);
+  });
+
+  test('phút cuối của cửa sổ vẫn còn tính, qua mốc đóng là rụng', () {
+    final e = dd(DateTime(2026, 10, 3, 8));
+    expect(diemDanh([e], DateTime(2026, 10, 3, 8, 4, 59)), hasLength(1));
+    expect(diemDanh([e], DateTime(2026, 10, 3, 8, 5)), isEmpty);
+  });
+
+  test('việc khác không phải điểm danh thì không lọt vào thẻ', () {
+    expect(diemDanh([sk(DateTime(2026, 10, 3, 9))], now), isEmpty);
+  });
+
+  test('Moodle đặt tên khác modulename vẫn nhận ra theo tên', () {
+    final e = sk(
+      DateTime(2026, 10, 3, 9),
+      name: 'Điểm danh buổi 5',
+      loai: 'mod_something',
+    );
+    expect(diemDanh([e], now), hasLength(1));
+  });
+
+  Future<void> dungThe(WidgetTester t, List<LmsEvent> ds) async {
+    // Tắt hẹn nhịp để test tự tua giờ, và để không còn Timer treo lúc kết thúc.
+    Clock.instance.set(now);
+    Clock.instance.stop();
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: DiemDanhCard(nguon: (_) async => ds)),
+      ),
+    );
+    await t.pumpAndSettle();
+  }
+
+  testWidgets('thẻ điểm danh nói đủ môn, khung giờ và còn bao lâu', (t) async {
+    await dungThe(t, [dd(DateTime(2026, 10, 3, 8, 30))]);
+    expect(find.text('Điểm danh'), findsOneWidget);
+    expect(find.text('DPctk47'), findsOneWidget);
+    expect(find.text('Hôm nay · 8h30–8h35 · mở sau 30 phút'), findsOneWidget);
+    expect(find.text('Chưa mở'), findsOneWidget);
+    expect(find.text('Mở trên LMS'), findsOneWidget);
+  });
+
+  testWidgets('đang trong cửa sổ thì thẻ đổi sang giục điểm ngay', (t) async {
+    await dungThe(t, [dd(DateTime(2026, 10, 3, 7, 58))]);
+    expect(find.text('Đang mở'), findsOneWidget);
+    expect(find.text('Hôm nay · 7h58–8h03 · còn 3 phút'), findsOneWidget);
+    expect(find.text('Điểm danh ngay'), findsOneWidget);
+  });
+
+  testWidgets('không có buổi nào hôm nay thì thẻ không chiếm chỗ', (t) async {
+    await dungThe(t, [dd(DateTime(2026, 10, 4, 7, 45))]);
+    expect(find.byType(PaperBox), findsNothing);
+  });
+
+  testWidgets('hết cửa sổ là thẻ tự rụng, khỏi chờ làm mới', (t) async {
+    await dungThe(t, [dd(DateTime(2026, 10, 3, 8, 1))]);
+    expect(find.text('Điểm danh'), findsOneWidget);
+
+    // Đồng hồ chung nhảy phút, không gọi lại mạng.
+    Clock.instance.set(DateTime(2026, 10, 3, 8, 6));
+    await t.pumpAndSettle();
+    expect(find.text('Điểm danh'), findsNothing);
   });
 
   Future<void> dung(WidgetTester t, List<LmsEvent> suKien, {int gon = 3}) =>

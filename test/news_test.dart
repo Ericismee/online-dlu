@@ -94,6 +94,8 @@ void main() {
             name: 'Việc $i',
             course: 'CNPM',
             start: now.add(Duration(days: i)),
+            keoDai: Duration.zero,
+            loai: 'assign',
             url: null,
             instance: i,
           ),

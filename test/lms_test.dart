@@ -119,6 +119,53 @@ void main() {
     expect(viec.single.start.millisecondsSinceEpoch ~/ 1000, 1759312800);
   });
 
+  // Dạng thật của lms.dlu: buổi điểm danh không có `course` lẫn `url`, tên
+  // môn chỉ nằm trong `popupname` và cửa sổ điểm nằm ở `timeduration`.
+  test(
+    'buổi điểm danh: môn lấy từ popupname, cửa sổ từ timeduration',
+    () async {
+      final lms = Lms(
+        client: moodle(
+          dung: true,
+          goi: [
+            {
+              'error': false,
+              'data': {
+                'weeks': [
+                  {
+                    'days': [
+                      {
+                        'events': [
+                          {
+                            'name': 'Điểm danh',
+                            'modulename': 'attendance',
+                            'timestart': 1790815500,
+                            'timeduration': 300,
+                            'instance': 159503,
+                            'popupname': 'DPctk47: Điểm danh',
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        ),
+      );
+      final e = (await lms.calendar(
+        await lms.login('a', 'b'),
+        2026,
+        10,
+      )).single;
+      expect(e.loai, 'attendance');
+      expect(e.course, 'DPctk47');
+      expect(e.keoDai, const Duration(minutes: 5));
+      expect(e.url, isNull);
+    },
+  );
+
   test('lỗi trong gói ajax thành PortalError, dù status 200', () async {
     final lms = Lms(
       client: moodle(

@@ -110,14 +110,25 @@ class LmsKho {
   }
 }
 
-/// Một việc trên lịch Moodle: bài tập, hạn nộp, mốc mở/đóng quiz...
+/// Một việc trên lịch Moodle: bài tập, hạn nộp, mốc mở/đóng quiz, điểm danh...
 typedef LmsEvent = ({
   String name,
   String course,
   DateTime start,
+
+  /// Cửa sổ mở của việc này; 0 với loại chỉ có một mốc (hạn nộp bài). Buổi
+  /// điểm danh thì đây là khoảng được phép điểm — thường chỉ 5 phút.
+  Duration keoDai,
+
+  /// `modulename` của Moodle: 'attendance', 'assign', 'quiz'... Dùng để nhận
+  /// ra loại việc chắc chắn hơn là đoán theo tên.
+  String loai,
   String? url,
   int instance,
 });
+
+/// Mốc kết thúc cửa sổ của một việc.
+DateTime ketThuc(LmsEvent e) => e.start.add(e.keoDai);
 
 /// Moodle của trường (lms.dlu.edu.vn). Web service chính thức bị tắt
 /// (`/login/token.php` trả `enablewsdescription`), nên chỉ còn đường đăng nhập
@@ -243,11 +254,19 @@ class Lms {
           for (final e in (d['events'] as List? ?? const []))
             (
               name: e['name'] as String? ?? '',
-              course: (e['course']?['fullname'] as String?) ?? '',
+              // Lịch tháng chỉ kèm `course` cho vài loại việc; buổi điểm danh
+              // thì tên môn chỉ có trong `popupname` ("DPctk47: Điểm danh").
+              course:
+                  (e['course']?['fullname'] as String?) ??
+                  _monTuPopup(e['popupname'] as String?),
               // `timestart` là giây Unix thật, đừng đổi múi giờ lần nữa.
               start: DateTime.fromMillisecondsSinceEpoch(
                 (e['timestart'] as num).toInt() * 1000,
               ),
+              keoDai: Duration(
+                seconds: (e['timeduration'] as num?)?.toInt() ?? 0,
+              ),
+              loai: e['modulename'] as String? ?? '',
               url: e['url'] as String?,
               instance: (e['instance'] as num?)?.toInt() ?? 0,
             ),
@@ -330,6 +349,13 @@ class Lms {
       throw PortalError('Phiên LMS hết hạn, đăng nhập lại');
     }
     return goi['data'] ?? const {};
+  }
+
+  /// "DPctk47: Điểm danh" → "DPctk47". Chỉ lấy phần trước dấu hai chấm, phần
+  /// sau là tên việc mà mình đã có ở `name`.
+  static String _monTuPopup(String? popupname) {
+    final i = popupname?.indexOf(': ') ?? -1;
+    return i > 0 ? popupname!.substring(0, i) : '';
   }
 
   PortalError _sai() => PortalError('Sai tài khoản hoặc mật khẩu LMS');
