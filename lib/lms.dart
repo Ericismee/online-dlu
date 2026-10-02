@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'portal.dart' show PortalError;
+import 'settings.dart' show Settings;
 
 /// Một phiên Moodle đã đăng nhập: cookie kèm token CSRF gắn với nó.
 typedef LmsSession = ({String cookie, String sesskey, int userId});
@@ -31,6 +32,7 @@ class LmsVault {
   }
 
   static Future<void> clear() async {
+    Lms.boPhien();
     await _storage.delete(key: 'lms_username');
     await _storage.delete(key: 'lms_password');
   }
@@ -69,6 +71,27 @@ class Lms {
     'invalidlogin',
     'sai tên đăng nhập',
   ];
+
+  /// Phiên dùng chung cho cả lượt chạy app. Moodle chỉ cấp phiên qua form
+  /// đăng nhập, nên mỗi màn tự gọi [login] là mỗi lần gửi mật khẩu thêm một
+  /// lượt; giữ lại một phiên cho mọi màn dùng chung.
+  static Future<LmsSession>? _phien;
+
+  /// Phiên đang dùng, hay null nếu người dùng chưa bật LMS / chưa lưu tài
+  /// khoản. Đăng nhập hỏng thì bỏ luôn phiên hỏng để lượt sau thử lại sạch.
+  static Future<LmsSession?> phien({Lms? lms}) async {
+    if (!await Settings.lmsBat()) return null;
+    final tk = await LmsVault.read();
+    if (tk == null) return null;
+    try {
+      return await (_phien ??= (lms ?? Lms()).login(tk.$1, tk.$2));
+    } catch (_) {
+      _phien = null;
+      rethrow;
+    }
+  }
+
+  static void boPhien() => _phien = null;
 
   Future<LmsSession> login(String username, String password) async {
     final url = Uri.parse('$_base/login/index.php');
@@ -228,7 +251,9 @@ class Lms {
     if (goi == null) throw PortalError('LMS trả về rỗng', offline: true);
     // `error` luôn có mặt, bình thường là `false` — chỉ `true` mới là lỗi.
     if (goi['error'] == true || goi['exception'] != null) {
-      // Hết phiên cũng rơi vào đây, nên coi như phải đăng nhập lại.
+      // Hết phiên cũng rơi vào đây, nên coi như phải đăng nhập lại. Bỏ phiên
+      // đang giữ, không thì cả lượt chạy app cứ gọi lại bằng phiên đã chết.
+      boPhien();
       throw PortalError('Phiên LMS hết hạn, đăng nhập lại');
     }
     return goi['data'] ?? const {};
@@ -263,4 +288,42 @@ class Lms {
       );
     }
   }
+}
+
+/// Khối "Sự kiện sắp đến" của Moodle: hạn nộp bài, mốc điểm danh, quiz sắp
+/// mở... Lấy từ lịch tháng này và tháng sau rồi bỏ mốc đã qua; mặc định nhìn
+/// trước 21 ngày và cắt còn 10 mục, đúng như khối trên web của trường.
+///
+/// Rỗng khi người dùng chưa bật LMS — không phải lỗi, chỉ là không có gì.
+Future<List<LmsEvent>> suKienSapToi(
+  DateTime now, {
+  Duration truoc = const Duration(days: 21),
+  int toiDa = 10,
+  Lms? lms,
+}) async {
+  final s = await Lms.phien(lms: lms);
+  if (s == null) return const [];
+  final l = lms ?? Lms();
+  final den = now.add(truoc);
+  final out = <LmsEvent>[];
+  // Khoảng 21 ngày vắt qua nhiều nhất hai tháng; cùng tháng thì Set gộp lại.
+  for (final m in {(now.year, now.month), (den.year, den.month)}) {
+    out.addAll(await l.calendar(s, m.$1, m.$2));
+  }
+  return locSuKien(out, now, truoc: truoc, toiDa: toiDa);
+}
+
+/// Bỏ mốc đã qua và mốc quá xa, sắp theo thời gian rồi cắt còn [toiDa]. Lịch
+/// tháng trả về cả tháng nên phần lọc này mới là thứ quyết định "sắp đến".
+List<LmsEvent> locSuKien(
+  List<LmsEvent> suKien,
+  DateTime now, {
+  Duration truoc = const Duration(days: 21),
+  int toiDa = 10,
+}) {
+  final den = now.add(truoc);
+  final out = [...suKien]
+    ..retainWhere((e) => e.start.isAfter(now) && e.start.isBefore(den))
+    ..sort((a, b) => a.start.compareTo(b.start));
+  return out.take(toiDa).toList();
 }

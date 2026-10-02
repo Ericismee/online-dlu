@@ -4,7 +4,6 @@ import 'data.dart';
 import 'lms.dart';
 import 'paper.dart';
 import 'portal.dart';
-import 'settings.dart';
 
 int unread(Iterable<dynamic> messages) => messages
     .where((m) => m is LmsNotification ? m.unread : m['IsRead'] == 0)
@@ -61,13 +60,9 @@ class _BellState extends State<Bell>
       // LMS remains independent when Online is unavailable.
     }
     try {
-      if (await Settings.lmsBat()) {
-        final credentials = await LmsVault.read();
-        if (credentials != null) {
-          final lms = Lms();
-          final session = await lms.login(credentials.$1, credentials.$2);
-          combined.addAll(await lms.notifications(session));
-        }
+      final session = await Lms.phien();
+      if (session != null) {
+        combined.addAll(await Lms().notifications(session));
       }
     } on PortalError {
       // Online messages remain visible when LMS is unavailable.
