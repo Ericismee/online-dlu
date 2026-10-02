@@ -1,9 +1,8 @@
 {
-  "version": "1.0.7",
-  "build": 8,
-  "changelog": [
+  "versions": [
     {
       "version": "1.0.7",
+      "build": 8,
       "date": "2026-10-02",
       "changes": [
         "Thêm mục Cải thiện: xếp hạng môn đang kéo GPA xuống, cho thấy học lại thì GPA nhích lên bao nhiêu.",
@@ -17,6 +16,7 @@
     },
     {
       "version": "1.0.6",
+      "build": 7,
       "date": "2026-09-29",
       "changes": [
         "Màn hình Cài đặt: khoá app bằng vân tay/FaceID, tắt được thẻ Có gì mới.",
@@ -26,6 +26,7 @@
     },
     {
       "version": "1.0.5",
+      "build": 6,
       "date": "2026-09-29",
       "changes": [
         "Đặt lịch riêng cho ngày trống hoặc ngày đã có lịch học, xoá được.",
@@ -35,6 +36,7 @@
     },
     {
       "version": "1.0.4",
+      "build": 5,
       "date": "2026-09-28",
       "changes": [
         "Nhắc trước giờ vào lớp 15 phút, chỉ rung không kêu.",
@@ -44,6 +46,7 @@
     },
     {
       "version": "1.0.3",
+      "build": 4,
       "date": "2026-09-28",
       "changes": [
         "Trạng thái lịch học bám theo từng tiết: chưa vào lớp, đang học, ra chơi, đã xong.",
@@ -52,6 +55,7 @@
     },
     {
       "version": "1.0.2",
+      "build": 3,
       "date": "2026-09-27",
       "changes": [
         "Báo khi có bản mới trên GitHub Releases.",
@@ -62,6 +66,7 @@
     },
     {
       "version": "1.0.1",
+      "build": 2,
       "date": "2026-09-27",
       "changes": [
         "Nạp sẵn dữ liệu khi mở app để xem được lúc mất mạng.",
@@ -76,6 +81,7 @@
     },
     {
       "version": "1.0.0",
+      "build": 1,
       "date": "2026-09-27",
       "changes": [
         "Bản đầu tiên: đăng nhập portal Đại Học Đà Lạt, thời khoá biểu theo tháng.",

@@ -82,20 +82,21 @@ Không có `key.properties` thì Gradle tự rơi về debug key, đủ để
 
 ## Phát hành tự động
 
-Số phiên bản và changelog khai ở **`version.json`** — chỉ sửa đúng file này:
+Mọi bản đã phát hành kê khai ở **`version.json`** — chỉ sửa đúng file này, thêm
+mục mới lên đầu mảng `versions`:
 
 ```json
 {
-  "version": "1.0.8",
-  "build": 9,
-  "changelog": [
-    { "version": "1.0.8", "date": "2026-10-02", "changes": ["Thêm cái này."] }
+  "versions": [
+    { "version": "1.0.8", "build": 9, "date": "2026-10-02",
+      "changes": ["Thêm cái này.", "Sửa cái kia."] },
+    { "version": "1.0.7", "build": 8, "date": "2026-10-02", "changes": ["..."] }
   ]
 }
 ```
 
-Rồi chạy `python3 tool/version.py sync` để chép sang `pubspec.yaml` và
-`lc.json`, và đẩy tag:
+Mục đầu mảng là bản hiện tại. Chạy `python3 tool/version.py sync` để chép sang
+`pubspec.yaml` và `lc.json`, rồi đẩy tag:
 
 ```bash
 git tag v1.0.8 && git push origin v1.0.8

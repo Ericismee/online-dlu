@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""version.json là chỗ duy nhất khai số bản và changelog.
+"""version.json kê khai mọi bản đã phát hành: số bản, build, ngày, changelog.
 
-Sửa version.json rồi chạy `sync`, mọi nơi khác tự ăn theo: pubspec.yaml,
-lc.json (nguồn cài LiveContainer/AltStore) và app (đọc thẳng version.json).
-`notes` in changelog ra markdown cho phần mô tả GitHub Release.
+Bản mới nhất là mục đầu mảng `versions`. Thêm mục rồi chạy `sync`, mọi nơi
+khác tự ăn theo: pubspec.yaml, lc.json (nguồn cài LiveContainer/AltStore) và
+app (đọc thẳng version.json). `notes` in changelog ra markdown cho phần mô tả
+GitHub Release.
 
     tool/version.py sync [--ipa <đường-dẫn-ipa>]
     tool/version.py notes [<bản>]
@@ -27,12 +28,13 @@ def doc(path=None) -> dict:
 
 
 def muc(data: dict, ban: str | None = None) -> dict:
-    """Dòng changelog của [ban], mặc định là bản đang khai."""
-    ban = ban or data['version']
-    for m in data['changelog']:
+    """Mục khai của [ban], mặc định là bản mới nhất (đầu mảng)."""
+    if ban is None:
+        return data['versions'][0]
+    for m in data['versions']:
         if m['version'] == ban:
             return m
-    raise SystemExit(f'version.json chưa có changelog cho {ban}')
+    raise SystemExit(f'version.json chưa khai bản {ban}')
 
 
 def notes(data: dict, ban: str | None = None) -> str:
@@ -42,7 +44,8 @@ def notes(data: dict, ban: str | None = None) -> str:
 def sync(goc=GOC, ipa: str | None = None, today=None) -> dict:
     """Chép số bản + changelog từ version.json sang pubspec.yaml và lc.json."""
     data = doc(os.path.join(goc, 'version.json'))
-    ten, build = data['version'], data['build']
+    nay = muc(data)
+    ten, build = nay['version'], nay['build']
 
     p = os.path.join(goc, 'pubspec.yaml')
     with open(p, encoding='utf-8') as f:
@@ -60,10 +63,8 @@ def sync(goc=GOC, ipa: str | None = None, today=None) -> dict:
     v['buildVersion'] = str(build)
     # AltStore hiện một đoạn, không hiện danh sách — nối lại bằng dấu chấm đầu
     # dòng cho dễ đọc trong hộp nhỏ của nó.
-    v['localizedDescription'] = '\n'.join(
-        '• ' + c for c in muc(data)['changes'])
-    v['date'] = muc(data).get('date') or (
-        today or datetime.date.today()).isoformat()
+    v['localizedDescription'] = '\n'.join('• ' + c for c in nay['changes'])
+    v['date'] = nay.get('date') or (today or datetime.date.today()).isoformat()
     if ipa:
         v['size'] = os.path.getsize(ipa)
     lc['apps'][0]['version'] = ten
@@ -80,10 +81,9 @@ def demo():
         for f in ('version.json', 'lc.json', 'pubspec.yaml'):
             shutil.copy(os.path.join(GOC, f), d)
         data = doc(os.path.join(d, 'version.json'))
-        data['version'] = '2.4.0'
-        data['build'] = 99
-        data['changelog'].insert(0, {
+        data['versions'].insert(0, {
             'version': '2.4.0',
+            'build': 99,
             'date': '2026-01-02',
             'changes': ['Thêm cái này.', 'Sửa cái kia.'],
         })
@@ -118,7 +118,7 @@ if __name__ == '__main__':
         print(notes(doc(), sys.argv[2] if len(sys.argv) > 2 else None))
     elif lenh == 'check':
         tag = sys.argv[2].lstrip('v')
-        khai = doc()['version']
+        khai = muc(doc())['version']
         if tag != khai:
             raise SystemExit(f'tag {tag} không khớp version.json ({khai})')
         print(f'tag khớp version.json: {khai}')

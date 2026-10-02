@@ -43,8 +43,8 @@ class UpdateCheck {
     }
   }
 
-  /// `version.json` trên nhánh main — chỗ duy nhất khai số bản và changelog,
-  /// nên có cả bản vừa ra. Mạng hỏng thì lấy bản đóng gói sẵn trong app, cũ
+  /// `version.json` trên nhánh main — nơi kê khai mọi bản, nên có cả bản vừa
+  /// ra. Mạng hỏng thì lấy bản đóng gói sẵn trong app, cũ
   /// hơn nhưng vẫn đọc được lịch sử tới lúc đóng gói.
   static Future<List<BanGhi>> lichSu({http.Client? client}) async {
     final c = client ?? http.Client();
@@ -75,7 +75,7 @@ class UpdateCheck {
   }
 
   static List<BanGhi> _doc(String raw) => [
-    for (final m in (jsonDecode(raw)['changelog'] as List? ?? const []))
+    for (final m in (jsonDecode(raw)['versions'] as List? ?? const []))
       (
         version: m['version'] as String,
         date: m['date'] as String? ?? '',
