@@ -1,11 +1,40 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'portal.dart' show PortalError;
 
 /// Một phiên Moodle đã đăng nhập: cookie kèm token CSRF gắn với nó.
-typedef LmsSession = ({String cookie, String sesskey});
+typedef LmsSession = ({String cookie, String sesskey, int userId});
+
+typedef LmsNotification = ({
+  String subject,
+  String sender,
+  String date,
+  String body,
+  bool unread,
+});
+
+class LmsVault {
+  static const _storage = FlutterSecureStorage();
+
+  static Future<void> save(String username, String password) async {
+    await _storage.write(key: 'lms_username', value: username);
+    await _storage.write(key: 'lms_password', value: password);
+  }
+
+  static Future<(String, String)?> read() async {
+    final username = await _storage.read(key: 'lms_username');
+    final password = await _storage.read(key: 'lms_password');
+    return username == null || password == null ? null : (username, password);
+  }
+
+  static Future<void> clear() async {
+    await _storage.delete(key: 'lms_username');
+    await _storage.delete(key: 'lms_password');
+  }
+}
 
 /// Một việc trên lịch Moodle: bài tập, hạn nộp, mốc mở/đóng quiz...
 typedef LmsEvent = ({
@@ -80,24 +109,32 @@ class Lms {
     final me = await _send(
       http.Request('GET', Uri.parse('$_base/my/'))..headers['cookie'] = cookie,
     );
-    final sesskey = RegExp(r'"sesskey":"([A-Za-z0-9]+)"')
+    final config = RegExp(r'M\.cfg\s*=\s*(\{[^;]+\})')
         .firstMatch(_text(me))
         ?.group(1);
-    if (sesskey == null) throw _sai();
-    return (cookie: cookie, sesskey: sesskey);
+    if (config == null) throw _sai();
+    final cfg = jsonDecode(config) as Map<String, dynamic>;
+    final sesskey = cfg['sesskey'] as String?;
+    final userId = (cfg['userid'] as num?)?.toInt();
+    if (sesskey == null || userId == null) throw _sai();
+    return (cookie: cookie, sesskey: sesskey, userId: userId);
   }
 
   /// Lịch một tháng ([month] đếm từ 1). `courseid: 1` là khoá học gốc của site,
   /// nghĩa là "mọi thứ sinh viên này thấy được", không phải một môn.
   Future<List<LmsEvent>> calendar(LmsSession s, int year, int month) async {
-    final data = await _ajax(s, 'core_calendar_get_calendar_monthly_view', {
-      'year': year,
-      'month': month,
-      'courseid': 1,
-      'includenavigation': false,
-      'mini': true,
-      'day': 1,
-    });
+    final data = await _ajax(
+      s: s,
+      method: 'core_calendar_get_calendar_monthly_view',
+      args: {
+        'year': year,
+        'month': month,
+        'courseid': 1,
+        'includenavigation': false,
+        'mini': true,
+        'day': 1,
+      },
+    ) as Map<String, dynamic>;
     return [
       for (final w in (data['weeks'] as List? ?? const []))
         for (final d in (w['days'] as List? ?? const []))
@@ -115,11 +152,48 @@ class Lms {
     ];
   }
 
-  Future<Map<String, dynamic>> _ajax(
-    LmsSession s,
-    String method,
-    Map<String, dynamic> args,
-  ) async {
+  Future<List<LmsNotification>> notifications(LmsSession session) async {
+    final data = await _ajax(
+      s: session,
+      method: 'core_message_get_messages',
+      args: {
+        'useridto': session.userId,
+        'useridfrom': 0,
+        'type': 'notifications',
+        'read': 0,
+        'newestfirst': true,
+        'limitfrom': 0,
+        'limitnum': 30,
+      },
+    );
+    final items = data is List
+        ? data
+        : (data as Map<String, dynamic>)['messages'] as List? ?? const [];
+    return [
+      for (final item in items)
+        (
+          subject: item['subject'] as String? ?? '',
+          sender:
+              item['userfrom']?['fullname'] as String? ??
+              item['component'] as String? ??
+              'Moodle',
+          date: DateTime.fromMillisecondsSinceEpoch(
+            ((item['timecreated'] as num?)?.toInt() ?? 0) * 1000,
+          ).toLocal().toString().substring(0, 16),
+          body:
+              item['smallmessage'] as String? ??
+              item['fullmessage'] as String? ??
+              '',
+          unread: item['read'] == false || item['read'] == 0,
+        ),
+    ];
+  }
+
+  Future<dynamic> _ajax({
+    required LmsSession s,
+    required String method,
+    required Map<String, dynamic> args,
+  }) async {
     final res = await _send(
       http.Request(
           'POST',
@@ -148,7 +222,7 @@ class Lms {
       // Hết phiên cũng rơi vào đây, nên coi như phải đăng nhập lại.
       throw PortalError('Phiên LMS hết hạn, đăng nhập lại');
     }
-    return (goi['data'] as Map<String, dynamic>?) ?? const {};
+    return goi['data'] ?? const {};
   }
 
   PortalError _sai() => PortalError('Sai tài khoản hoặc mật khẩu LMS');

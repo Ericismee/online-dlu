@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'cache.dart';
 import 'graph.dart';
+import 'lms.dart';
 import 'nhac.dart';
 import 'paper.dart';
 import 'portal.dart';
@@ -16,6 +17,12 @@ class Settings {
   static const _khoaNguyHiem = 'unlock_dangerous';
   static const _khoaLock = 'app_lock';
   static const _khoaMenu = 'menu_order';
+  static const _khoaLms = 'lms_enabled';
+
+  static Future<bool> lmsBat() async =>
+      (await SharedPreferences.getInstance()).getBool(_khoaLms) ?? false;
+  static Future<void> datLmsBat(bool v) async =>
+      (await SharedPreferences.getInstance()).setBool(_khoaLms, v);
 
   static Future<bool> devMode() async =>
       (await SharedPreferences.getInstance()).getBool(_khoaDev) ?? false;
@@ -60,6 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool? _dev;
   bool? _nguyHiem;
   bool? _khoa;
+  bool? _lms;
   bool _dangLamMoi = false;
   bool _dangKiemTra = false;
 
@@ -73,11 +81,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final dev = await Settings.devMode();
     final nguyHiem = await Settings.nguyHiem();
     final khoa = await Settings.khoaBat();
+    final lms = await Settings.lmsBat();
     if (mounted) {
       setState(() {
         _dev = dev;
         _nguyHiem = nguyHiem;
         _khoa = khoa;
+        _lms = lms;
       });
     }
   }
@@ -132,6 +142,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() => _khoa = v);
   }
 
+  Future<void> _doiLms(bool v) async {
+    if (!v) {
+      await LmsVault.clear();
+      await Settings.datLmsBat(false);
+      if (mounted) setState(() => _lms = false);
+      return;
+    }
+    final credentials = await showDialog<(String, String)>(
+      context: context,
+      builder: (_) => const _LmsLoginDialog(),
+    );
+    if (credentials == null || !mounted) return;
+    try {
+      await Lms().login(credentials.$1, credentials.$2);
+      await LmsVault.save(credentials.$1, credentials.$2);
+      await Settings.datLmsBat(true);
+      if (mounted) setState(() => _lms = true);
+    } on PortalError catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Paper.paper,
@@ -170,6 +205,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 20),
             NhacToggle(session: widget.session, portal: widget.portal),
             const SizedBox(height: 20),
+            _CongTac(
+              icon: Icons.school_rounded,
+              label: 'Thông báo từ LMS',
+              color: Paper.mint,
+              value: _lms,
+              onChanged: _doiLms,
+            ),
+            const SizedBox(height: 10),
             PaperBox(
               onTap: _dangLamMoi ? null : _lamMoiData,
               child: Row(
@@ -252,6 +295,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     ),
+  );
+}
+
+class _LmsLoginDialog extends StatefulWidget {
+  const _LmsLoginDialog();
+
+  @override
+  State<_LmsLoginDialog> createState() => _LmsLoginDialogState();
+}
+
+class _LmsLoginDialogState extends State<_LmsLoginDialog> {
+  final _user = TextEditingController();
+  final _pass = TextEditingController();
+
+  @override
+  void dispose() {
+    _user.dispose();
+    _pass.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Đăng nhập LMS'),
+    content: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(
+          controller: _user,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Tài khoản LMS'),
+        ),
+        TextField(
+          controller: _pass,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: 'Mật khẩu LMS'),
+        ),
+        const SizedBox(height: 8),
+        const Text('Tài khoản LMS riêng, không dùng tài khoản Online DLU.'),
+      ],
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Huỷ'),
+      ),
+      FilledButton(
+        onPressed: () {
+          final username = _user.text.trim();
+          final password = _pass.text;
+          if (username.isNotEmpty && password.isNotEmpty) {
+            Navigator.pop(context, (username, password));
+          }
+        },
+        child: const Text('Đăng nhập'),
+      ),
+    ],
   );
 }
 

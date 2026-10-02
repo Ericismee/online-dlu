@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
 import 'data.dart';
+import 'lms.dart';
 import 'paper.dart';
 import 'portal.dart';
+import 'settings.dart';
 
-int unread(Iterable<dynamic> messages) =>
-    messages.where((m) => m['IsRead'] == 0).length;
+int unread(Iterable<dynamic> messages) => messages
+    .where((m) => m is LmsNotification ? m.unread : m['IsRead'] == 0)
+    .length;
 
 /// Chuông + popup hộp thư, dán ở góc phải top bar.
 class Bell extends StatefulWidget {
@@ -49,16 +52,29 @@ class _BellState extends State<Bell>
   }
 
   Future<void> _load() async {
+    final combined = <dynamic>[];
     try {
-      final m = await (widget.portal ?? Portal()).messages(
-        widget.session.token,
+      combined.addAll(
+        await (widget.portal ?? Portal()).messages(widget.session.token),
       );
-      if (mounted) {
-        setState(() => _msgs = m);
-        if (unread(m) > 0) _wiggle.forward(from: 0);
+    } on PortalError {
+      // LMS remains independent when Online is unavailable.
+    }
+    try {
+      if (await Settings.lmsBat()) {
+        final credentials = await LmsVault.read();
+        if (credentials != null) {
+          final lms = Lms();
+          final session = await lms.login(credentials.$1, credentials.$2);
+          combined.addAll(await lms.notifications(session));
+        }
       }
     } on PortalError {
-      if (mounted) setState(() => _msgs ??= const []);
+      // Online messages remain visible when LMS is unavailable.
+    }
+    if (mounted) {
+      setState(() => _msgs = combined);
+      if (unread(combined) > 0) _wiggle.forward(from: 0);
     }
   }
 
@@ -205,6 +221,45 @@ class _Message extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (m is LmsNotification) {
+      final notification = m as LmsNotification;
+      return PaperBox(
+        color: notification.unread ? Paper.sun : Paper.card,
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              clean(notification.subject),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Paper.ink,
+              ),
+            ),
+            if (notification.body.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                clean(notification.body),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Pill('LMS · ${clean(notification.sender)}', color: Paper.mint),
+                const SizedBox(width: 6),
+                Text(
+                  notification.date,
+                  style: const TextStyle(fontSize: 12, color: Paper.ink3),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
     final isNew = m['IsRead'] == 0;
     return PaperBox(
       color: isNew ? Paper.sun : Paper.card,

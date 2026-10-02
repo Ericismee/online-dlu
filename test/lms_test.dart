@@ -40,7 +40,7 @@ MockClient moodle({
       // Chỉ cookie mới mới được coi là đã đăng nhập.
       return http.Response(
         req.headers['cookie'] == 'MoodleSession=thatsu'
-            ? 'M.cfg = {"sesskey":"KEY123","wwwroot":"x"};'
+            ? 'M.cfg = {"sesskey":"KEY123","userid":7,"wwwroot":"x"};'
             : 'Bạn chưa đăng nhập',
         200,
       );
@@ -65,6 +65,7 @@ void main() {
           .login('2012345', 'mk');
       expect(s.cookie, 'MoodleSession=thatsu');
       expect(s.sesskey, 'KEY123');
+      expect(s.userId, 7);
       expect(body['logintoken'], 'tok1');
       expect(body['username'], '2012345');
     },
@@ -129,5 +130,31 @@ void main() {
     );
     final s = await lms.login('a', 'b');
     expect(() => lms.calendar(s, 2026, 10), throwsA(isA<PortalError>()));
+  });
+
+  test('đọc thông báo Moodle chưa đọc', () async {
+    final lms = Lms(
+      client: moodle(
+        dung: true,
+        goi: [
+          {
+            'error': false,
+            'data': [
+              {
+                'subject': 'Thông báo môn học',
+                'smallmessage': 'Có bài tập mới',
+                'timecreated': 1759312800,
+                'read': 0,
+                'userfrom': {'fullname': 'Giảng viên'},
+              },
+            ],
+          },
+        ],
+      ),
+    );
+    final notifications = await lms.notifications(await lms.login('a', 'b'));
+    expect(notifications.single.subject, 'Thông báo môn học');
+    expect(notifications.single.sender, 'Giảng viên');
+    expect(notifications.single.unread, isTrue);
   });
 }

@@ -12,4 +12,14 @@ void main() {
       2,
     );
   });
+
+  test('unread counts LMS notifications', () {
+    expect(
+      unread([
+        (subject: 'Mới', sender: 'LMS', date: '', body: '', unread: true),
+        (subject: 'Cũ', sender: 'LMS', date: '', body: '', unread: false),
+      ]),
+      1,
+    );
+  });
 }
