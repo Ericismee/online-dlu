@@ -34,6 +34,31 @@ void main() {
     expect(list.first.tieuDe, 'B');
   });
 
+  test(
+    'màu và vị trí lưu đọc lại đúng, không đặt thì có màu mặc định',
+    () async {
+      final d = DateTime(2026, 9, 29);
+      await CustomLichStore.add(
+        d,
+        const CustomLich(
+          tieuDe: 'ATC',
+          batDau: 420,
+          mau: 0xFFA5DCFF,
+          viTri: 'P301',
+        ),
+      );
+      await CustomLichStore.add(
+        d,
+        const CustomLich(tieuDe: 'Khác', batDau: 480),
+      );
+      final list = await CustomLichStore.forDay(d);
+      expect(list[0].mau, 0xFFA5DCFF);
+      expect(list[0].viTri, 'P301');
+      expect(list[1].mau, customLichMauMacDinh);
+      expect(list[1].viTri, isNull);
+    },
+  );
+
   test('update ghi đè đúng mục theo chỉ số, không đụng mục khác', () async {
     final d = DateTime(2026, 9, 29);
     await CustomLichStore.add(d, const CustomLich(tieuDe: 'A', batDau: 420));

@@ -1,25 +1,46 @@
 import 'dart:convert';
+import 'dart:ui' show Color;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Màu mặc định cho lịch tự đặt chưa chọn màu — hồng, khác hẳn màu vàng
+/// (Paper.sun) của lịch chính quy nên không lẫn hai loại.
+const customLichMauMacDinh = 0xFFFFB9CC;
+
 /// Một mục lịch tự đặt (vd: "Lên ATC") cho ngày còn trống. [batDau] và
 /// [ketThuc] là phút từ 0h; [ketThuc] không bắt buộc — có buổi chỉ biết giờ đi.
+/// [mau] là ARGB người dùng chọn để phân biệt với lịch chính quy và các mục
+/// tự đặt khác. [viTri] là phòng học/địa điểm, có thể để trống.
 class CustomLich {
-  const CustomLich({required this.tieuDe, required this.batDau, this.ketThuc});
+  const CustomLich({
+    required this.tieuDe,
+    required this.batDau,
+    this.ketThuc,
+    this.mau = customLichMauMacDinh,
+    this.viTri,
+  });
   final String tieuDe;
   final int batDau;
   final int? ketThuc;
+  final int mau;
+  final String? viTri;
+
+  Color get color => Color(mau);
 
   Map<String, dynamic> toJson() => {
     'tieuDe': tieuDe,
     'batDau': batDau,
     'ketThuc': ketThuc,
+    'mau': mau,
+    'viTri': viTri,
   };
 
   factory CustomLich.fromJson(Map<String, dynamic> j) => CustomLich(
     tieuDe: j['tieuDe'] as String,
     batDau: j['batDau'] as int,
     ketThuc: j['ketThuc'] as int?,
+    mau: j['mau'] as int? ?? customLichMauMacDinh,
+    viTri: j['viTri'] as String?,
   );
 }
 

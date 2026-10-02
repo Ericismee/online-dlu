@@ -233,4 +233,17 @@ void main() {
     expect(ketiepRieng([daXong, dangToi, gioHon], now)?.tieuDe, 'Sáng muộn');
     expect(ketiepRieng([daXong], now), isNull);
   });
+
+  test('trungGioChinhQuy báo đúng lúc lịch tự đặt đụng giờ buổi học', () {
+    final tiet1 = {'BeginTime': 'Tiết: 1', 'EndTime': 'Tiết: 2'}; // 7h30-9h10
+    // Hoàn toàn trước buổi học, không đụng giờ.
+    const somHon = CustomLich(tieuDe: 'ABC', batDau: 360, ketThuc: 420);
+    expect(trungGioChinhQuy(somHon, [tiet1]), isFalse);
+    // Chen giữa khoảng giờ buổi học.
+    const giuaBuoi = CustomLich(tieuDe: 'XYZ', batDau: 480, ketThuc: 500);
+    expect(trungGioChinhQuy(giuaBuoi, [tiet1]), isTrue);
+    // Không có giờ về thì coi như chiếm hết phần ngày còn lại, vẫn phải đụng.
+    const moGio = CustomLich(tieuDe: 'Mở', batDau: 400);
+    expect(trungGioChinhQuy(moGio, [tiet1]), isTrue);
+  });
 }

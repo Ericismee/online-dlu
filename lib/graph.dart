@@ -242,6 +242,35 @@ CustomLich? ketiepRieng(List<CustomLich> rieng, DateTime now) {
   return null;
 }
 
+/// Màu chọn được cho lịch tự đặt — không có Paper.sun (màu lịch chính quy)
+/// trong danh sách nên luôn phân biệt được hai loại lịch.
+const customLichPalette = [
+  Paper.rose,
+  Paper.sky,
+  Paper.peach,
+  Paper.mint,
+  Paper.accent,
+];
+
+/// Khoảng giờ (phút từ 0h) của một buổi học chính quy. Tiết lạ thì null.
+(int, int)? _khoangChinhQuy(dynamic item) {
+  final dau = batDauPhut(tietNo(item['BeginTime']));
+  final cuoi = batDauPhut(tietNo(item['EndTime']));
+  if (dau == null || cuoi == null) return null;
+  return (dau, cuoi + tietPhut);
+}
+
+/// Lịch tự đặt [c] có đụng giờ với buổi chính quy nào trong [items] của cùng
+/// ngày không — không biết giờ về thì coi như chiếm hết phần ngày còn lại.
+bool trungGioChinhQuy(CustomLich c, Iterable<dynamic> items) {
+  final cuoiC = c.ketThuc ?? 24 * 60;
+  for (final i in items) {
+    final kc = _khoangChinhQuy(i);
+    if (kc != null && c.batDau < kc.$2 && kc.$1 < cuoiC) return true;
+  }
+  return false;
+}
+
 /// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối).
 Color dayColor(Iterable<dynamic> items) {
   final buoiTrongNgay = items
@@ -751,6 +780,7 @@ class _DayCardState extends State<_DayCard> {
                   delay: Duration(milliseconds: 70 * n),
                   now: widget.now,
                   onXoa: () => _xoa(rieng.indexOf(x)),
+                  trungGio: trungGioChinhQuy(x, widget.items),
                 )
               else
                 _Lesson(
@@ -778,8 +808,10 @@ class _DayCardState extends State<_DayCard> {
 /// Hỏi tiêu đề, giờ đi (bắt buộc) và giờ về (tuỳ chọn) cho một mục lịch tự đặt.
 Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
   final ten = TextEditingController();
+  final viTri = TextEditingController();
   TimeOfDay? di;
   TimeOfDay? ve;
+  var mau = customLichPalette.first;
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -837,6 +869,57 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                     contentPadding: EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: Paper.card,
+                  border: Paper.border,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: Paper.shadow(3),
+                ),
+                child: TextField(
+                  controller: viTri,
+                  style: const TextStyle(color: Paper.ink),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: 'Vị trí (vd: P301) — tuỳ chọn',
+                    hintStyle: TextStyle(color: Paper.ink3),
+                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final c in customLichPalette)
+                    GestureDetector(
+                      onTap: () => setState(() => mau = c),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Paper.ink,
+                            width: mau == c ? 3 : 1.5,
+                          ),
+                        ),
+                        child: mau == c
+                            ? const Icon(
+                                Icons.check_rounded,
+                                size: 18,
+                                color: Paper.ink,
+                              )
+                            : null,
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 14),
               Wrap(
@@ -903,6 +986,8 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
     tieuDe: ten.text.trim(),
     batDau: di!.hour * 60 + di!.minute,
     ketThuc: ve == null ? null : ve!.hour * 60 + ve!.minute,
+    mau: mau.toARGB32(),
+    viTri: viTri.text.trim().isEmpty ? null : viTri.text.trim(),
   );
 }
 
@@ -1151,11 +1236,15 @@ class _LessonRieng extends StatelessWidget {
     this.delay = Duration.zero,
     this.now,
     this.onXoa,
+    this.trungGio = false,
   });
   final CustomLich c;
   final Duration delay;
   final DateTime? now;
   final VoidCallback? onXoa;
+
+  /// Đụng giờ với một buổi học chính quy cùng ngày.
+  final bool trungGio;
 
   @override
   Widget build(BuildContext context) {
@@ -1221,7 +1310,11 @@ class _LessonRieng extends StatelessWidget {
                             phaseTagRieng(pha).$1,
                             color: phaseTagRieng(pha).$2,
                           ),
-                        const Pill('Tự đặt', color: Paper.peach),
+                        Pill('Tự đặt', color: c.color),
+                        if (c.viTri != null && c.viTri!.isNotEmpty)
+                          Pill(c.viTri!, color: Paper.card),
+                        if (trungGio)
+                          const Pill('⚠ Trùng giờ', color: Paper.rose),
                       ],
                     ),
                   ],
@@ -1255,7 +1348,12 @@ class _LessonRieng extends StatelessWidget {
 /// Bản [_TietKe] cho lịch tự đặt — chỉ hiện khi lịch chính quy hôm nay đã
 /// tan hết, vẫn giữ đúng ưu tiên lịch chính quy phía trên.
 class _TietKeRieng extends StatelessWidget {
-  const _TietKeRieng({required this.c, required this.now, this.onXong});
+  const _TietKeRieng({
+    required this.c,
+    required this.now,
+    this.onXong,
+    this.trungGio = false,
+  });
   final CustomLich c;
   final DateTime now;
 
@@ -1263,13 +1361,17 @@ class _TietKeRieng extends StatelessWidget {
   /// giờ về rồi thì tự "xong" đúng lúc, khỏi cần bấm.
   final VoidCallback? onXong;
 
+  /// Đụng giờ với một buổi học chính quy — đè màu người dùng chọn bằng màu
+  /// cảnh báo cho khỏi bị bỏ lỡ xung đột lịch.
+  final bool trungGio;
+
   @override
   Widget build(BuildContext context) {
     final con = demNguocRieng(c, now);
     final pha = customLessonNow(c, now);
     final mau = pha == null ? Paper.card : phaseTagRieng(pha).$2;
     return PaperBox(
-      color: Paper.sun,
+      color: trungGio ? Paper.rose : c.color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1317,6 +1419,10 @@ class _TietKeRieng extends StatelessWidget {
                 color: Paper.card,
               ),
               const Pill('Tự đặt', color: Paper.card),
+              if (c.viTri != null && c.viTri!.isNotEmpty)
+                Pill(c.viTri!, color: Paper.card),
+              if (trungGio)
+                const Pill('⚠ Trùng giờ chính quy', color: Paper.card),
             ],
           ),
           if (c.ketThuc == null && onXong != null) ...[
@@ -1751,7 +1857,12 @@ class _Ngay extends StatelessWidget {
       // Giờ nào tới trước thì thẻ đó hiện trước, không cố định lịch chính
       // quy luôn ở trên.
       if (now != null && _riengTruoc(ke, keRieng)) ...[
-        _TietKeRieng(c: keRieng!, now: now!, onXong: onXongRieng),
+        _TietKeRieng(
+          c: keRieng!,
+          now: now!,
+          onXong: onXongRieng,
+          trungGio: trungGioChinhQuy(keRieng!, items),
+        ),
         const SizedBox(height: 10),
       ],
       if (ke != null && now != null) ...[
@@ -1759,7 +1870,12 @@ class _Ngay extends StatelessWidget {
         const SizedBox(height: 10),
       ],
       if (now != null && keRieng != null && !_riengTruoc(ke, keRieng)) ...[
-        _TietKeRieng(c: keRieng!, now: now!, onXong: onXongRieng),
+        _TietKeRieng(
+          c: keRieng!,
+          now: now!,
+          onXong: onXongRieng,
+          trungGio: trungGioChinhQuy(keRieng!, items),
+        ),
         const SizedBox(height: 10),
       ],
       if (items.isNotEmpty || rieng.isNotEmpty)
@@ -1773,6 +1889,7 @@ class _Ngay extends StatelessWidget {
                     x,
                     delay: Duration(milliseconds: 70 * n),
                     now: now,
+                    trungGio: trungGioChinhQuy(x, items),
                   )
                 else
                   _Lesson(
