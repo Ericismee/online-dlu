@@ -15,6 +15,7 @@ class Settings {
   static const _khoaDev = 'dev_mode';
   static const _khoaNguyHiem = 'unlock_dangerous';
   static const _khoaLock = 'app_lock';
+  static const _khoaMenu = 'menu_order';
 
   static Future<bool> devMode() async =>
       (await SharedPreferences.getInstance()).getBool(_khoaDev) ?? false;
@@ -30,6 +31,20 @@ class Settings {
       (await SharedPreferences.getInstance()).getBool(_khoaLock) ?? false;
   static Future<void> datKhoaBat(bool v) async =>
       (await SharedPreferences.getInstance()).setBool(_khoaLock, v);
+
+  /// Thứ tự mục menu người dùng tự kéo, theo mã tab. Rỗng là chưa kéo bao giờ,
+  /// cứ dùng thứ tự mặc định.
+  static Future<List<int>> thuTuMenu() async => [
+    for (final s
+        in (await SharedPreferences.getInstance()).getStringList(_khoaMenu) ??
+            const <String>[])
+      ?int.tryParse(s),
+  ];
+
+  static Future<void> datThuTuMenu(List<int> v) async =>
+      (await SharedPreferences.getInstance()).setStringList(_khoaMenu, [
+        for (final t in v) '$t',
+      ]);
 }
 
 class SettingsScreen extends StatefulWidget {

@@ -690,13 +690,13 @@ class _NextExamState extends State<_NextExam> with Reloadable<_NextExam> {
 }
 
 /// Thẻ menu: bấm là nhảy qua tab tương ứng.
-class _Menu extends StatelessWidget {
+class _Menu extends StatefulWidget {
   const _Menu({required this.onGo, required this.session});
   final ValueChanged<int> onGo;
   final Session session;
 
-  /// tab -1 = mở trang riêng thay vì chuyển tab.
-  static const _items = [
+  /// tab âm = mở trang riêng thay vì chuyển tab.
+  static const items = [
     (0, Icons.calendar_month_rounded, 'Thời khoá biểu', Paper.sun),
     (1, Icons.edit_note_rounded, 'Lịch thi', Paper.rose),
     (3, Icons.grade_rounded, 'Điểm', Paper.accent),
@@ -706,9 +706,69 @@ class _Menu extends StatelessWidget {
     (-3, Icons.school_rounded, 'Chương trình đào tạo', Paper.sky),
     (-6, Icons.trending_up_rounded, 'Cải thiện', Paper.rose),
     (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
-    // Luôn để cuối danh sách: đây là mục cấu hình, không phải dữ liệu trường.
+    // Mặc định để cuối: đây là mục cấu hình, không phải dữ liệu trường. Người
+    // dùng kéo lên trên được, thứ tự họ chọn mới là thứ tự cuối cùng.
     (-5, Icons.settings_rounded, 'Cài đặt', Paper.card),
   ];
+
+  @override
+  State<_Menu> createState() => _MenuState();
+}
+
+typedef _MucMenu = (int, IconData, String, Color);
+
+/// Xếp [muc] theo [thuTu] đã lưu (danh sách mã tab). Mục mới của bản cập nhật
+/// chưa có trong thứ tự cũ thì rơi xuống cuối chứ không biến mất khỏi menu, và
+/// mã tab lạ trong thứ tự cũ (mục đã gỡ) thì bỏ qua.
+List<T> sapTheoThuTu<T>(List<T> muc, List<int> thuTu, int Function(T) ma) {
+  final con = [...muc];
+  final out = <T>[];
+  for (final tab in thuTu) {
+    final i = con.indexWhere((e) => ma(e) == tab);
+    if (i >= 0) out.add(con.removeAt(i));
+  }
+  return [...out, ...con];
+}
+
+class _MenuState extends State<_Menu> {
+  /// Thứ tự người dùng tự kéo, theo mã tab. Rỗng là chưa kéo bao giờ.
+  List<int> _thuTu = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    Settings.thuTuMenu().then((v) {
+      if (mounted) setState(() => _thuTu = v);
+    });
+  }
+
+  List<_MucMenu> get _sap => sapTheoThuTu(_Menu.items, _thuTu, (e) => e.$1);
+
+  void _keo(int tu, int toi) {
+    final list = _sap;
+    list.insert(toi, list.removeAt(tu));
+    final thuTu = [for (final e in list) e.$1];
+    setState(() => _thuTu = thuTu);
+    Settings.datThuTuMenu(thuTu);
+  }
+
+  void _mo(int tab) {
+    if (tab >= 0) return widget.onGo(tab);
+    final session = widget.session;
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => switch (tab) {
+          -1 => CoursesTab(session: session),
+          -2 => BehaviorScreen(session: session),
+          -4 => BehaviorDetailScreen(session: session),
+          -5 => SettingsScreen(session: session),
+          -6 => ImprovementScreen(session: session),
+          _ => CurriculumScreen(session: session),
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Column(
@@ -723,63 +783,66 @@ class _Menu extends StatelessWidget {
           color: Paper.ink,
         ),
       ),
+      const Text(
+        'Nhấn giữ rồi kéo để sắp xếp lại',
+        style: TextStyle(fontSize: 12, color: Paper.ink3),
+      ),
       const SizedBox(height: 10),
-      _khung(context),
+      PaperBox(
+        child: ReorderableListView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          onReorderItem: _keo,
+          // Mặc định Material bọc mục đang kéo trong thẻ nổi bóng xám, lạc hẳn
+          // với viền dày bóng cứng của app — chỉ nhấc nhẹ lên là đủ thấy.
+          proxyDecorator: (child, _, anim) => Material(
+            color: Colors.transparent,
+            child: ScaleTransition(
+              scale: anim.drive(Tween(begin: 1, end: 1.04)),
+              child: child,
+            ),
+          ),
+          children: [for (final m in _sap) _dong(m)],
+        ),
+      ),
     ],
   );
 
-  Widget _khung(BuildContext context) => PaperBox(
-    child: Column(
-      children: [
-        for (final (tab, icon, label, color) in _items)
-          Pressable(
-            onTap: () => tab >= 0
-                ? onGo(tab)
-                : Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => switch (tab) {
-                        -1 => CoursesTab(session: session),
-                        -2 => BehaviorScreen(session: session),
-                        -4 => BehaviorDetailScreen(session: session),
-                        -5 => SettingsScreen(session: session),
-                        -6 => ImprovementScreen(session: session),
-                        _ => CurriculumScreen(session: session),
-                      },
-                    ),
-                  ),
-            builder: (down) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: color,
-                      border: Paper.border,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: Paper.shadow(down ? 0 : 2),
-                    ),
-                    child: Icon(icon, size: 20, color: Paper.ink),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: const TextStyle(
-                        fontFamily: 'Baloo',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        color: Paper.ink,
-                      ),
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded, color: Paper.ink3),
-                ],
+  Widget _dong(_MucMenu m) {
+    final (tab, icon, label, color) = m;
+    return Pressable(
+      key: ValueKey(tab),
+      onTap: () => _mo(tab),
+      builder: (down) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color,
+                border: Paper.border,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: Paper.shadow(down ? 0 : 2),
+              ),
+              child: Icon(icon, size: 20, color: Paper.ink),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Baloo',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: Paper.ink,
+                ),
               ),
             ),
-          ),
-      ],
-    ),
-  );
+            const Icon(Icons.chevron_right_rounded, color: Paper.ink3),
+          ],
+        ),
+      ),
+    );
+  }
 }
