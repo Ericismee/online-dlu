@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'db.dart';
 import 'paper.dart';
 
 /// Một dòng lịch sử cập nhật: bản nào, ra ngày nào, đổi những gì.
@@ -145,15 +145,15 @@ class _UpdateBannerState extends State<UpdateBanner>
   Future<void> _check({bool moApp = false}) async {
     final v = await widget.check();
     if (v == null || !mounted) return;
-    final prefs = await SharedPreferences.getInstance();
-    if (prefs.getString('dismissed_update') == v) return;
+    if ((await Db.i.doc(nhomMoc, 'dismissed_update'))?.giaTri == v) return;
     if (mounted) setState(() => _version = v);
     final notes = await widget.notes(v);
     if (notes != null && mounted) setState(() => _notes = notes);
     // Mở app mà có bản mới thì nói thẳng một lần, đừng để thẻ nằm im dưới
     // cuộn rồi chẳng ai thấy. Lần sau mở lại cùng bản đó thì thôi, còn thẻ.
-    if (moApp && mounted && prefs.getString('shown_update') != v) {
-      await prefs.setString('shown_update', v);
+    final daHien = (await Db.i.doc(nhomMoc, 'shown_update'))?.giaTri;
+    if (moApp && mounted && daHien != v) {
+      await Db.i.ghi(nhomMoc, 'shown_update', giaTri: v);
       if (!mounted) return;
       final tai = await confirmDialog(
         context,
@@ -182,7 +182,7 @@ class _UpdateBannerState extends State<UpdateBanner>
     final v = _version;
     setState(() => _version = null);
     if (v != null) {
-      (await SharedPreferences.getInstance()).setString('dismissed_update', v);
+      await Db.i.ghi(nhomMoc, 'dismissed_update', giaTri: v);
     }
   }
 
@@ -267,8 +267,9 @@ class _ChangelogState extends State<Changelog>
         (v) => v.version == mine,
         orElse: () => lichSu.first,
       );
-      final prefs = await SharedPreferences.getInstance();
-      if (prefs.getString('dismissed_changelog') == mine) return;
+      if ((await Db.i.doc(nhomMoc, 'dismissed_changelog'))?.giaTri == mine) {
+        return;
+      }
       if (mounted) {
         setState(() {
           _text = v.text;
@@ -288,10 +289,7 @@ class _ChangelogState extends State<Changelog>
     final v = _version;
     setState(() => _text = null);
     if (v != null) {
-      (await SharedPreferences.getInstance()).setString(
-        'dismissed_changelog',
-        v,
-      );
+      await Db.i.ghi(nhomMoc, 'dismissed_changelog', giaTri: v);
     }
   }
 

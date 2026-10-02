@@ -1,7 +1,8 @@
 import 'package:dlu_tkb/update_check.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'db_tam.dart';
 
 /// Mở app mà có bản mới thì hiện hộp thoại một lần — bấm Huỷ cho nó khỏi
 /// che mất thẻ mà các test dưới đang tìm.
@@ -13,7 +14,7 @@ Future<void> dongHopThoai(WidgetTester t) async {
 }
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(dungDbTam);
 
   testWidgets('vô app có bản mới thì hiện hộp thoại, chỉ một lần mỗi bản', (
     t,

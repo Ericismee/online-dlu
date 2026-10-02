@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:dlu_tkb/cache.dart';
 import 'package:dlu_tkb/clock.dart';
@@ -8,13 +7,15 @@ import 'package:dlu_tkb/paper.dart';
 import 'package:dlu_tkb/portal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_ce_flutter/hive_flutter.dart';
+
+import 'db_tam.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
-  setUpAll(() async {
-    Hive.init(Directory.systemTemp.createTempSync('dlu_test_clock').path);
+  setUp(() async {
+    dungDbTam();
     await Cache.open();
   });
 
@@ -62,9 +63,9 @@ void main() {
       }),
     );
 
-    // Nạp trước ngoài zone của test để cache Hive ghi xong hẳn.
+    // Nạp trước ngoài zone của test để cache SQLite ghi xong hẳn.
     await t.runAsync(() async {
-      // Hâm sẵn cả tháng sau: TodayLessons nạp hai tháng, mà ghi cache Hive
+      // Hâm sẵn cả tháng sau: TodayLessons nạp hai tháng, mà ghi cache SQLite
       // thật thì không chạy xong dưới đồng hồ giả của testWidgets.
       for (final m in [DateTime(2026, 9), DateTime(2026, 10)]) {
         await fetchMonth(portal, 't', m);
@@ -148,7 +149,7 @@ void main() {
       }),
     );
     await t.runAsync(() async {
-      // Hâm sẵn cả tháng sau: TodayLessons nạp hai tháng, mà ghi cache Hive
+      // Hâm sẵn cả tháng sau: TodayLessons nạp hai tháng, mà ghi cache SQLite
       // thật thì không chạy xong dưới đồng hồ giả của testWidgets.
       for (final m in [DateTime(2026, 9), DateTime(2026, 10)]) {
         await fetchMonth(portal, 't', m);

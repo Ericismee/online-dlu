@@ -4,10 +4,15 @@ import 'package:dlu_tkb/behavior.dart';
 import 'package:dlu_tkb/portal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'db_tam.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  setUp(dungDbTam);
+
   testWidgets('phiếu rèn luyện hiện tổng điểm và điểm từng nhóm', (t) async {
     final portal = Portal(
       client: MockClient(

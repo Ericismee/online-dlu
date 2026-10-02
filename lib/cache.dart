@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'db.dart';
 
-/// Cache JSON của portal trong Hive: mở app là có dữ liệu ngay, hết hạn thì
-/// làm mới ngầm. Box đóng (trong test) thì mọi thứ thành no-op.
+/// Cache JSON của portal trong SQLite ([Db]): mở app là có dữ liệu ngay, hết
+/// hạn thì làm mới ngầm.
 class Cache {
   /// Cũ hơn ngần này thì nạp lại ngầm, còn hiển thị vẫn lấy từ cache.
   static const ttl = Duration(minutes: 30);
 
-  static Box<String>? _box;
+  static const _nhom = nhomCache;
+
+  /// Đọc đồng bộ nên giữ một bản trong RAM; SQLite là nơi lưu thật.
+  static final _ram = <String, (dynamic, DateTime)>{};
 
   /// Bật trong lúc kéo xuống làm mới: bỏ qua cache, gọi thẳng portal.
   /// ponytail: cờ toàn cục vì mỗi lần chỉ có một lượt làm mới.
@@ -54,22 +57,20 @@ class Cache {
     }
   }
 
-  static Future<void> init() async {
-    await Hive.initFlutter();
-    await open();
-  }
+  static Future<void> init() => open();
 
-  /// Tách riêng để test mở box ở thư mục tạm.
-  static Future<void> open() async =>
-      _box = await Hive.openBox<String>('portal');
+  /// Nạp cache từ SQLite vào RAM. Màn hình đọc cache đồng bộ ngay trong
+  /// build nên không chờ ổ đĩa được; SQLite là nơi lưu thật, RAM chỉ là bản
+  /// sao để đọc.
+  static Future<void> open() async {
+    _ram.clear();
+    for (final d in await Db.i.nhomDang(_nhom)) {
+      _ram[d.khoa] = (jsonDecode(d.giaTri), d.luc);
+    }
+  }
 
   /// Dữ liệu đã lưu kèm lúc lưu, chưa có thì null.
-  static (dynamic, DateTime)? read(String key) {
-    final raw = _box?.get(key);
-    if (raw == null) return null;
-    final j = jsonDecode(raw) as Map<String, dynamic>;
-    return (j['data'], DateTime.parse(j['at'] as String));
-  }
+  static (dynamic, DateTime)? read(String key) => _ram[key];
 
   static bool stale(DateTime at) => DateTime.now().difference(at) > ttl;
 
@@ -85,16 +86,16 @@ class Cache {
       : served.values.reduce((a, b) => a.isBefore(b) ? a : b);
 
   static Future<void> write(String key, dynamic data) async {
-    await _box?.put(
-      key,
-      jsonEncode({'at': DateTime.now().toIso8601String(), 'data': data}),
-    );
+    _ram[key] = (data, DateTime.now());
+    await Db.i.ghi(_nhom, key, giaTri: jsonEncode(data));
   }
 
-  /// Đăng xuất thì bỏ sạch.
+  /// Đăng xuất thì cất hết đi — ẩn chứ không xoá, đăng nhập lại ghi đè là
+  /// dòng cũ sống lại.
   static Future<void> clear() async {
     served.clear();
     refreshedAt = null;
-    await _box?.clear();
+    _ram.clear();
+    await Db.i.an(_nhom);
   }
 }

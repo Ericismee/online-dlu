@@ -1,8 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'cache.dart';
+import 'db.dart';
 import 'graph.dart';
 import 'lms.dart';
 import 'nhac.dart';
@@ -10,48 +12,45 @@ import 'paper.dart';
 import 'portal.dart';
 import 'update_check.dart';
 
-/// Cờ lưu trong SharedPreferences, đọc/ghi trực tiếp — không cần Store riêng
-/// vì mỗi cờ chỉ có một chỗ đọc (màn Cài đặt) và một chỗ dùng.
+/// Cờ lưu trong SQLite: mỗi cờ là một dòng [Kho] nhóm 'cai_dat', giá trị
+/// chính là cột `bat` — tắt một cờ là ẩn dòng đó đi, bật lại là có lại.
 class Settings {
+  static const nhom = nhomCaiDat;
   static const _khoaDev = 'dev_mode';
   static const _khoaNguyHiem = 'unlock_dangerous';
   static const _khoaLock = 'app_lock';
   static const _khoaMenu = 'menu_order';
   static const _khoaLms = 'lms_enabled';
 
-  static Future<bool> lmsBat() async =>
-      (await SharedPreferences.getInstance()).getBool(_khoaLms) ?? false;
-  static Future<void> datLmsBat(bool v) async =>
-      (await SharedPreferences.getInstance()).setBool(_khoaLms, v);
+  /// Chưa khai bao giờ thì mặc định tắt.
+  static Future<bool> _co(String khoa) async =>
+      (await Db.i.dong(nhom, khoa))?.bat ?? false;
 
-  static Future<bool> devMode() async =>
-      (await SharedPreferences.getInstance()).getBool(_khoaDev) ?? false;
-  static Future<void> datDevMode(bool v) async =>
-      (await SharedPreferences.getInstance()).setBool(_khoaDev, v);
+  static Future<void> _datCo(String khoa, bool v) =>
+      Db.i.ghi(nhom, khoa, bat: v);
 
-  static Future<bool> nguyHiem() async =>
-      (await SharedPreferences.getInstance()).getBool(_khoaNguyHiem) ?? false;
-  static Future<void> datNguyHiem(bool v) async =>
-      (await SharedPreferences.getInstance()).setBool(_khoaNguyHiem, v);
+  static Future<bool> lmsBat() => _co(_khoaLms);
+  static Future<void> datLmsBat(bool v) => _datCo(_khoaLms, v);
 
-  static Future<bool> khoaBat() async =>
-      (await SharedPreferences.getInstance()).getBool(_khoaLock) ?? false;
-  static Future<void> datKhoaBat(bool v) async =>
-      (await SharedPreferences.getInstance()).setBool(_khoaLock, v);
+  static Future<bool> devMode() => _co(_khoaDev);
+  static Future<void> datDevMode(bool v) => _datCo(_khoaDev, v);
+
+  static Future<bool> nguyHiem() => _co(_khoaNguyHiem);
+  static Future<void> datNguyHiem(bool v) => _datCo(_khoaNguyHiem, v);
+
+  static Future<bool> khoaBat() => _co(_khoaLock);
+  static Future<void> datKhoaBat(bool v) => _datCo(_khoaLock, v);
 
   /// Thứ tự mục menu người dùng tự kéo, theo mã tab. Rỗng là chưa kéo bao giờ,
   /// cứ dùng thứ tự mặc định.
-  static Future<List<int>> thuTuMenu() async => [
-    for (final s
-        in (await SharedPreferences.getInstance()).getStringList(_khoaMenu) ??
-            const <String>[])
-      ?int.tryParse(s),
-  ];
+  static Future<List<int>> thuTuMenu() async {
+    final raw = (await Db.i.doc(nhom, _khoaMenu))?.giaTri;
+    if (raw == null || raw.isEmpty) return const [];
+    return [for (final t in jsonDecode(raw) as List) t as int];
+  }
 
-  static Future<void> datThuTuMenu(List<int> v) async =>
-      (await SharedPreferences.getInstance()).setStringList(_khoaMenu, [
-        for (final t in v) '$t',
-      ]);
+  static Future<void> datThuTuMenu(List<int> v) =>
+      Db.i.ghi(nhom, _khoaMenu, giaTri: jsonEncode(v));
 }
 
 class SettingsScreen extends StatefulWidget {

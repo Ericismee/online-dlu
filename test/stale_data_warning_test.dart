@@ -1,14 +1,13 @@
-import 'dart:io';
-
 import 'package:dlu_tkb/cache.dart';
 import 'package:dlu_tkb/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_ce_flutter/hive_flutter.dart';
+
+import 'db_tam.dart';
 
 void main() {
-  setUpAll(() async {
-    Hive.init('${Directory.systemTemp.path}/dlu_test_stale_warning');
+  setUp(() async {
+    dungDbTam();
     await Cache.open();
   });
 

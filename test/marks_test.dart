@@ -8,6 +8,8 @@ import 'package:http/testing.dart';
 import 'package:dlu_tkb/paper.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'db_tam.dart';
+
 final _blank = [
   {
     'NamHoc': '2026-2027',
@@ -59,6 +61,8 @@ final _years = [
 ];
 
 void main() {
+  setUp(dungDbTam);
+
   test('markColor: đạt / chưa đạt / chưa có điểm', () {
     expect(markColor({'IsPass': 'x', 'DiemTK_10': '8.0'}), Paper.mint);
     expect(markColor({'IsPass': '', 'DiemTK_10': '3.0'}), Paper.rose);

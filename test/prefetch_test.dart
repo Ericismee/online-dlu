@@ -1,17 +1,18 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:dlu_tkb/cache.dart';
 import 'package:dlu_tkb/portal.dart';
 import 'package:dlu_tkb/prefetch.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_ce_flutter/hive_flutter.dart';
+
+import 'db_tam.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
-  setUpAll(() async {
-    Hive.init(Directory.systemTemp.createTempSync('dlu_test_prefetch').path);
+  setUp(() async {
+    dungDbTam();
     await Cache.open();
   });
 

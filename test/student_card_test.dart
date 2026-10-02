@@ -5,10 +5,15 @@ import 'package:dlu_tkb/info.dart';
 import 'package:dlu_tkb/portal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'db_tam.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  setUp(dungDbTam);
+
   testWidgets('thẻ sinh viên đổi được giữa mã vạch và mã QR', (t) async {
     final portal = Portal(
       client: MockClient(

@@ -1,7 +1,8 @@
-import 'dart:convert';
 import 'dart:ui' show Color;
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:drift/drift.dart';
+
+import 'db.dart';
 
 /// Màu mặc định cho lịch tự đặt chưa chọn màu — hồng, khác hẳn màu vàng
 /// (Paper.sun) của lịch chính quy nên không lẫn hai loại.
@@ -54,65 +55,95 @@ class CustomLich {
   );
 }
 
-/// Lưu lịch tự đặt theo ngày trong SharedPreferences, kiểu ngày làm khoá.
+/// Lưu lịch tự đặt trong SQLite, mỗi mục một dòng nên xoá được từng mục —
+/// mà "xoá" ở đây là tắt cờ `bat`, dòng vẫn nằm nguyên trong máy.
 /// Không đụng tới lịch chính quy của portal — chỉ chen thêm vào lúc hiển thị.
 class CustomLichStore {
-  static const _khoa = 'custom_lich';
   static String _key(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
-  static Future<Map<String, List<CustomLich>>> _all() async {
-    final raw = (await SharedPreferences.getInstance()).getString(_khoa);
-    if (raw == null) return {};
-    final j = jsonDecode(raw) as Map<String, dynamic>;
-    return j.map(
-      (k, v) => MapEntry(k, [
-        for (final e in v as List)
-          CustomLich.fromJson(e as Map<String, dynamic>),
-      ]),
-    );
+  static CustomLich _tu(LichRieng r) => CustomLich(
+    tieuDe: r.tieuDe,
+    batDau: r.batDau,
+    ketThuc: r.ketThuc,
+    mau: r.mau,
+    viTri: r.viTri,
+  );
+
+  /// Các dòng còn hiện của một ngày, thứ tự thêm vào — chỉ số trong danh
+  /// sách này chính là chỉ số [remove]/[update] nhận.
+  static Future<List<LichRieng>> _dong(DateTime d) {
+    final db = Db.i;
+    return (db.select(db.lichRiengs)
+          ..where((t) => t.ngay.equals(_key(d)) & t.bat)
+          ..orderBy([(t) => OrderingTerm(expression: t.id)]))
+        .get();
   }
 
-  static Future<void> _save(Map<String, List<CustomLich>> all) async {
-    final j = all.map((k, v) => MapEntry(k, [for (final c in v) c.toJson()]));
-    (await SharedPreferences.getInstance()).setString(_khoa, jsonEncode(j));
-  }
-
-  static Future<List<CustomLich>> forDay(DateTime d) async =>
-      (await _all())[_key(d)] ?? const [];
+  static Future<List<CustomLich>> forDay(DateTime d) async => [
+    for (final r in await _dong(d)) _tu(r),
+  ];
 
   /// Toàn bộ lịch tự đặt trong một tháng, theo ngày — để tô màu lịch tháng.
   static Future<Map<int, List<CustomLich>>> forMonth(DateTime month) async {
+    final db = Db.i;
     final prefix = '${month.year}-${month.month.toString().padLeft(2, '0')}-';
+    final rows =
+        await (db.select(db.lichRiengs)
+              ..where((t) => t.ngay.like('$prefix%') & t.bat)
+              ..orderBy([(t) => OrderingTerm(expression: t.id)]))
+            .get();
     final out = <int, List<CustomLich>>{};
-    for (final e in (await _all()).entries) {
-      if (!e.key.startsWith(prefix)) continue;
-      out[int.parse(e.key.substring(prefix.length))] = e.value;
+    for (final r in rows) {
+      out
+          .putIfAbsent(int.parse(r.ngay.substring(prefix.length)), () => [])
+          .add(_tu(r));
     }
     return out;
   }
 
   static Future<void> add(DateTime d, CustomLich item) async {
-    final all = await _all();
-    all.putIfAbsent(_key(d), () => []).add(item);
-    await _save(all);
+    final db = Db.i;
+    await db
+        .into(db.lichRiengs)
+        .insert(
+          LichRiengsCompanion.insert(
+            ngay: _key(d),
+            tieuDe: item.tieuDe,
+            batDau: item.batDau,
+            ketThuc: Value(item.ketThuc),
+            mau: Value(item.mau),
+            viTri: Value(item.viTri),
+            luc: DateTime.now(),
+          ),
+        );
   }
 
+  /// Ẩn mục đi, không xoá khỏi máy.
   static Future<void> remove(DateTime d, int index) async {
-    final all = await _all();
-    final list = all[_key(d)];
-    if (list == null || index >= list.length) return;
-    list.removeAt(index);
-    if (list.isEmpty) all.remove(_key(d));
-    await _save(all);
+    final rows = await _dong(d);
+    if (index >= rows.length) return;
+    final db = Db.i;
+    await (db.update(db.lichRiengs)..where((t) => t.id.equals(rows[index].id)))
+        .write(const LichRiengsCompanion(bat: Value(false)));
   }
 
   static Future<void> update(DateTime d, int index, CustomLich item) async {
-    final all = await _all();
-    final list = all[_key(d)];
-    if (list == null || index >= list.length) return;
-    list[index] = item;
-    await _save(all);
+    final rows = await _dong(d);
+    if (index >= rows.length) return;
+    final db = Db.i;
+    await (db.update(
+      db.lichRiengs,
+    )..where((t) => t.id.equals(rows[index].id))).write(
+      LichRiengsCompanion(
+        tieuDe: Value(item.tieuDe),
+        batDau: Value(item.batDau),
+        ketThuc: Value(item.ketThuc),
+        mau: Value(item.mau),
+        viTri: Value(item.viTri),
+        luc: Value(DateTime.now()),
+      ),
+    );
   }
 }

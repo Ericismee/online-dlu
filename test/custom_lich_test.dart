@@ -1,10 +1,11 @@
 import 'package:dlu_tkb/custom_lich.dart';
 import 'package:dlu_tkb/graph.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'db_tam.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(dungDbTam);
 
   test('thêm rồi đọc lại đúng ngày, ngày khác vẫn trống', () async {
     final d = DateTime(2026, 9, 29);

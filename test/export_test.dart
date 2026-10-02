@@ -4,12 +4,14 @@ import 'package:dlu_tkb/graph.dart';
 import 'package:dlu_tkb/portal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'db_tam.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(dungDbTam);
 
   testWidgets('xuất lịch phải hỏi trước, huỷ thì không làm gì', (t) async {
     final portal = Portal(

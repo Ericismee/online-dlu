@@ -2,6 +2,9 @@ import 'dart:convert';
 
 import 'package:dlu_tkb/portal.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'db_tam.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -14,6 +17,8 @@ http.Client stub(int status, Object body) => MockClient(
 );
 
 void main() {
+  setUp(dungDbTam);
+
   test('reads the session out of a successful login', () async {
     final s = await Portal(
       client: stub(200, {

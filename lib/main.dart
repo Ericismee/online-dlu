@@ -9,6 +9,7 @@ import 'clock.dart';
 import 'courses.dart';
 import 'curriculum.dart';
 import 'data.dart';
+import 'db.dart';
 import 'exams.dart';
 import 'graph.dart';
 import 'info.dart';
@@ -34,6 +35,7 @@ Future<void> main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+  await Db.i.nhapTuPrefs();
   await Cache.init();
   runApp(const App());
 }

@@ -1,10 +1,11 @@
 import 'package:dlu_tkb/main.dart';
 import 'package:dlu_tkb/settings.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'db_tam.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(dungDbTam);
 
   test('chưa kéo bao giờ thì giữ nguyên thứ tự mặc định', () {
     expect(sapTheoThuTu([1, 2, 3], const [], (e) => e), [1, 2, 3]);

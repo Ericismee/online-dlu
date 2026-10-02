@@ -1,9 +1,9 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'data.dart';
+import 'db.dart';
 import 'graph.dart';
 
 /// Một lần nhắc: [luc] là lúc rung máy, [vao] là giờ thật sự vào lớp.
@@ -61,10 +61,10 @@ class Nhac {
   /// Có bật nhắc không — mặc định tắt. Thông báo là thứ tự nó chen vào máy
   /// người ta nên phải do họ bật, đừng bật sẵn hộ.
   static Future<bool> bat() async =>
-      (await SharedPreferences.getInstance()).getBool(_khoa) ?? false;
+      (await Db.i.dong(nhomCaiDat, _khoa))?.bat ?? false;
 
   static Future<void> datBat(bool v) async {
-    (await SharedPreferences.getInstance()).setBool(_khoa, v);
+    await Db.i.ghi(nhomCaiDat, _khoa, bat: v);
     if (!v) await _plugin.cancelAll();
   }
 
