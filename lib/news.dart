@@ -1,6 +1,3 @@
-import 'dart:async';
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
 import 'data.dart';
@@ -60,18 +57,16 @@ class _BellState extends State<Bell>
   /// lắc lại mỗi lần làm mới.
   int _chuaXem = 0;
 
-  Timer? _hen;
-  final _ngau = Random();
-
   @override
   void initState() {
     super.initState();
+    LmsNhip.them(_lamMoiLms);
     _load();
   }
 
   @override
   void dispose() {
-    _hen?.cancel();
+    LmsNhip.bo(_lamMoiLms);
     _wiggle.dispose();
     super.dispose();
   }
@@ -90,8 +85,8 @@ class _BellState extends State<Bell>
     await _lamMoiLms();
   }
 
-  /// Chỉ phần LMS: thư Online nặng hơn và không đổi mỗi phút, giữ nguyên nhịp
-  /// cũ (nạp lượt đầu và lúc kéo xuống làm mới).
+  /// Chỉ phần LMS, gọi lại theo [LmsNhip]: thư Online nặng hơn và không đổi
+  /// mỗi phút, giữ nguyên nhịp cũ (nạp lượt đầu và lúc kéo xuống làm mới).
   Future<void> _lamMoiLms() async {
     try {
       final session = await Lms.phien();
@@ -119,14 +114,6 @@ class _BellState extends State<Bell>
     final n = unread(_tatCa);
     if (n > _chuaXem) _wiggle.forward(from: 0);
     _chuaXem = n;
-    _henLuotSau();
-  }
-
-  /// App đang mở thì tự lấy LMS về mỗi 90–120 giây. Lệch ngẫu nhiên để nhiều
-  /// máy không gõ cửa Moodle cùng một nhịp.
-  void _henLuotSau() {
-    _hen?.cancel();
-    _hen = Timer(Duration(seconds: 90 + _ngau.nextInt(31)), () => _lamMoiLms());
   }
 
   /// Đọc lại cờ đã xem sau khi đóng hộp thư, để số trên chuông khớp ngay.

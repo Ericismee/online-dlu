@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
@@ -39,6 +42,56 @@ class LmsVault {
     Lms.boPhien();
     await _storage.delete(key: 'lms_username');
     await _storage.delete(key: 'lms_password');
+  }
+}
+
+/// Nhịp làm mới LMS dùng chung: app đang mở thì cứ 90–120 giây gọi lại mọi
+/// nơi đang nghe. Lệch ngẫu nhiên để nhiều máy không gõ cửa Moodle cùng nhịp.
+///
+/// Một nhịp cho cả app, không phải mỗi màn một Timer: chuông với thẻ điểm
+/// danh mà tự hẹn riêng thì server trường ăn hai lượt lệch nhau, còn mình thì
+/// phải sửa cùng một đoạn hẹn giờ ở hai chỗ.
+class LmsNhip {
+  static final _nghe = <Future<void> Function()>[];
+  static final _ngau = Random();
+  static Timer? _hen;
+
+  /// Khoảng giữa hai lượt. Test đổi xuống vài ms cho khỏi ngồi chờ.
+  @visibleForTesting
+  static Duration Function() khoang = () =>
+      Duration(seconds: 90 + _ngau.nextInt(31));
+
+  static void them(Future<void> Function() viec) {
+    _nghe.add(viec);
+    if (_hen == null) _lap();
+  }
+
+  static void bo(Future<void> Function() viec) {
+    _nghe.remove(viec);
+    // Không còn ai nghe thì tắt hẳn, đừng để Timer chạy không.
+    if (_nghe.isEmpty) {
+      _hen?.cancel();
+      _hen = null;
+    }
+  }
+
+  static void _lap() {
+    _hen = Timer(khoang(), () async {
+      // Gọi lần lượt chứ không song song: cùng một server trường, mà lượt
+      // này chưa về đã bắn lượt sau thì chỉ làm nó nặng thêm.
+      for (final viec in [..._nghe]) {
+        try {
+          await viec();
+        } catch (_) {
+          // Một nơi hỏng không được làm đứng cả nhịp.
+        }
+      }
+      if (_nghe.isEmpty) {
+        _hen = null;
+      } else {
+        _lap();
+      }
+    });
   }
 }
 

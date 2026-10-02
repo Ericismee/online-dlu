@@ -76,6 +76,10 @@ Future<List<LmsEvent>> diemDanhHomNay(DateTime now, {Lms? lms}) async {
 /// Thẻ điểm danh trên Trang chủ, đứng trên mọi thẻ khác: cả ngày chỉ có mấy
 /// phút để điểm, trễ là mất buổi. Không có buổi nào hôm nay thì thẻ biến mất
 /// hẳn, và cứ mỗi phút nó tự soi lại giờ nên hết cửa sổ là tự rụng.
+///
+/// Giáo viên hay mở buổi điểm danh ngay tại lớp, không tạo trước, nên thẻ còn
+/// hỏi lại LMS theo [LmsNhip] — chỉ lấy lúc mở app thì buổi mở sau đó mình
+/// không bao giờ thấy.
 class DiemDanhCard extends StatefulWidget {
   const DiemDanhCard({super.key, this.nguon});
 
@@ -96,7 +100,14 @@ class _DiemDanhCardState extends State<DiemDanhCard>
   @override
   void initState() {
     super.initState();
+    LmsNhip.them(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    LmsNhip.bo(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {

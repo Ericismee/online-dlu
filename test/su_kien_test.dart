@@ -157,6 +157,29 @@ void main() {
     expect(find.byType(PaperBox), findsNothing);
   });
 
+  testWidgets('buổi mở sau khi vào app vẫn bắt được, khỏi mở lại app', (
+    t,
+  ) async {
+    // Giáo viên tạo buổi điểm danh ngay tại lớp: lượt lấy đầu tiên chưa có gì.
+    var ds = <LmsEvent>[];
+    LmsNhip.khoang = () => const Duration(milliseconds: 50);
+    addTearDown(() => LmsNhip.khoang = () => const Duration(seconds: 90));
+    Clock.instance.set(now);
+    Clock.instance.stop();
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: DiemDanhCard(nguon: (_) async => ds)),
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(find.text('Điểm danh'), findsNothing);
+
+    ds = [dd(DateTime(2026, 10, 3, 8, 1))];
+    await t.pump(const Duration(milliseconds: 60));
+    await t.pumpAndSettle();
+    expect(find.text('Điểm danh'), findsOneWidget);
+  });
+
   testWidgets('hết cửa sổ là thẻ tự rụng, khỏi chờ làm mới', (t) async {
     await dungThe(t, [dd(DateTime(2026, 10, 3, 8, 1))]);
     expect(find.text('Điểm danh'), findsOneWidget);
