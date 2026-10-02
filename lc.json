@@ -33,12 +33,12 @@
       },
       "versions": [
         {
-          "version": "1.0.6",
+          "version": "1.0.7",
           "buildVersion": "1",
-          "date": "2026-09-29",
+          "date": "2026-10-02",
           "localizedDescription": "Thêm mục Cải thiện: xếp hạng môn đang kéo GPA xuống và cho thấy học lại thì GPA nhích lên bao nhiêu. Nhấn giữ rồi kéo để sắp xếp lại menu Trang chủ. Lịch tự đặt chọn được màu, vị trí, có nút Đã xong và cảnh báo trùng giờ học chính quy. Sửa mốc \"Dữ liệu lúc\" nhảy sai khi làm mới lúc mất mạng.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 11620377,
+          "size": 11671216,
           "minOSVersion": "15.0"
         }
       ]
