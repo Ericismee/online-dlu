@@ -13,7 +13,7 @@
       "bundleIdentifier": "com.dopaemon.dluonline",
       "developerName": "dopaemon",
       "subtitle": "Thời khoá biểu, lịch thi, điểm",
-      "localizedDescription": "Ứng dụng không chính thức cho sinh viên Trường Đại học Đà Lạt. Đăng nhập bằng tài khoản portal của trường để xem:\n\n• Thời khoá biểu theo tháng, buổi sắp tới đếm ngược tới giờ vào lớp\n• Thêm lịch học cả tháng vào ứng dụng Lịch, nhắc trước 15 phút\n• Lịch thi từng học kỳ\n• Điểm từng môn, GPA tích luỹ, thử GPA với điểm dự kiến\n• Kết quả đăng ký học phần và chương trình đào tạo\n• Phiếu điểm rèn luyện\n\nDữ liệu đã xem lưu trong máy nên mất mạng vẫn mở được. Mật khẩu nằm trong Keychain, chỉ gửi tới máy chủ portal của trường. Không quảng cáo, không thu phí.\n\nĐây không phải sản phẩm của nhà trường và không được nhà trường bảo trợ.",
+      "localizedDescription": "Ứng dụng không chính thức cho sinh viên Trường Đại học Đà Lạt. Đăng nhập bằng tài khoản portal của trường để xem:\n\n• Thời khoá biểu theo tháng, buổi sắp tới đếm ngược tới giờ vào lớp\n• Thêm lịch học cả tháng vào ứng dụng Lịch, nhắc trước 15 phút\n• Lịch thi từng học kỳ\n• Điểm từng môn, GPA tích luỹ, thử GPA với điểm dự kiến\n• Gợi ý môn nên học cải thiện để kéo GPA lên\n• Kết quả đăng ký học phần và chương trình đào tạo\n• Phiếu điểm rèn luyện\n\nDữ liệu đã xem lưu trong máy nên mất mạng vẫn mở được. Mật khẩu nằm trong Keychain, chỉ gửi tới máy chủ portal của trường. Không quảng cáo, không thu phí.\n\nĐây không phải sản phẩm của nhà trường và không được nhà trường bảo trợ.",
       "iconURL": "https://raw.githubusercontent.com/dopaemon/online-dlu/main/store/icon.png",
       "tintColor": "FF5C2B",
       "category": "education",
@@ -36,7 +36,7 @@
           "version": "1.0.6",
           "buildVersion": "1",
           "date": "2026-09-29",
-          "localizedDescription": "Đặt lịch riêng cho ngày trống hoặc ngày đã có lịch học, xoá được lịch riêng, giao diện chọn giờ và ô nhập theo đúng phong cách app.",
+          "localizedDescription": "Thêm mục Cải thiện: xếp hạng môn đang kéo GPA xuống và cho thấy học lại thì GPA nhích lên bao nhiêu. Nhấn giữ rồi kéo để sắp xếp lại menu Trang chủ. Lịch tự đặt chọn được màu, vị trí, có nút Đã xong và cảnh báo trùng giờ học chính quy. Sửa mốc \"Dữ liệu lúc\" nhảy sai khi làm mới lúc mất mạng.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
           "size": 11620377,
           "minOSVersion": "15.0"
