@@ -242,16 +242,6 @@ CustomLich? ketiepRieng(List<CustomLich> rieng, DateTime now) {
   return null;
 }
 
-/// Màu chọn được cho lịch tự đặt — không có Paper.sun (màu lịch chính quy)
-/// trong danh sách nên luôn phân biệt được hai loại lịch.
-const customLichPalette = [
-  Paper.rose,
-  Paper.sky,
-  Paper.peach,
-  Paper.mint,
-  Paper.accent,
-];
-
 /// Khoảng giờ (phút từ 0h) của một buổi học chính quy. Tiết lạ thì null.
 (int, int)? _khoangChinhQuy(dynamic item) {
   final dau = batDauPhut(tietNo(item['BeginTime']));
@@ -271,13 +261,18 @@ bool trungGioChinhQuy(CustomLich c, Iterable<dynamic> items) {
   return false;
 }
 
-/// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối).
-Color dayColor(Iterable<dynamic> items) {
+/// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối), có tính
+/// luôn lịch tự đặt [rieng] của ngày đó: đụng giờ với buổi chính quy thì đè
+/// màu cảnh báo; không đụng giờ thì màu theo buổi chính quy vẫn giữ nguyên
+/// (quan trọng hơn); ngày trống lịch chính quy nhưng có lịch tự đặt thì tô
+/// màu riêng để biết ngày đó không hẳn là nghỉ.
+Color dayColor(Iterable<dynamic> items, [Iterable<CustomLich> rieng = const []]) {
   final buoiTrongNgay = items
       .map((i) => buoi(toNum(i['PeriodID']).toInt()))
       .toSet();
+  if (rieng.any((c) => trungGioChinhQuy(c, items))) return _trungGio;
+  if (buoiTrongNgay.isEmpty) return rieng.isEmpty ? _nghi : _tuDat;
   return switch (buoiTrongNgay.length) {
-    0 => _nghi,
     1 => _motBuoi,
     2 => _haiBuoi,
     _ => _baBuoi,
@@ -288,6 +283,8 @@ const _nghi = Color(0xFFF2E7CE); // nghỉ — không có tiết nào
 const _motBuoi = Paper.mint; // xanh lá — học 1 buổi
 const _haiBuoi = Paper.sky; // xanh dương — học 2 buổi
 const _baBuoi = Paper.rose; // đỏ — học cả 3 buổi
+const _tuDat = Paper.peach; // cam — chỉ có lịch tự đặt, không có tiết chính quy
+const _trungGio = Paper.accent; // đỏ cam đậm — lịch tự đặt đụng giờ tiết chính quy
 
 /// Năm học / học kỳ của một tháng. HK01 tháng 8-1, HK02 tháng 2-6, HK03 tháng 7.
 // ponytail: suy từ lịch chung của trường; nếu trường đổi mốc học kỳ thì sửa ở đây.
@@ -322,9 +319,11 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
     final m = _month;
     try {
       final days = await _fetch(m);
+      final rieng = await CustomLichStore.forMonth(m);
       if (mounted) {
         setState(() {
           _cache[_key(m)] = days;
+          _riengCache[_key(m)] = rieng;
           _error = null;
         });
       }
@@ -336,11 +335,13 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
   /// Lịch đã tải, key là 'năm-tháng'. Tháng trước/sau được nạp sẵn nên bấm
   /// mũi tên là có ngay.
   final _cache = <String, Map<int, List<dynamic>>>{};
+  final _riengCache = <String, Map<int, List<CustomLich>>>{};
   String? _error;
   int? _pick; // ngày đang xem, null = hôm nay
   late DateTime _month = DateTime(widget.now.year, widget.now.month);
 
   Map<int, List<dynamic>>? get _days => _cache[_key(_month)];
+  Map<int, List<CustomLich>> get _rieng => _riengCache[_key(_month)] ?? const {};
   static String _key(DateTime m) => '${m.year}-${m.month}';
 
   @override
@@ -373,9 +374,11 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
     if (_cache.containsKey(_key(m))) return true;
     try {
       final days = await _fetch(m);
+      final rieng = await CustomLichStore.forMonth(m);
       if (!mounted) return false;
       setState(() {
         _cache[_key(m)] = days;
+        _riengCache[_key(m)] = rieng;
         _error = null;
       });
       return true;
@@ -584,6 +587,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                         _Cell(
                           day: d,
                           items: _days?[d] ?? const [],
+                          rieng: _rieng[d] ?? const [],
                           today: thisMonth && d == widget.now.day,
                           picked: d == pick,
                           onTap: () => setState(() => _pick = d),
@@ -600,6 +604,13 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                     const _Legend(color: _haiBuoi, label: '2 buổi'),
                     const _Legend(color: _baBuoi, label: '3 buổi'),
                     const _Legend(color: _nghi, label: 'Nghỉ'),
+                    const _Legend(color: _tuDat, label: 'Tự đặt'),
+                    const _Legend(color: _trungGio, label: 'Trùng giờ'),
+                    const _Legend(
+                      color: _tuDat,
+                      label: 'Có lịch tự đặt',
+                      dot: true,
+                    ),
                     if (_days == null)
                       const Skeleton(width: 48, height: 12)
                     else
@@ -811,7 +822,6 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
   final viTri = TextEditingController();
   TimeOfDay? di;
   TimeOfDay? ve;
-  var mau = customLichPalette.first;
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -896,36 +906,6 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final c in customLichPalette)
-                    GestureDetector(
-                      onTap: () => setState(() => mau = c),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: c,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Paper.ink,
-                            width: mau == c ? 3 : 1.5,
-                          ),
-                        ),
-                        child: mau == c
-                            ? const Icon(
-                                Icons.check_rounded,
-                                size: 18,
-                                color: Paper.ink,
-                              )
-                            : null,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
                   Choice(
                     label: di == null
                         ? 'Giờ đi'
@@ -986,7 +966,6 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
     tieuDe: ten.text.trim(),
     batDau: di!.hour * 60 + di!.minute,
     ketThuc: ve == null ? null : ve!.hour * 60 + ve!.minute,
-    mau: mau.toARGB32(),
     viTri: viTri.text.trim().isEmpty ? null : viTri.text.trim(),
   );
 }
@@ -1443,21 +1422,25 @@ class _TietKeRieng extends StatelessWidget {
 
 /// Ô màu + tên buổi trong phần chú thích.
 class _Legend extends StatelessWidget {
-  const _Legend({required this.color, required this.label});
+  const _Legend({required this.color, required this.label, this.dot = false});
   final Color color;
   final String label;
+
+  /// Vẽ chấm tròn như badge thay vì ô vuông — khớp với chấm thật trên ô lịch.
+  final bool dot;
 
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        width: 14,
-        height: 14,
+        width: dot ? 10 : 14,
+        height: dot ? 10 : 14,
         decoration: BoxDecoration(
           color: color,
           border: Border.all(color: Paper.ink, width: 1.5),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: dot ? null : BorderRadius.circular(4),
+          shape: dot ? BoxShape.circle : BoxShape.rectangle,
         ),
       ),
       const SizedBox(width: 5),
@@ -1470,40 +1453,72 @@ class _Cell extends StatelessWidget {
   const _Cell({
     required this.day,
     required this.items,
+    required this.rieng,
     required this.today,
     required this.picked,
     required this.onTap,
   });
   final int day;
   final List<dynamic> items;
+  final List<CustomLich> rieng;
   final bool today, picked;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => PopIn(
-    // Lần lượt từng ngày cho ra hiệu ứng lướt qua tháng.
-    delay: Duration(milliseconds: 8 * day),
-    child: Pressable(
-      onTap: onTap,
-      builder: (down) => Container(
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: dayColor(items),
-          border: Border.all(color: Paper.ink, width: picked ? 3 : 1.5),
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: picked ? Paper.shadow(down ? 0 : 2) : null,
-        ),
-        child: Text(
-          '$day',
-          style: TextStyle(
-            fontSize: 12,
-            color: Paper.ink,
-            fontWeight: today ? FontWeight.w800 : FontWeight.w600,
-          ),
+  Widget build(BuildContext context) {
+    final mau = dayColor(items, rieng);
+    // Không đụng giờ thì màu ô vẫn ưu tiên buổi chính quy — chấm nhỏ góc
+    // trên để biết ngày đó còn có lịch tự đặt, không thì nhìn ô dễ tưởng
+    // chẳng có gì thêm ngoài giờ học.
+    final coChamRieng = rieng.isNotEmpty && mau != _trungGio;
+    return PopIn(
+      // Lần lượt từng ngày cho ra hiệu ứng lướt qua tháng.
+      delay: Duration(milliseconds: 8 * day),
+      child: Pressable(
+        onTap: onTap,
+        builder: (down) => Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: mau,
+                border: Border.all(color: Paper.ink, width: picked ? 3 : 1.5),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: picked ? Paper.shadow(down ? 0 : 2) : null,
+              ),
+              child: Text(
+                '$day',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Paper.ink,
+                  fontWeight: today ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ),
+            // Chấm như badge thông báo, đè ra ngoài góc ô — giống hẳn
+            // chấm đỏ trên icon chuông chứ không lẫn vào số ngày.
+            if (coChamRieng)
+              Positioned(
+                top: -3,
+                right: -3,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: _tuDat,
+                    shape: BoxShape.circle,
+                    border: Border.fromBorderSide(
+                      BorderSide(color: Paper.paper, width: 1.5),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _Arrow extends StatelessWidget {

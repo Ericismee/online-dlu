@@ -72,6 +72,18 @@ class CustomLichStore {
   static Future<List<CustomLich>> forDay(DateTime d) async =>
       (await _all())[_key(d)] ?? const [];
 
+  /// Toàn bộ lịch tự đặt trong một tháng, theo ngày — để tô màu lịch tháng.
+  static Future<Map<int, List<CustomLich>>> forMonth(DateTime month) async {
+    final prefix =
+        '${month.year}-${month.month.toString().padLeft(2, '0')}-';
+    final out = <int, List<CustomLich>>{};
+    for (final e in (await _all()).entries) {
+      if (!e.key.startsWith(prefix)) continue;
+      out[int.parse(e.key.substring(prefix.length))] = e.value;
+    }
+    return out;
+  }
+
   static Future<void> add(DateTime d, CustomLich item) async {
     final all = await _all();
     all.putIfAbsent(_key(d), () => []).add(item);
