@@ -14,6 +14,34 @@ void main() {
     expect(find.textContaining('1.0.2'), findsOneWidget);
   });
 
+  testWidgets('có changelog thì dán luôn vào thẻ, không có thì vẫn báo', (
+    t,
+  ) async {
+    await t.pumpWidget(
+      MaterialApp(
+        home: UpdateBanner(
+          check: () async => '1.0.2',
+          notes: (v) async => 'Thêm mục Cải thiện.',
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(find.text('Thêm mục Cải thiện.'), findsOneWidget);
+
+    // Mạng hỏng hay lc.json chưa kịp cập nhật: thẻ vẫn phải báo có bản mới.
+    await t.pumpWidget(
+      MaterialApp(
+        home: UpdateBanner(
+          key: const Key('2'),
+          check: () async => '1.0.3',
+          notes: (v) async => null,
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(find.textContaining('1.0.3'), findsOneWidget);
+  });
+
   testWidgets('đã mới nhất rồi thì không hiện gì', (t) async {
     await t.pumpWidget(
       MaterialApp(home: UpdateBanner(check: () async => null)),

@@ -40,6 +40,34 @@ class UpdateCheck {
     }
   }
 
+  /// Changelog của bản [version], đọc `lc.json` trên nhánh main — đúng file CI
+  /// vừa đẩy lúc phát hành, cùng nội dung AltStore hiện. Lấy không được thì
+  /// null, thẻ vẫn báo có bản mới như cũ.
+  static Future<String?> notesFor(String version, {http.Client? client}) async {
+    final c = client ?? http.Client();
+    try {
+      final res = await c
+          .get(
+            Uri.parse('https://raw.githubusercontent.com/$repo/main/lc.json'),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode != 200) return null;
+      final v =
+          (jsonDecode(utf8.decode(res.bodyBytes))['apps'][0]['versions']
+                  as List)
+              .first;
+      // lc.json chậm hơn Release vài giây thì bỏ qua, đừng dán changelog của
+      // bản cũ lên thẻ báo bản mới.
+      return v['version'] == version
+          ? v['localizedDescription'] as String?
+          : null;
+    } catch (_) {
+      return null;
+    } finally {
+      if (client == null) c.close();
+    }
+  }
+
   /// So 'x.y.z' theo từng số — đủ dùng cho kiểu versioning ba số của app này.
   static bool _newer(String a, String b) {
     final pa = a.split('.').map((s) => int.tryParse(s) ?? 0).toList();
@@ -56,11 +84,18 @@ class UpdateCheck {
 /// Thẻ báo có bản mới, tự ẩn khi không có gì để báo. Bấm tắt thì im luôn
 /// tới bản sau, không nhắc lại cùng một bản đã bỏ qua.
 class UpdateBanner extends StatefulWidget {
-  const UpdateBanner({super.key, this.check = UpdateCheck.newerVersion});
+  const UpdateBanner({
+    super.key,
+    this.check = UpdateCheck.newerVersion,
+    this.notes = UpdateCheck.notesFor,
+  });
 
   /// Cách kiểm tra bản mới — thay bằng giả lập lúc test, khỏi đụng mạng
   /// hay PackageInfo thật.
   final Future<String?> Function() check;
+
+  /// Changelog của bản mới, cũng thay được lúc test.
+  final Future<String?> Function(String) notes;
 
   @override
   State<UpdateBanner> createState() => _UpdateBannerState();
@@ -68,6 +103,7 @@ class UpdateBanner extends StatefulWidget {
 
 class _UpdateBannerState extends State<UpdateBanner> {
   String? _version;
+  String? _notes;
 
   @override
   void initState() {
@@ -81,6 +117,8 @@ class _UpdateBannerState extends State<UpdateBanner> {
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getString('dismissed_update') == v) return;
     if (mounted) setState(() => _version = v);
+    final notes = await widget.notes(v);
+    if (notes != null && mounted) setState(() => _notes = notes);
   }
 
   Future<void> _dismiss() async {
@@ -108,12 +146,24 @@ class _UpdateBannerState extends State<UpdateBanner> {
             const Icon(Icons.rocket_launch_rounded, color: Paper.ink),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'Có bản mới v$v — bấm để tải',
-                style: const TextStyle(
-                  color: Paper.ink,
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Có bản mới v$v — bấm để tải',
+                    style: const TextStyle(
+                      color: Paper.ink,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (_notes != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _notes!,
+                      style: const TextStyle(fontSize: 13, color: Paper.ink2),
+                    ),
+                  ],
+                ],
               ),
             ),
             IconButton(
