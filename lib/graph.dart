@@ -63,6 +63,28 @@ Future<Map<int, List<dynamic>>> fetchMonth(
 int periods(Iterable<dynamic> items) =>
     items.fold(0, (a, i) => a + toNum(i['NumberOfPeriods']).toInt());
 
+/// (tiết đã học, tổng tiết) của tháng [thang] tính tới [now]. Buổi hôm nay chỉ
+/// tính khi đã tan — đang ngồi trong lớp thì tiết đó chưa học xong.
+(int, int) tietDaHoc(Map<int, List<dynamic>> thang, DateTime now) {
+  var xong = 0, tong = 0;
+  final phut = now.hour * 60 + now.minute;
+  for (final e in thang.entries) {
+    tong += periods(e.value);
+    if (e.key > now.day) continue;
+    if (e.key < now.day) {
+      xong += periods(e.value);
+      continue;
+    }
+    for (final i in e.value) {
+      final cuoi = batDauPhut(tietNo(i['EndTime']));
+      if (cuoi != null && phut >= cuoi + tietPhut) {
+        xong += toNum(i['NumberOfPeriods']).toInt();
+      }
+    }
+  }
+  return (xong, tong);
+}
+
 /// Tiết 1-6 sáng, 7-10 chiều, 11-14 tối (theo bảng giờ giảng của trường).
 String buoi(int periodID) =>
     periodID <= 6 ? 'Sáng' : (periodID <= 10 ? 'Chiều' : 'Tối');

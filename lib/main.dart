@@ -498,11 +498,112 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
               ),
               PopIn(
                 delay: const Duration(milliseconds: 180),
+                child: TienDoCard(session: widget.session),
+              ),
+              const SizedBox(height: 20),
+              PopIn(
+                delay: const Duration(milliseconds: 220),
                 child: MenuCard(onGo: widget.onGo, session: widget.session),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Hai vòng tiến độ trên Trang chủ: GPA tích luỹ và số tiết đã học trong
+/// tháng. Cả hai số đều đã nằm trong cache (prefetch kéo sẵn bảng điểm và lịch
+/// tháng), nên thẻ này gần như không đụng tới portal.
+class TienDoCard extends StatefulWidget {
+  const TienDoCard({super.key, required this.session, this.portal});
+  final Session session;
+  final Portal? portal;
+
+  @override
+  State<TienDoCard> createState() => _TienDoCardState();
+}
+
+class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
+  @override
+  Future<void> reload() => _load();
+
+  double? _gpa;
+  (int, int)? _tiet;
+  bool _xong = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final p = widget.portal ?? Portal();
+    final token = widget.session.token;
+    final now = Clock.instance.value;
+    double? gpa;
+    try {
+      final years = await p.marks(token, await p.studyProgram(token));
+      final keys = termKeys(years);
+      final rec = keys.isEmpty
+          ? null
+          : subjectsOf(years, keys.first).firstOrNull;
+      final v = toNum(rec?['TB_TL_TN']).toDouble();
+      // Kỳ đầu chưa có điểm nào thì portal trả 0 — vòng 0/4 chẳng nói gì,
+      // thà không hiện.
+      if (v > 0) gpa = v;
+    } on PortalError {
+      // Không có điểm thì vẫn hiện được vòng tiết học.
+    }
+    (int, int)? tiet;
+    try {
+      final thang = await fetchMonth(p, token, DateTime(now.year, now.month));
+      tiet = tietDaHoc(thang, now);
+    } on PortalError {
+      // Ngược lại cũng vậy.
+    }
+    if (mounted) {
+      setState(() {
+        _gpa = gpa;
+        _tiet = tiet;
+        _xong = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_xong) return const Skeleton(height: 150, radius: 16, ink: true);
+    final gpa = _gpa;
+    final tiet = _tiet;
+    if (gpa == null && (tiet == null || tiet.$2 == 0)) {
+      return const SizedBox.shrink();
+    }
+    final thang = Clock.instance.value.month;
+    return PaperBox(
+      child: Row(
+        children: [
+          if (gpa != null)
+            Expanded(
+              child: PaperRing(
+                value: gpa / 4,
+                center: gpa.toStringAsFixed(2),
+                label: 'GPA tích luỹ',
+                color: Paper.accent,
+              ),
+            ),
+          if (tiet != null && tiet.$2 > 0)
+            Expanded(
+              child: PaperRing(
+                value: tiet.$1 / tiet.$2,
+                center: '${tiet.$1}/${tiet.$2}',
+                label: 'Tiết đã học tháng $thang',
+                color: Paper.sky,
+              ),
+            ),
+        ],
       ),
     );
   }

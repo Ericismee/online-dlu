@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' show pi;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -103,6 +104,104 @@ class PaperBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       onTap == null ? _box(false) : Pressable(onTap: onTap!, builder: _box);
+}
+
+/// Vòng tiến độ kiểu giấy cắt: rãnh là một vòng mực mảnh, phần đã đi là một
+/// vòng giấy màu dày hơn nằm trên, giữa vòng là số. Cùng ngôn ngữ với [Pill] và
+/// [PaperBox] — viền mực, màu giấy, không gradient, không bóng mờ.
+class PaperRing extends StatelessWidget {
+  const PaperRing({
+    super.key,
+    required this.value,
+    required this.center,
+    required this.label,
+    this.color = Paper.sun,
+    this.size = 92,
+  });
+
+  /// 0..1; ngoài khoảng đó thì kẹp lại cho vòng khỏi vẽ quá một lượt.
+  final double value;
+
+  /// Số nằm giữa vòng, và nhãn dưới vòng.
+  final String center;
+  final String label;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: _RingPainter(value.clamp(0, 1), color),
+          child: Center(
+            child: Text(
+              center,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              style: TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                // Nhãn giữa vòng dài ngắn khác nhau ('3.21' với '18/42'), cỡ
+                // chữ theo đường kính để cái dài không chạm vào vòng.
+                fontSize: size * (center.length > 4 ? 0.21 : 0.26),
+                color: Paper.ink,
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        label,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Paper.ink2,
+        ),
+      ),
+    ],
+  );
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter(this.value, this.color);
+  final double value;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Bề dày rãnh, trừ 1px viền mực mỗi bên.
+    final day = size.width * 0.14;
+    final giua = size.width / 2 - 1 - day / 2;
+    final tam = size.center(Offset.zero);
+    final o = Rect.fromCircle(center: tam, radius: giua);
+    final net = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = day
+      ..strokeCap = StrokeCap.butt;
+    // Rãnh trống: mực mờ, đủ thấy vòng còn thiếu bao nhiêu.
+    canvas.drawCircle(tam, giua, net..color = Paper.ink.withValues(alpha: 0.1));
+    // Giấy màu đã đi được, từ 12 giờ chạy theo chiều kim đồng hồ.
+    if (value > 0) {
+      canvas.drawArc(o, -pi / 2, 2 * pi * value, false, net..color = color);
+    }
+    // Hai vòng mực kẹp lấy rãnh — mẩu giấy màu nằm trong khung mực, y như
+    // [Pill] và [PaperBox], chứ không phải vòng tròn trơn kiểu Material.
+    final vien = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..color = Paper.ink;
+    canvas.drawCircle(tam, giua + day / 2, vien);
+    canvas.drawCircle(tam, giua - day / 2, vien);
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.value != value || old.color != color;
 }
 
 class Pill extends StatelessWidget {
