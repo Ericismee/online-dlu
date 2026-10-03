@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
@@ -36,6 +37,38 @@ class UpdateCheck {
       if (tag == null) return null;
       final current = (await PackageInfo.fromPlatform()).version;
       return _newer(tag, current) ? tag : null;
+    } catch (_) {
+      return null;
+    } finally {
+      if (client == null) c.close();
+    }
+  }
+
+  /// Link tải trực tiếp file build của bản [version] cho máy này, null nếu
+  /// release đó chưa có file. Tag ra trước lúc CI dựng xong là chuyện thường,
+  /// và lúc đó nút tải chỉ dẫn người ta vào một trang không có gì để tải.
+  static Future<String?> taiUrl(String version, {http.Client? client}) async {
+    final c = client ?? http.Client();
+    try {
+      final res = await c
+          .get(
+            Uri.parse(
+              'https://api.github.com/repos/$repo/releases/tags/v$version',
+            ),
+          )
+          .timeout(const Duration(seconds: 8));
+      if (res.statusCode != 200) return null;
+      final duoi = defaultTargetPlatform == TargetPlatform.iOS
+          ? '.ipa'
+          : '.apk';
+      for (final a in (jsonDecode(res.body)['assets'] as List? ?? const [])) {
+        final ten = a['name'] as String? ?? '';
+        // Bản 'unsigned' phải tự ký mới cài được, không tính là file tải sẵn.
+        if (ten.endsWith(duoi) && !ten.contains('unsigned')) {
+          return a['browser_download_url'] as String?;
+        }
+      }
+      return null;
     } catch (_) {
       return null;
     } finally {
@@ -346,6 +379,7 @@ class ChangelogScreen extends StatefulWidget {
     super.key,
     this.check = UpdateCheck.newerVersion,
     this.lichSu = UpdateCheck.lichSu,
+    this.tai = UpdateCheck.taiUrl,
   });
 
   /// Cách kiểm tra bản mới — thay bằng giả lập lúc test.
@@ -353,6 +387,9 @@ class ChangelogScreen extends StatefulWidget {
 
   /// Nguồn lịch sử, cũng thay được lúc test.
   final Future<List<BanGhi>> Function() lichSu;
+
+  /// Link tải file build của một bản, null nếu bản đó chưa có file.
+  final Future<String?> Function(String) tai;
 
   @override
   State<ChangelogScreen> createState() => _ChangelogScreenState();
@@ -367,6 +404,9 @@ class _ChangelogScreenState extends State<ChangelogScreen>
   String? _dangDung;
   String? _moi;
 
+  /// Link tải của bản mới; null là release chưa có file build cho máy này.
+  String? _tai;
+
   @override
   void initState() {
     super.initState();
@@ -380,7 +420,12 @@ class _ChangelogScreenState extends State<ChangelogScreen>
     setState(() {
       _lichSu = lichSu;
       _moi = moi;
+      _tai = null;
     });
+    if (moi != null) {
+      final tai = await widget.tai(moi);
+      if (mounted) setState(() => _tai = tai);
+    }
     // Số bản đang dùng chỉ để gắn nhãn, đừng để nó chặn danh sách: không có
     // nền tảng thật (test) thì PackageInfo treo luôn.
     try {
@@ -435,10 +480,6 @@ class _ChangelogScreenState extends State<ChangelogScreen>
                   if (moi != null)
                     PaperBox(
                       color: Paper.mint,
-                      onTap: () => launchUrl(
-                        Uri.parse(UpdateCheck.releasesUrl),
-                        mode: LaunchMode.externalApplication,
-                      ),
                       child: Row(
                         children: [
                           const Icon(
@@ -447,14 +488,43 @@ class _ChangelogScreenState extends State<ChangelogScreen>
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              'Có bản mới v$moi — bấm để tải',
-                              style: const TextStyle(
-                                color: Paper.ink,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Có bản mới v$moi',
+                                  style: const TextStyle(
+                                    color: Paper.ink,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                // Tag ra trước, file build theo sau: nói rõ là
+                                // chưa có gì để tải, hơn là cho nút dẫn vào
+                                // trang release trống.
+                                if (_tai == null) ...[
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'Bản này chưa có file tải cho máy bạn',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Paper.ink2,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
+                          if (_tai != null) ...[
+                            const SizedBox(width: 12),
+                            PaperButton(
+                              label: 'Tải xuống',
+                              fontSize: 13,
+                              onPressed: () => launchUrl(
+                                Uri.parse(_tai!),
+                                mode: LaunchMode.externalApplication,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     )

@@ -149,11 +149,13 @@ void main() {
     expect(find.textContaining('1.0.3'), findsOneWidget);
   });
 
-  testWidgets('màn Cập nhật liệt kê mọi bản, mới nhất lên đầu', (t) async {
+  /// Màn Cập nhật với bản mới 1.0.8; [tai] là link file build của bản đó.
+  Future<void> manCapNhat(WidgetTester t, {String? tai}) async {
     await t.pumpWidget(
       MaterialApp(
         home: ChangelogScreen(
           check: () async => '1.0.8',
+          tai: (_) async => tai,
           lichSu: () async => const [
             (version: '1.0.8', date: '2026-10-02', text: 'Màn Cập nhật.'),
             (version: '1.0.7', date: '2026-10-01', text: 'Kéo thả menu.'),
@@ -165,9 +167,21 @@ void main() {
     for (var i = 0; i < 5; i++) {
       await t.pump(const Duration(milliseconds: 100));
     }
+  }
+
+  testWidgets('màn Cập nhật liệt kê mọi bản, mới nhất lên đầu', (t) async {
+    await manCapNhat(t, tai: 'https://x/Online-DLU.apk');
     expect(find.text('v1.0.8'), findsOneWidget);
     expect(find.text('Kéo thả menu.'), findsOneWidget);
-    // Có bản mới thì thẻ tải về nằm trên cùng.
-    expect(find.textContaining('bấm để tải'), findsOneWidget);
+    // Có bản mới và có file thì nút tải nằm trên cùng.
+    expect(find.text('Có bản mới v1.0.8'), findsOneWidget);
+    expect(find.text('Tải xuống'), findsOneWidget);
+  });
+
+  testWidgets('tag có mà chưa có file build thì không cho nút tải', (t) async {
+    await manCapNhat(t);
+    expect(find.text('Có bản mới v1.0.8'), findsOneWidget);
+    expect(find.text('Tải xuống'), findsNothing);
+    expect(find.textContaining('chưa có file tải'), findsOneWidget);
   });
 }
