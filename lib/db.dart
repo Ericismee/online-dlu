@@ -173,6 +173,31 @@ class Db extends _$Db {
     ),
   );
 
+  /// Ghi [them] và ẩn [an] trong một lượt. Cả mẻ đi một chuyến sang isolate
+  /// của SQLite thay vì mỗi dòng một chuyến — sổ mục của một endpoint có thể
+  /// tới vài trăm dòng.
+  Future<void> ghiAn(
+    String nhom,
+    Iterable<String> them,
+    Iterable<String> an,
+  ) async {
+    if (them.isEmpty && an.isEmpty) return;
+    final luc = DateTime.now();
+    await batch((b) {
+      b.insertAll(kho, [
+        for (final k in them)
+          KhoCompanion.insert(nhom: nhom, khoa: k, luc: luc),
+      ], mode: InsertMode.insertOrReplace);
+      for (final k in an) {
+        b.update(
+          kho,
+          const KhoCompanion(bat: Value(false)),
+          where: (t) => t.nhom.equals(nhom) & t.khoa.equals(k),
+        );
+      }
+    });
+  }
+
   /// Ẩn một khoá, hoặc cả nhóm khi [khoa] để trống. Không xoá dòng nào.
   Future<void> an(String nhom, [String? khoa]) =>
       (update(kho)..where(

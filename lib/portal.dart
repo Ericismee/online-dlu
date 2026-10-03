@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'cache.dart';
+import 'luong.dart';
 
 /// A logged-in student session. The portal's token lives ~2h, so it is kept in
 /// memory only — on a cold start we log in again from the saved credentials.
@@ -245,7 +246,7 @@ class Portal {
         offline: res.statusCode >= 500,
       );
     }
-    return jsonDecode(utf8.decode(res.bodyBytes));
+    return giaiMa(res.bodyBytes);
   }
 }
 

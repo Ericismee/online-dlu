@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'db.dart';
+import 'luong.dart';
 
 /// Cache JSON của portal trong SQLite ([Db]): mở app là có dữ liệu ngay, hết
 /// hạn thì làm mới ngầm.
@@ -76,8 +76,12 @@ class Cache {
   /// sao để đọc.
   static Future<void> open() async {
     _ram.clear();
-    for (final d in await Db.i.nhomDang(_nhom)) {
-      _ram[d.khoa] = (jsonDecode(d.giaTri), d.luc);
+    final dong = await Db.i.nhomDang(_nhom);
+    // Giải mã cả đống trong một lượt isolate: chỗ này chạy trước khung hình
+    // đầu, mà cache đầy đủ là cỡ trăm KB JSON.
+    final giaTri = await giaiMaNhieu([for (final d in dong) d.giaTri]);
+    for (var i = 0; i < dong.length; i++) {
+      _ram[dong[i].khoa] = (giaTri[i], dong[i].luc);
     }
   }
 
@@ -99,7 +103,7 @@ class Cache {
 
   static Future<void> write(String key, dynamic data) async {
     _ram[key] = (data, DateTime.now());
-    await Db.i.ghi(_nhom, key, giaTri: jsonEncode(data));
+    await Db.i.ghi(_nhom, key, giaTri: await maHoa(data));
   }
 
   /// Đăng xuất thì cất hết đi — ẩn chứ không xoá, đăng nhập lại ghi đè là
@@ -133,21 +137,21 @@ class DsKho {
     final nhom = nhomCua(path);
     final db = Db.i;
     final cu = {for (final d in await db.nhomDang(nhom)) d.khoa};
-    if (moi.isEmpty) return [for (final k in cu) jsonDecode(k)];
-    final van = {for (final m in moi) jsonEncode(m)};
-    for (final k in van.where((k) => !cu.contains(k))) {
-      await db.ghi(nhom, k);
-    }
-    for (final k in cu.where((k) => !van.contains(k))) {
-      await db.an(nhom, k);
-    }
+    if (moi.isEmpty) return giaiMaNhieu(cu.toList());
+    final van = (await maHoaNhieu(moi)).toSet();
+    // Một lượt gửi sang isolate của SQLite cho cả mẻ, chứ không mỗi mục một
+    // lượt: bảng điểm hay chương trình đào tạo là vài trăm mục.
+    await db.ghiAn(
+      nhom,
+      van.where((k) => !cu.contains(k)),
+      cu.where((k) => !van.contains(k)),
+    );
     return moi;
   }
 
   /// Mọi mục đang bật của một endpoint, không gọi mạng.
-  static Future<List<dynamic>> doc(String path) async => [
-    for (final d in await Db.i.nhomDang(nhomCua(path))) jsonDecode(d.khoa),
-  ];
+  static Future<List<dynamic>> doc(String path) async =>
+      giaiMaNhieu([for (final d in await Db.i.nhomDang(nhomCua(path))) d.khoa]);
 }
 
 /// Nhịp làm mới dữ liệu portal khi app đang mở. Chỉ gọi lại những màn đang mở

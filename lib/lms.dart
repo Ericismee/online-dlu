@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'db.dart';
+import 'luong.dart';
 import 'portal.dart' show PortalError;
 import 'settings.dart' show Settings;
 
@@ -127,8 +128,14 @@ class LmsKho {
   /// Mọi thông báo đã từng lấy về, mới nhất lên trước. [KhoData.luc] là lúc
   /// ghi nên không dùng để sắp — sắp theo ngày của chính thông báo.
   static Future<List<LmsNotification>> doc() async {
-    final out = [for (final d in await Db.i.nhomDang(nhomThongBao)) _tu(d)]
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final dong = await Db.i.nhomDang(nhomThongBao);
+    // Nhịp LMS gọi hàm này 90 giây một lượt và hộp thư chỉ dài ra theo thời
+    // gian, nên cả đống đi một lượt sang isolate khác mà giải mã.
+    final m = await giaiMaNhieu([for (final d in dong) d.giaTri]);
+    final out = [
+      for (var i = 0; i < dong.length; i++)
+        _tu(dong[i].khoa, m[i] as Map<String, dynamic>),
+    ]..sort((a, b) => b.date.compareTo(a.date));
     return out;
   }
 
@@ -197,10 +204,9 @@ class LmsKho {
     }
   }
 
-  static LmsNotification _tu(KhoData d) {
-    final m = jsonDecode(d.giaTri) as Map<String, dynamic>;
+  static LmsNotification _tu(String id, Map<String, dynamic> m) {
     return (
-      id: d.khoa,
+      id: id,
       subject: m['subject'] as String? ?? '',
       sender: m['sender'] as String? ?? '',
       date: m['date'] as String? ?? '',
