@@ -232,10 +232,6 @@ class Db extends _$Db {
       final v = prefs.getBool(khoa);
       if (v != null) await ghi(nhomCaiDat, khoa, bat: v);
     }
-    for (final khoa in const ['menu_order']) {
-      final v = prefs.getString(khoa);
-      if (v != null) await ghi(nhomCaiDat, khoa, giaTri: v);
-    }
     for (final khoa in const [
       'dismissed_update',
       'shown_update',
