@@ -195,13 +195,12 @@ class _Buoi extends StatelessWidget {
             ),
             if (e.course.isNotEmpty) ...[
               const SizedBox(height: 10),
-              Text(
-                clean(e.course),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Paper.ink2,
-                ),
+              // Tên môn là huy hiệu như mọi chỗ khác: để chữ chạy thì nó lẫn
+              // vào dòng ngày giờ ngay bên dưới.
+              Row(
+                children: [
+                  Flexible(child: Pill(clean(e.course), color: Paper.sky)),
+                ],
               ),
             ],
             const SizedBox(height: 6),

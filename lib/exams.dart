@@ -221,12 +221,10 @@ class ExamCard extends StatelessWidget {
               Pill('${e['GioThi']}', color: Paper.mint),
               Pill('Phòng ${e['PhongThi']}', color: Paper.sky),
               Pill('${e['ThoiLuong']} phút', color: Paper.peach),
+              for (final k in const ['HinhThucThi', 'LanThi', 'KyThi'])
+                if ((e[k] as String? ?? '').trim().isNotEmpty)
+                  Pill(clean(e[k]), color: Paper.card),
             ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${e['HinhThucThi']} · ${e['LanThi']} · ${e['KyThi']}',
-            style: const TextStyle(fontSize: 13, color: Paper.ink2),
           ),
         ],
       ),

@@ -128,6 +128,10 @@ class Pill extends StatelessWidget {
     ),
     child: Text(
       label,
+      // Huy hiệu luôn một dòng. Nhãn dài (tên giảng viên) thì đặt trong
+      // Flexible để nó còn chỗ mà cắt, chứ trong Wrap là tràn qua mép.
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ink),
     ),
   );

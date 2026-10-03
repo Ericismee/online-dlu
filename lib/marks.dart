@@ -463,11 +463,15 @@ class _Mark extends StatelessWidget {
                   color: Paper.ink,
                 ),
               ),
-              Text(
-                isCondition(m['CurriculumName'])
-                    ? '${toNum(m['Credits'])} TC · không tính điểm TB'
-                    : '${toNum(m['Credits'])} TC',
-                style: const TextStyle(fontSize: 12, color: Paper.ink2),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  Pill('${toNum(m['Credits'])} TC', color: Paper.sun),
+                  if (isCondition(m['CurriculumName']))
+                    const Pill('Không tính TB', color: Paper.card),
+                ],
               ),
             ],
           ),
@@ -614,12 +618,10 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
                                         color: Paper.ink,
                                       ),
                                     ),
-                                    Text(
+                                    const SizedBox(height: 6),
+                                    Pill(
                                       '${toNum(m['Credits'])} TC',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Paper.ink2,
-                                      ),
+                                      color: Paper.sun,
                                     ),
                                   ],
                                 ),
@@ -919,12 +921,20 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                                             color: Paper.ink,
                                           ),
                                         ),
-                                        Text(
-                                          '${m.$2} TC · dự kiến ${m.$3}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Paper.ink2,
-                                          ),
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: [
+                                            Pill(
+                                              '${m.$2} TC',
+                                              color: Paper.sun,
+                                            ),
+                                            Pill(
+                                              'Dự kiến ${m.$3}',
+                                              color: Paper.mint,
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -1240,9 +1250,14 @@ class _GoiYCard extends StatelessWidget {
                         color: Paper.ink,
                       ),
                     ),
-                    Text(
-                      '${goiY.ky} · ${goiY.tc} TC',
-                      style: const TextStyle(fontSize: 12, color: Paper.ink2),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        Pill(goiY.ky, color: Paper.card),
+                        Pill('${goiY.tc} TC', color: Paper.sun),
+                      ],
                     ),
                   ],
                 ),

@@ -83,6 +83,28 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('huy hiệu nhãn dài trong Flexible thì cắt, không tràn', (
+    t,
+  ) async {
+    // Tên giảng viên là huy hiệu, dài hơn mọi nhãn khác; màn hẹp phải cắt chứ
+    // không được đẩy tràn qua mép (tràn là test tự báo lỗi).
+    await t.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 120,
+            child: Row(
+              children: [
+                Flexible(child: Pill('GV · Nguyễn Thị Minh Khai Phương Thảo')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('tắt hiệu ứng thì PopIn hiện thẳng, không mờ', (t) async {
     await t.pumpWidget(
       const MediaQuery(

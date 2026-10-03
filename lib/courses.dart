@@ -143,14 +143,20 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                         // Flexible: máy hẹp hoặc cỡ chữ to thì cắt bớt,
                         // không thì hàng tràn qua mép.
                         Flexible(
-                          child: Text(
-                            '${all.first['TongLHP']} LHP · ${all.first['TongSTC']} TC',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Paper.ink2,
-                              fontSize: 12,
-                            ),
+                          child: Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              Pill(
+                                '${all.first['TongLHP']} LHP',
+                                color: Paper.card,
+                              ),
+                              Pill(
+                                '${all.first['TongSTC']} TC',
+                                color: Paper.sun,
+                              ),
+                            ],
                           ),
                         ),
                     ],
@@ -253,10 +259,13 @@ class _Course extends StatelessWidget {
             ],
           ),
           if (gv.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              'GV: $gv',
-              style: const TextStyle(color: Paper.ink2, fontSize: 13),
+            const SizedBox(height: 6),
+            // Hàng riêng chứ không nhét vào Wrap trên: tên thầy dài hơn mọi
+            // huy hiệu khác, phải có Flexible mới cắt được.
+            Row(
+              children: [
+                Flexible(child: Pill('GV · $gv', color: Paper.card)),
+              ],
             ),
           ],
         ],

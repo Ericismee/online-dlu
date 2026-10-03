@@ -1202,10 +1202,18 @@ class _Lesson extends StatelessWidget {
                         Pill('Phòng ${i['RoomID']}', color: Paper.sky),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'GV: ${i['FullName'] ?? '—'}',
-                      style: const TextStyle(fontSize: 13, color: Paper.ink2),
+                    const SizedBox(height: 6),
+                    // Hàng riêng chứ không nhét vào Wrap trên: tên thầy dài
+                    // hơn mọi huy hiệu khác, phải có Flexible mới cắt được.
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Pill(
+                            'GV · ${i['FullName'] ?? '—'}',
+                            color: Paper.card,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
