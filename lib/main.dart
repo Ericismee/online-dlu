@@ -498,7 +498,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
               ),
               PopIn(
                 delay: const Duration(milliseconds: 180),
-                child: _Menu(onGo: widget.onGo, session: widget.session),
+                child: MenuCard(onGo: widget.onGo, session: widget.session),
               ),
             ],
           ),
@@ -733,73 +733,116 @@ class _NextExamState extends State<_NextExam> with Reloadable<_NextExam> {
   }
 }
 
-/// Thẻ menu: bấm là nhảy qua tab tương ứng.
-class _Menu extends StatefulWidget {
-  const _Menu({required this.onGo, required this.session});
+/// Một mục menu: tab, icon, nhãn, màu giấy. Tab âm = mở trang riêng thay vì
+/// chuyển tab dưới.
+typedef MucMenu = (int, IconData, String, Color);
+
+/// Một danh mục: icon, tên, màu, các mục bên trong.
+typedef DanhMuc = (IconData, String, Color, List<MucMenu>);
+
+/// Thẻ menu trên Trang chủ: ba danh mục, bấm vào là mở màn danh mục đó.
+///
+/// Trước đây là một danh sách phẳng mười một dòng kéo thả được. Mười một dòng
+/// cùng cỡ chữ cùng kiểu icon thì mắt không có chỗ nghỉ, mà thứ tự tự kéo cũng
+/// chẳng cứu được: vẫn mười một dòng. Chia nhóm là thấy ba dòng, mỗi dòng nói
+/// rõ bên trong có gì.
+class MenuCard extends StatelessWidget {
+  const MenuCard({super.key, required this.onGo, required this.session});
   final ValueChanged<int> onGo;
   final Session session;
 
-  /// tab âm = mở trang riêng thay vì chuyển tab.
-  static const items = [
-    (0, Icons.calendar_month_rounded, 'Thời khoá biểu', Paper.sun),
-    (1, Icons.edit_note_rounded, 'Lịch thi', Paper.rose),
-    (3, Icons.grade_rounded, 'Điểm', Paper.accent),
-    (-1, Icons.menu_book_rounded, 'Học phần', Paper.mint),
-    (-2, Icons.emoji_events_rounded, 'Điểm rèn luyện', Paper.peach),
-    (-4, Icons.fact_check_rounded, 'Phiếu rèn luyện', Paper.mint),
-    (-3, Icons.school_rounded, 'Chương trình đào tạo', Paper.sky),
-    (-6, Icons.trending_up_rounded, 'Cải thiện', Paper.rose),
-    (-7, Icons.system_update_rounded, 'Cập nhật', Paper.sky),
-    (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
-    // Mặc định để cuối: đây là mục cấu hình, không phải dữ liệu trường. Người
-    // dùng kéo lên trên được, thứ tự họ chọn mới là thứ tự cuối cùng.
-    (-5, Icons.settings_rounded, 'Cài đặt', Paper.card),
+  static const danhMuc = <DanhMuc>[
+    (
+      Icons.menu_book_rounded,
+      'Học tập',
+      Paper.sun,
+      [
+        (0, Icons.calendar_month_rounded, 'Thời khoá biểu', Paper.sun),
+        (1, Icons.edit_note_rounded, 'Lịch thi', Paper.rose),
+        (-1, Icons.menu_book_rounded, 'Học phần', Paper.mint),
+        (-3, Icons.school_rounded, 'Chương trình đào tạo', Paper.sky),
+      ],
+    ),
+    (
+      Icons.grade_rounded,
+      'Kết quả',
+      Paper.accent,
+      [
+        (3, Icons.grade_rounded, 'Điểm', Paper.accent),
+        (-6, Icons.trending_up_rounded, 'Cải thiện', Paper.rose),
+        (-2, Icons.emoji_events_rounded, 'Điểm rèn luyện', Paper.peach),
+        (-4, Icons.fact_check_rounded, 'Phiếu rèn luyện', Paper.mint),
+      ],
+    ),
+    (
+      Icons.person_rounded,
+      'Cá nhân',
+      Paper.sky,
+      [
+        (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
+        (-5, Icons.settings_rounded, 'Cài đặt', Paper.card),
+        (-7, Icons.system_update_rounded, 'Cập nhật', Paper.sky),
+      ],
+    ),
   ];
 
   @override
-  State<_Menu> createState() => _MenuState();
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Menu',
+        style: TextStyle(
+          fontFamily: 'Baloo',
+          fontWeight: FontWeight.w800,
+          fontSize: 22,
+          color: Paper.ink,
+        ),
+      ),
+      const SizedBox(height: 10),
+      PaperBox(
+        child: Column(
+          children: [
+            for (final d in danhMuc)
+              _MenuDong(
+                icon: d.$1,
+                label: d.$2,
+                color: d.$3,
+                // Nói luôn bên trong có gì, khỏi phải bấm thử từng danh mục.
+                phu: [for (final m in d.$4) m.$3].join(' · '),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        DanhMucScreen(danhMuc: d, session: session, onGo: onGo),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ],
+  );
 }
 
-typedef _MucMenu = (int, IconData, String, Color);
+/// Màn một danh mục: chỉ là danh sách mục của nó, cùng khung với màn Cập nhật.
+class DanhMucScreen extends StatelessWidget {
+  const DanhMucScreen({
+    super.key,
+    required this.danhMuc,
+    required this.session,
+    required this.onGo,
+  });
 
-/// Xếp [muc] theo [thuTu] đã lưu (danh sách mã tab). Mục mới của bản cập nhật
-/// chưa có trong thứ tự cũ thì rơi xuống cuối chứ không biến mất khỏi menu, và
-/// mã tab lạ trong thứ tự cũ (mục đã gỡ) thì bỏ qua.
-List<T> sapTheoThuTu<T>(List<T> muc, List<int> thuTu, int Function(T) ma) {
-  final con = [...muc];
-  final out = <T>[];
-  for (final tab in thuTu) {
-    final i = con.indexWhere((e) => ma(e) == tab);
-    if (i >= 0) out.add(con.removeAt(i));
-  }
-  return [...out, ...con];
-}
+  final DanhMuc danhMuc;
+  final Session session;
+  final ValueChanged<int> onGo;
 
-class _MenuState extends State<_Menu> {
-  /// Thứ tự người dùng tự kéo, theo mã tab. Rỗng là chưa kéo bao giờ.
-  List<int> _thuTu = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    Settings.thuTuMenu().then((v) {
-      if (mounted) setState(() => _thuTu = v);
-    });
-  }
-
-  List<_MucMenu> get _sap => sapTheoThuTu(_Menu.items, _thuTu, (e) => e.$1);
-
-  void _keo(int tu, int toi) {
-    final list = _sap;
-    list.insert(toi, list.removeAt(tu));
-    final thuTu = [for (final e in list) e.$1];
-    setState(() => _thuTu = thuTu);
-    Settings.datThuTuMenu(thuTu);
-  }
-
-  void _mo(int tab) {
-    if (tab >= 0) return widget.onGo(tab);
-    final session = widget.session;
+  void _mo(BuildContext context, int tab) {
+    // Mục nằm ở thanh dưới thì đóng màn danh mục rồi mới chuyển tab, chứ để
+    // nó đè lên trên là bấm tab dưới xong vẫn thấy danh mục.
+    Navigator.pop(context);
+    if (tab >= 0) return onGo(tab);
     Navigator.push(
       context,
       MaterialPageRoute<void>(
@@ -817,78 +860,123 @@ class _MenuState extends State<_Menu> {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Menu',
-        style: TextStyle(
-          fontFamily: 'Baloo',
-          fontWeight: FontWeight.w800,
-          fontSize: 22,
-          color: Paper.ink,
-        ),
-      ),
-      const Text(
-        'Nhấn giữ rồi kéo để sắp xếp lại',
-        style: TextStyle(fontSize: 12, color: Paper.ink2),
-      ),
-      const SizedBox(height: 10),
-      PaperBox(
-        child: ReorderableListView(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          onReorderItem: _keo,
-          // Mặc định Material bọc mục đang kéo trong thẻ nổi bóng xám, lạc hẳn
-          // với viền dày bóng cứng của app — chỉ nhấc nhẹ lên là đủ thấy.
-          proxyDecorator: (child, _, anim) => Material(
-            color: Colors.transparent,
-            child: ScaleTransition(
-              scale: anim.drive(Tween(begin: 1, end: 1.04)),
-              child: child,
+  Widget build(BuildContext context) => Scaffold(
+    body: DotBackground(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 940),
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.paddingOf(context).top + 20,
+              20,
+              MediaQuery.paddingOf(context).bottom + 40,
             ),
-          ),
-          children: [for (final m in _sap) _dong(m)],
-        ),
-      ),
-    ],
-  );
-
-  Widget _dong(_MucMenu m) {
-    final (tab, icon, label, color) = m;
-    return Pressable(
-      key: ValueKey(tab),
-      onTap: () => _mo(tab),
-      builder: (down) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color,
-                border: Paper.border,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: Paper.shadow(down ? 0 : 2),
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      danhMuc.$2,
+                      style: const TextStyle(
+                        fontFamily: 'Baloo',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 30,
+                        color: Paper.ink,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  PaperButton(
+                    label: 'Quay lại',
+                    color: Paper.card,
+                    onColor: Paper.ink,
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
-              child: Icon(icon, size: 20, color: Paper.ink),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontFamily: 'Baloo',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: Paper.ink,
+              const SizedBox(height: 16),
+              PaperBox(
+                child: Column(
+                  children: [
+                    for (final (tab, icon, label, color) in danhMuc.$4)
+                      _MenuDong(
+                        icon: icon,
+                        label: label,
+                        color: color,
+                        onTap: () => _mo(context, tab),
+                      ),
+                  ],
                 ),
               ),
-            ),
-            const Icon(Icons.chevron_right_rounded, color: Paper.ink3),
-          ],
+            ],
+          ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+/// Một dòng menu: mẩu giấy màu có icon, nhãn, dòng phụ không bắt buộc.
+class _MenuDong extends StatelessWidget {
+  const _MenuDong({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.phu,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final String? phu;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+    onTap: onTap,
+    builder: (down) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color,
+              border: Paper.border,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: Paper.shadow(down ? 0 : 2),
+            ),
+            child: Icon(icon, size: 20, color: Paper.ink),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontFamily: 'Baloo',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: Paper.ink,
+                  ),
+                ),
+                if (phu != null)
+                  Text(
+                    phu!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: Paper.ink2),
+                  ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: Paper.ink3),
+        ],
+      ),
+    ),
+  );
 }

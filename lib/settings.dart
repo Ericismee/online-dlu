@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -10,7 +8,6 @@ import 'lms.dart';
 import 'nhac.dart';
 import 'paper.dart';
 import 'portal.dart';
-import 'update_check.dart';
 
 /// Cờ lưu trong SQLite: mỗi cờ là một dòng [Kho] nhóm 'cai_dat', giá trị
 /// chính là cột `bat` — tắt một cờ là ẩn dòng đó đi, bật lại là có lại.
@@ -19,7 +16,6 @@ class Settings {
   static const _khoaDev = 'dev_mode';
   static const _khoaNguyHiem = 'unlock_dangerous';
   static const _khoaLock = 'app_lock';
-  static const _khoaMenu = 'menu_order';
   static const _khoaLms = 'lms_enabled';
 
   /// Chưa khai bao giờ thì mặc định tắt.
@@ -40,17 +36,6 @@ class Settings {
 
   static Future<bool> khoaBat() => _co(_khoaLock);
   static Future<void> datKhoaBat(bool v) => _datCo(_khoaLock, v);
-
-  /// Thứ tự mục menu người dùng tự kéo, theo mã tab. Rỗng là chưa kéo bao giờ,
-  /// cứ dùng thứ tự mặc định.
-  static Future<List<int>> thuTuMenu() async {
-    final raw = (await Db.i.doc(nhom, _khoaMenu))?.giaTri;
-    if (raw == null || raw.isEmpty) return const [];
-    return [for (final t in jsonDecode(raw) as List) t as int];
-  }
-
-  static Future<void> datThuTuMenu(List<int> v) =>
-      Db.i.ghi(nhom, _khoaMenu, giaTri: jsonEncode(v));
 }
 
 class SettingsScreen extends StatefulWidget {
@@ -71,7 +56,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Tài khoản LMS đang nối, để nói rõ "đang nối với ai" chứ không chỉ bật/tắt.
   String? _lmsUser;
   bool _dangLamMoi = false;
-  bool _dangKiemTra = false;
 
   @override
   void initState() {
@@ -104,18 +88,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Đã làm mới dữ liệu')));
     }
-  }
-
-  Future<void> _kiemTraCapNhat() async {
-    setState(() => _dangKiemTra = true);
-    final v = await UpdateCheck.newerVersion();
-    if (!mounted) return;
-    setState(() => _dangKiemTra = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(v == null ? 'Đã là bản mới nhất' : 'Có bản mới v$v'),
-      ),
-    );
   }
 
   Future<void> _doiKhoa(bool v) async {
@@ -247,31 +219,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   if (_dangLamMoi)
-                    const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            PaperBox(
-              onTap: _dangKiemTra ? null : _kiemTraCapNhat,
-              child: Row(
-                children: [
-                  const Icon(Icons.system_update_rounded, color: Paper.ink),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Kiểm tra bản cập nhật',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: Paper.ink,
-                      ),
-                    ),
-                  ),
-                  if (_dangKiemTra)
                     const SizedBox(
                       width: 18,
                       height: 18,
