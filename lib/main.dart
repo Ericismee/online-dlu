@@ -13,6 +13,7 @@ import 'db.dart';
 import 'exams.dart';
 import 'graph.dart';
 import 'info.dart';
+import 'lms.dart';
 import 'login.dart';
 import 'marks.dart';
 import 'news.dart';
@@ -36,6 +37,9 @@ Future<void> main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+  // Mở sổ của tài khoản đã lưu trước khi đụng tới dữ liệu: mỗi tài khoản một
+  // tệp SQLite riêng, đọc nhầm sổ chung một lượt là app hiện số của người khác.
+  await Db.moCho((await Vault.read())?.$1);
   await Db.i.nhapTuPrefs();
   await Cache.init();
   runApp(const App());
@@ -96,11 +100,17 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     // Xuống nền thì khoá ngay nếu đã bật — đợi tới lúc resumed mới khoá thì
     // app đã kịp hiện lại một khung hình dữ liệu trước khi khoá.
     if (state == AppLifecycleState.paused) {
+      // Xuống nền thì tắt cả hai nhịp: máy khoá màn hình mà vẫn gõ cửa portal
+      // và Moodle theo chu kỳ là ăn pin không để làm gì.
+      PortalNhip.dung();
+      LmsNhip.dung();
       unawaited(_khoaNeuBat());
       return;
     }
     if (state != AppLifecycleState.resumed) return;
     if (_locked) return; // đợi mở khoá xong mới nạp lại số mới
+    LmsNhip.chay();
+    if (_session != null) PortalNhip.chay();
     final s = _session;
     if (s == null || !s.valid) {
       _resume();
@@ -136,8 +146,14 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
       if (cached != null && mounted) await Cache.reloadAll();
       unawaited(_napSan(s));
     } on PortalError catch (e) {
-      // Mạng hỏng thì cứ xài cache; sai mật khẩu mới đá về màn đăng nhập.
-      if (e.offline && _session != null) return;
+      // Chỉ khi portal đích thân từ chối tài khoản mới xoá mật khẩu đã lưu.
+      // Mất mạng, portal bảo trì trả 403, hay lần mở app đầu chưa có phiên cũ
+      // — mật khẩu vẫn đúng, giữ nguyên để lần sau tự vào lại; cùng lắm là
+      // màn đăng nhập hiện lý do, chứ không bắt gõ lại mật khẩu.
+      if (!e.saiMatKhau) {
+        if (mounted) setState(() => _error = e.message);
+        return;
+      }
       await Vault.clear();
       await Cache.clear();
       if (mounted) {
@@ -199,6 +215,12 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     return Shell(
       session: _session!,
       onLogout: () async {
+        PortalNhip.dung();
+        // Tài khoản LMS cũng phải đi theo: để lại là người đăng nhập sau thấy
+        // LMS đang bật, nối sẵn với Moodle của chủ cũ và đọc được thông báo
+        // lớp của người ta.
+        await LmsVault.clear();
+        await Settings.datLmsBat(false);
         await Vault.clear();
         await Cache.clear();
         if (mounted) setState(() => _session = null);
@@ -219,6 +241,20 @@ class Shell extends StatefulWidget {
 
 class _ShellState extends State<Shell> {
   int _tab = 2; // mở app là Trang chủ
+
+  @override
+  void initState() {
+    super.initState();
+    // Vào được app mới bắt đầu nhịp làm mới portal: màn đăng nhập thì chưa có
+    // token mà gọi.
+    PortalNhip.chay();
+  }
+
+  @override
+  void dispose() {
+    PortalNhip.dung();
+    super.dispose();
+  }
 
   @override
   // Nút back Android: đang ở tab khác thì về Trang chủ, ở Trang chủ mới thoát.

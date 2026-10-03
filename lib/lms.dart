@@ -75,6 +75,17 @@ class LmsNhip {
     }
   }
 
+  /// Tắt nhịp mà giữ danh sách người nghe — app xuống nền thì ngừng gõ cửa
+  /// Moodle, lên lại thì [chay] tiếp, không ai phải đăng ký lại.
+  static void dung() {
+    _hen?.cancel();
+    _hen = null;
+  }
+
+  static void chay() {
+    if (_hen == null && _nghe.isNotEmpty) _lap();
+  }
+
   static void _lap() {
     _hen = Timer(khoang(), () async {
       // Gọi lần lượt chứ không song song: cùng một server trường, mà lượt
@@ -135,6 +146,31 @@ class LmsKho {
       await Db.i.ghi(nhomThongBao, n.id, giaTri: json);
     }
   }
+
+  /// Khoá cố định cho tin "mật khẩu LMS sai": sai bao nhiêu lượt cũng chỉ một
+  /// dòng, không dồn thành một chồng thông báo giống nhau.
+  static const khoaSaiMatKhau = 'lms-sai-mat-khau';
+
+  /// Mật khẩu LMS hỏng là tin của chính app, không phải của Moodle — nhưng
+  /// chỗ người dùng sẽ nhìn là chuông, nên cất cùng một kho.
+  static Future<void> baoSaiMatKhau(String taiKhoan) => Db.i.ghi(
+    nhomThongBao,
+    khoaSaiMatKhau,
+    giaTri: jsonEncode({
+      'subject': 'Mật khẩu LMS không còn đúng',
+      'sender': 'Online DLU',
+      'date': DateTime.now().toIso8601String(),
+      'body':
+          'LMS đã tạm tắt vì Moodle từ chối tài khoản $taiKhoan. '
+          'Vào Cài đặt → Tài khoản LMS để đăng nhập lại; '
+          'thông báo và buổi điểm danh sẽ chạy tiếp ngay sau đó.',
+      _daXem: false,
+    }),
+  );
+
+  /// Đăng nhập LMS lại được thì cất tin cảnh báo đi — ẩn chứ không xoá.
+  static Future<void> thoiBaoSaiMatKhau() =>
+      Db.i.an(nhomThongBao, khoaSaiMatKhau);
 
   static bool _daXemTrong(String giaTri) =>
       (jsonDecode(giaTri) as Map<String, dynamic>)[_daXem] == true;
@@ -221,6 +257,17 @@ class Lms {
     if (tk == null) return null;
     try {
       return await (_phien ??= (lms ?? Lms()).login(tk.$1, tk.$2));
+    } on PortalError catch (e) {
+      _phien = null;
+      // Mật khẩu LMS không còn đúng thì tắt LMS ngay và báo vào chuông, chứ
+      // không im lặng thử lại mỗi 90 giây — Moodle khoá IP sau vài chục lượt
+      // sai, mà người dùng thì không biết tại sao chuông im. Tài khoản đã lưu
+      // giữ nguyên để chỉ phải sửa mật khẩu, khỏi gõ lại từ đầu.
+      if (e.saiMatKhau) {
+        await Settings.datLmsBat(false);
+        await LmsKho.baoSaiMatKhau(tk.$1);
+      }
+      rethrow;
     } catch (_) {
       _phien = null;
       rethrow;
@@ -411,7 +458,8 @@ class Lms {
     return i > 0 ? popupname!.substring(0, i) : '';
   }
 
-  PortalError _sai() => PortalError('Sai tài khoản hoặc mật khẩu LMS');
+  PortalError _sai() =>
+      PortalError('Sai tài khoản hoặc mật khẩu LMS', saiMatKhau: true);
 
   /// Moodle trả utf-8; `res.body` lại đoán latin1 khi header thiếu charset,
   /// làm chữ Việt (và cả dấu hiệu lỗi đăng nhập) sai hết.

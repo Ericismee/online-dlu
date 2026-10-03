@@ -169,6 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (credentials == null || !mounted) return;
     await LmsVault.save(credentials.$1, credentials.$2);
     await Settings.datLmsBat(true);
+    await LmsKho.thoiBaoSaiMatKhau();
     if (mounted) {
       setState(() {
         _lms = true;

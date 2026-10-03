@@ -44,6 +44,7 @@ class Session {
       final msg = (j['Message'] as String?)?.trim();
       throw PortalError(
         msg == null || msg.isEmpty ? 'Sai tài khoản hoặc mật khẩu' : msg,
+        saiMatKhau: true,
       );
     }
     return Session(
@@ -58,11 +59,16 @@ class Session {
 }
 
 class PortalError implements Exception {
-  PortalError(this.message, {this.offline = false});
+  PortalError(this.message, {this.offline = false, this.saiMatKhau = false});
   final String message;
 
   /// Lỗi mạng / portal chết, không phải sai mật khẩu.
   final bool offline;
+
+  /// Chính server từ chối tài khoản này. Chỉ lỗi loại này mới được xoá mật
+  /// khẩu đã lưu và đá về màn đăng nhập — portal trả 403 lúc bảo trì hay máy
+  /// mất mạng thì mật khẩu vẫn đúng, giữ nguyên mà dùng số cũ.
+  final bool saiMatKhau;
   @override
   String toString() => message;
 }
@@ -203,8 +209,12 @@ class Portal {
         headers: {..._keys, 'authorization': 'Bearer $token'},
       ),
     );
-    await Cache.write(path, data);
-    return data;
+    // Danh sách thì vào sổ mục trước: mục mới thêm dòng, mục portal không còn
+    // trả về thì ẩn dòng. Cache cục JSON vẫn giữ để khung hình đầu có số ngay,
+    // nhưng ghi bản đã qua sổ để hai nơi không nói khác nhau.
+    final luu = data is List ? await DsKho.nhap(path, data) : data;
+    await Cache.write(path, luu);
+    return luu;
   }
 
   Future<Map<String, dynamic>> _post(String path, Object body) => _send(

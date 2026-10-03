@@ -263,9 +263,7 @@ class _Course extends StatelessWidget {
             // Hàng riêng chứ không nhét vào Wrap trên: tên thầy dài hơn mọi
             // huy hiệu khác, phải có Flexible mới cắt được.
             Row(
-              children: [
-                Flexible(child: Pill('GV · $gv', color: Paper.card)),
-              ],
+              children: [Flexible(child: Pill('GV · $gv', color: Paper.card))],
             ),
           ],
         ],

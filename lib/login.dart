@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'cache.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -51,6 +52,10 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         await Vault.clear();
       }
+      // Sổ đi theo tài khoản vừa đăng nhập, trước khi màn nào kịp đọc: đổi
+      // người là đổi tệp SQLite, không có vụ người sau thấy lịch tự đặt hay
+      // thông báo của người trước.
+      await Cache.doiSo(user);
       if (mounted) widget.onLoggedIn(session);
     } on PortalError catch (e) {
       if (mounted) setState(() => _error = e.message);

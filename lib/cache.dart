@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import 'db.dart';
 
 /// Cache JSON của portal trong SQLite ([Db]): mở app là có dữ liệu ngay, hết
@@ -59,6 +61,16 @@ class Cache {
 
   static Future<void> init() => open();
 
+  /// Chuyển app sang sổ của một tài khoản Online. Phải nạp lại cache RAM vì
+  /// nó là static: đổi tệp mà không nạp lại là màn đầu của tài khoản mới hiện
+  /// số của tài khoản trước.
+  static Future<void> doiSo(String? taiKhoan) async {
+    served.clear();
+    refreshedAt = null;
+    await Db.moCho(taiKhoan);
+    await open();
+  }
+
   /// Nạp cache từ SQLite vào RAM. Màn hình đọc cache đồng bộ ngay trong
   /// build nên không chờ ổ đĩa được; SQLite là nơi lưu thật, RAM chỉ là bản
   /// sao để đọc.
@@ -97,5 +109,82 @@ class Cache {
     refreshedAt = null;
     _ram.clear();
     await Db.i.an(_nhom);
+  }
+}
+
+/// Danh sách của portal lưu theo từng mục, mỗi mục một dòng [Kho]: mục có
+/// trong mẻ mới thì ghi, mục vắng mặt thì ẩn đi — không xoá dòng nào bao giờ.
+///
+/// Khoá dòng là chính JSON của mục, nên không cần biết endpoint nào lấy field
+/// nào làm id: nội dung đổi là dòng mới (dòng cũ bị ẩn), nội dung mất khỏi mẻ
+/// mới là dòng bị ẩn. Portal lỡ trả thiếu một lượt thì mục cũ chỉ ẩn, bật lại
+/// được; còn ghi đè cả cục như trước là mất hẳn.
+class DsKho {
+  static const _nhom = 'ds';
+
+  static String nhomCua(String path) => '$_nhom:$path';
+
+  /// Nhập mẻ vừa lấy về và trả lại danh sách để hiển thị.
+  ///
+  /// Mẻ rỗng thì không ẩn gì mà trả lại nguyên những mục đang bật: portal trả
+  /// rỗng hầu hết là nó lỗi, chứ không phải sinh viên hết môn — ẩn sạch theo
+  /// nó là màn trống trơn vì một lượt gọi hỏng.
+  static Future<List<dynamic>> nhap(String path, List<dynamic> moi) async {
+    final nhom = nhomCua(path);
+    final db = Db.i;
+    final cu = {for (final d in await db.nhomDang(nhom)) d.khoa};
+    if (moi.isEmpty) return [for (final k in cu) jsonDecode(k)];
+    final van = {for (final m in moi) jsonEncode(m)};
+    for (final k in van.where((k) => !cu.contains(k))) {
+      await db.ghi(nhom, k);
+    }
+    for (final k in cu.where((k) => !van.contains(k))) {
+      await db.an(nhom, k);
+    }
+    return moi;
+  }
+
+  /// Mọi mục đang bật của một endpoint, không gọi mạng.
+  static Future<List<dynamic>> doc(String path) async => [
+    for (final d in await Db.i.nhomDang(nhomCua(path))) jsonDecode(d.khoa),
+  ];
+}
+
+/// Nhịp làm mới dữ liệu portal khi app đang mở. Chỉ gọi lại những màn đang mở
+/// ([Cache.refreshers]) chứ không nạp lại cả 9 endpoint: server trường yếu, mà
+/// người dùng cũng chỉ nhìn một màn một lúc.
+///
+/// 5 phút chứ không 90 giây như [LmsNhip]: portal không đổi nhanh như hộp thư
+/// Moodle, gõ cửa nó mỗi phút chỉ tốn pin hai bên.
+class PortalNhip {
+  @visibleForTesting
+  static Duration khoang = const Duration(minutes: 5);
+
+  static Timer? _hen;
+
+  /// Đang chạy một lượt — lượt sau tới mà lượt này chưa về thì bỏ, đừng xếp
+  /// hàng gọi portal.
+  static bool _dangChay = false;
+
+  static void chay() {
+    if (_hen != null) return;
+    _hen = Timer.periodic(khoang, (_) async {
+      if (_dangChay || Cache.refreshers.isEmpty) return;
+      _dangChay = true;
+      try {
+        await Cache.refreshAll();
+      } catch (_) {
+        // Một màn hỏng không được làm đứng nhịp.
+      } finally {
+        _dangChay = false;
+      }
+    });
+  }
+
+  /// Xuống nền thì dừng: máy khoá màn hình mà vẫn gõ cửa portal 5 phút một
+  /// lượt là ăn pin không để làm gì.
+  static void dung() {
+    _hen?.cancel();
+    _hen = null;
   }
 }

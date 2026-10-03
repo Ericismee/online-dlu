@@ -59,9 +59,89 @@ class Db extends _$Db {
 
   /// Một kết nối dùng chung cả app. Test gọi [dungTam] để thay bằng bộ nhớ.
   static Db? _i;
-  static Db get i => _i ??= Db(driftDatabase(name: 'dlu'));
+  static Db get i => _i ??= Db(driftDatabase(name: ten(_chu)));
 
-  static void dungTam(Db db) => _i = db;
+  static void dungTam(Db db) {
+    _i = db;
+    _chu = null;
+  }
+
+  /// Tài khoản Online đang mở sổ. null là sổ chung của bản cũ — chỉ dùng cho
+  /// tới lúc biết ai đang đăng nhập.
+  static String? _chu;
+
+  static String? get chu => _chu;
+
+  static String ten(String? chu) => chu == null ? 'dlu' : 'dlu_$chu';
+
+  /// Mã tài khoản dùng làm tên tệp. Portal không phân biệt hoa thường mà tên
+  /// tệp thì có, nên chuẩn hoá trước; ký tự lạ bỏ hết cho khỏi chọc ra khỏi
+  /// thư mục dữ liệu.
+  static String? chuan(String? chu) {
+    final c = chu?.trim().toLowerCase().replaceAll(RegExp('[^a-z0-9_]'), '');
+    return c == null || c.isEmpty ? null : c;
+  }
+
+  /// Mở sổ của một tài khoản Online. Mỗi tài khoản một tệp SQLite riêng, nên
+  /// không có đường nào cho tài khoản B thấy lịch tự đặt, thông báo hay cờ
+  /// cài đặt của tài khoản A — mà vẫn không xoá gì, A đăng nhập lại là có
+  /// lại đủ.
+  ///
+  /// Đóng sổ cũ trước khi mở sổ mới: hai kết nối cùng lúc là drift cảnh báo
+  /// đua nhau ghi.
+  static Future<void> moCho(String? chu) async {
+    final c = chuan(chu);
+    if (c == _chu && _i != null) return;
+    final cu = _i;
+    _i = null;
+    _chu = c;
+    await cu?.close();
+    if (c != null) await i._nhanSoChung(c);
+  }
+
+  /// Bản cũ dùng một sổ chung cho mọi tài khoản. Tài khoản nào mở sổ riêng
+  /// lần đầu thì bê nguyên sổ chung sang, chứ không thì người đang dùng mất
+  /// lịch tự đặt lúc nâng cấp. Sổ chung để nguyên đó, không xoá; nhưng đánh
+  /// dấu đã có người nhận để tài khoản thứ hai không nhận lại lần nữa.
+  Future<void> _nhanSoChung(String chu) async {
+    if (await dong(nhomMoc, _khoaNhanSo) != null) return;
+    final chung = Db(driftDatabase(name: ten(null)));
+    try {
+      if (await chung.dong(nhomMoc, _khoaDaBiNhan) == null) {
+        final khoCu = await chung.select(chung.kho).get();
+        final lichCu = await chung.select(chung.lichRiengs).get();
+        await batch((b) {
+          b.insertAll(kho, [
+            for (final d in khoCu)
+              KhoCompanion.insert(
+                nhom: d.nhom,
+                khoa: d.khoa,
+                giaTri: Value(d.giaTri),
+                bat: Value(d.bat),
+                luc: d.luc,
+              ),
+          ], mode: InsertMode.insertOrIgnore);
+          b.insertAll(lichRiengs, [
+            for (final r in lichCu)
+              LichRiengsCompanion.insert(
+                ngay: r.ngay,
+                tieuDe: r.tieuDe,
+                batDau: r.batDau,
+                ketThuc: Value(r.ketThuc),
+                mau: Value(r.mau),
+                viTri: Value(r.viTri),
+                bat: Value(r.bat),
+                luc: r.luc,
+              ),
+          ]);
+        });
+        await chung.ghi(nhomMoc, _khoaDaBiNhan, giaTri: chu);
+      }
+    } finally {
+      await chung.close();
+    }
+    await ghi(nhomMoc, _khoaNhanSo, giaTri: DateTime.now().toIso8601String());
+  }
 
   /// Dòng còn hiệu lực của một khoá. Trả cả dòng đã ẩn thì dùng [dong].
   Future<KhoData?> dong(String nhom, String khoa) => (select(
@@ -106,8 +186,15 @@ class Db extends _$Db {
   /// để người đang dùng không mất lịch tự đặt lẫn cờ cài đặt; prefs cũ cứ để
   /// nguyên đó, không xoá gì. Cache portal thì bỏ — nó tự nạp lại.
   Future<void> nhapTuPrefs() async {
-    if (await dong(nhomMoc, _khoaNhap) != null) return;
     final prefs = await SharedPreferences.getInstance();
+    // Cờ chốt nằm trong prefs chứ không chỉ trong sổ: prefs là của cả máy,
+    // nên tài khoản thứ hai mở sổ mới cũng không nhập lại lịch tự đặt mà
+    // bản cũ để lại cho tài khoản đầu.
+    if (prefs.getBool(_khoaNhap) == true) return;
+    if (await dong(nhomMoc, _khoaNhap) != null) {
+      await prefs.setBool(_khoaNhap, true);
+      return;
+    }
     final luc = DateTime.now();
 
     for (final khoa in const [
@@ -153,7 +240,10 @@ class Db extends _$Db {
       }
     }
     await ghi(nhomMoc, _khoaNhap, giaTri: luc.toIso8601String());
+    await prefs.setBool(_khoaNhap, true);
   }
 
   static const _khoaNhap = 'da_nhap_prefs';
+  static const _khoaNhanSo = 'da_nhan_so_chung';
+  static const _khoaDaBiNhan = 'so_chung_da_co_chu';
 }
