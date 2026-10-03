@@ -131,7 +131,7 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
             20,
             MediaQuery.paddingOf(context).top + 20,
             20,
-            MediaQuery.paddingOf(context).bottom + 110,
+            MediaQuery.paddingOf(context).bottom + chuaThanhDuoi,
           ),
           children: [
             Row(

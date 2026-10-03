@@ -467,7 +467,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
               20,
               MediaQuery.paddingOf(context).top + 20,
               20,
-              MediaQuery.paddingOf(context).bottom + 110,
+              MediaQuery.paddingOf(context).bottom + chuaThanhDuoi,
             ),
             children: [
               Ticker(
@@ -575,7 +575,7 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_xong) return const Skeleton(height: 150, radius: 16, ink: true);
+    if (!_xong) return const Skeleton(height: 196, radius: 16, ink: true);
     final gpa = _gpa;
     final tiet = _tiet;
     if (gpa == null && (tiet == null || tiet.$2 == 0)) {
@@ -583,26 +583,56 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
     }
     final thang = Clock.instance.value.month;
     return PaperBox(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (gpa != null)
-            Expanded(
-              child: PaperRing(
-                value: gpa / 4,
-                center: gpa.toStringAsFixed(2),
-                label: 'GPA tích luỹ',
-                color: Paper.accent,
+          Row(
+            children: [
+              const Text(
+                'Tiến độ',
+                style: TextStyle(
+                  fontFamily: 'Baloo',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Paper.ink,
+                ),
               ),
-            ),
-          if (tiet != null && tiet.$2 > 0)
-            Expanded(
-              child: PaperRing(
-                value: tiet.$1 / tiet.$2,
-                center: '${tiet.$1}/${tiet.$2}',
-                label: 'Tiết đã học tháng $thang',
-                color: Paper.sky,
-              ),
-            ),
+              const Spacer(),
+              Pill('Tháng $thang', color: Paper.sun),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              if (gpa != null)
+                Expanded(
+                  child: PaperRing(
+                    value: gpa / 4,
+                    center: gpa.toStringAsFixed(2),
+                    duoi: 'trên 4.0',
+                    label: 'GPA tích luỹ',
+                    color: Paper.accent,
+                  ),
+                ),
+              // Vạch ngăn mảnh giữa hai vòng, chỉ khi có cả hai.
+              if (gpa != null && tiet != null && tiet.$2 > 0)
+                Container(
+                  width: 1.5,
+                  height: 86,
+                  color: Paper.ink.withValues(alpha: 0.12),
+                ),
+              if (tiet != null && tiet.$2 > 0)
+                Expanded(
+                  child: PaperRing(
+                    value: tiet.$1 / tiet.$2,
+                    center: '${tiet.$1}/${tiet.$2}',
+                    duoi: 'tiết',
+                    label: 'Đã học trong tháng',
+                    color: Paper.sky,
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -745,7 +775,7 @@ class ScheduleTab extends StatelessWidget {
             20,
             MediaQuery.paddingOf(context).top + 20,
             20,
-            MediaQuery.paddingOf(context).bottom + 110,
+            MediaQuery.paddingOf(context).bottom + chuaThanhDuoi,
           ),
           children: [
             const Text(
@@ -887,62 +917,7 @@ class MenuCard extends StatelessWidget {
     ),
   ];
 
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'Menu',
-        style: TextStyle(
-          fontFamily: 'Baloo',
-          fontWeight: FontWeight.w800,
-          fontSize: 22,
-          color: Paper.ink,
-        ),
-      ),
-      const SizedBox(height: 10),
-      PaperBox(
-        child: Column(
-          children: [
-            for (final d in danhMuc)
-              _MenuDong(
-                icon: d.$1,
-                label: d.$2,
-                color: d.$3,
-                // Nói luôn bên trong có gì, khỏi phải bấm thử từng danh mục.
-                phu: [for (final m in d.$4) m.$3].join(' · '),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (_) =>
-                        DanhMucScreen(danhMuc: d, session: session, onGo: onGo),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    ],
-  );
-}
-
-/// Màn một danh mục: chỉ là danh sách mục của nó, cùng khung với màn Cập nhật.
-class DanhMucScreen extends StatelessWidget {
-  const DanhMucScreen({
-    super.key,
-    required this.danhMuc,
-    required this.session,
-    required this.onGo,
-  });
-
-  final DanhMuc danhMuc;
-  final Session session;
-  final ValueChanged<int> onGo;
-
   void _mo(BuildContext context, int tab) {
-    // Mục nằm ở thanh dưới thì đóng màn danh mục rồi mới chuyển tab, chứ để
-    // nó đè lên trên là bấm tab dưới xong vẫn thấy danh mục.
-    Navigator.pop(context);
     if (tab >= 0) return onGo(tab);
     Navigator.push(
       context,
@@ -961,121 +936,131 @@ class DanhMucScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: DotBackground(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 940),
-          child: ListView(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              MediaQuery.paddingOf(context).top + 20,
-              20,
-              MediaQuery.paddingOf(context).bottom + 40,
-            ),
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      danhMuc.$2,
-                      style: const TextStyle(
-                        fontFamily: 'Baloo',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 30,
-                        color: Paper.ink,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  PaperButton(
-                    label: 'Quay lại',
-                    color: Paper.card,
-                    onColor: Paper.ink,
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              PaperBox(
-                child: Column(
-                  children: [
-                    for (final (tab, icon, label, color) in danhMuc.$4)
-                      _MenuDong(
-                        icon: icon,
-                        label: label,
-                        color: color,
-                        onTap: () => _mo(context, tab),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Menu',
+        style: TextStyle(
+          fontFamily: 'Baloo',
+          fontWeight: FontWeight.w800,
+          fontSize: 22,
+          color: Paper.ink,
         ),
       ),
-    ),
+      const SizedBox(height: 10),
+      for (final (i, d) in danhMuc.indexed) ...[
+        if (i > 0) const SizedBox(height: 16),
+        // Tên danh mục là một cái thẻ giấy màu, không phải dòng chữ trơn:
+        // nhìn xuống là thấy ngay khối nào thuộc nhóm nào.
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: d.$3,
+              border: Paper.border,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: Paper.shadow(2),
+            ),
+            child: Text(
+              d.$2,
+              style: const TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: Paper.ink,
+              ),
+            ),
+          ),
+        ),
+        // Ô tự nó đã là mẩu giấy có viền với bóng riêng; bọc thêm một thẻ
+        // nữa chỉ là thẻ lồng thẻ, nhìn nặng mà chẳng nói thêm gì.
+        LayoutBuilder(
+          builder: (_, c) {
+            const khe = 10.0;
+            // Hai ô một hàng: ô nằm ngang nên cần bề ngang cho nhãn, mà
+            // hàng thấp hơn thì cả danh mục cũng gọn hơn lưới ba cột.
+            final rong = (c.maxWidth - khe) / 2;
+            return Wrap(
+              spacing: khe,
+              runSpacing: khe,
+              children: [
+                for (final (tab, icon, label, color) in d.$4)
+                  SizedBox(
+                    width: rong,
+                    child: _MenuO(
+                      icon: icon,
+                      label: label,
+                      color: color,
+                      onTap: () => _mo(context, tab),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    ],
   );
 }
 
-/// Một dòng menu: mẩu giấy màu có icon, nhãn, dòng phụ không bắt buộc.
-class _MenuDong extends StatelessWidget {
-  const _MenuDong({
+/// Một ô menu: cả ô là một mẩu giấy viền mực có bóng cứng, trong đó huy hiệu
+/// icon màu nằm cạnh nhãn. Ô liền khối như vầy đọc ra một món bấm được, chứ
+/// không phải mảng màu trơ với dòng chữ rơi ở dưới.
+class _MenuO extends StatelessWidget {
+  const _MenuO({
     required this.icon,
     required this.label,
     required this.color,
     required this.onTap,
-    this.phu,
   });
 
   final IconData icon;
   final String label;
   final Color color;
-  final String? phu;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Pressable(
     onTap: onTap,
-    builder: (down) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    shift: 3,
+    builder: (down) => Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Paper.card,
+        border: Paper.border,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: Paper.shadow(down ? 0 : 3),
+      ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: color,
-              border: Paper.border,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: Paper.shadow(down ? 0 : 2),
+              border: Border.all(color: Paper.ink, width: 2),
+              borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, size: 20, color: Paper.ink),
+            child: Icon(icon, size: 21, color: Paper.ink),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 9),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontFamily: 'Baloo',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: Paper.ink,
-                  ),
-                ),
-                if (phu != null)
-                  Text(
-                    phu!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: Paper.ink2),
-                  ),
-              ],
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Baloo',
+                fontSize: 13,
+                height: 1.15,
+                fontWeight: FontWeight.w700,
+                color: Paper.ink,
+              ),
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: Paper.ink3),
         ],
       ),
     ),

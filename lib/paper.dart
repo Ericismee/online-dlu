@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:math' show pi;
+import 'dart:math' show max, pi;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -75,6 +75,12 @@ class Paper {
   }
 }
 
+/// Chừa chỗ cho thanh điều hướng nổi ở đáy: thanh cao cỡ 100 kể cả bóng cứng
+/// và lề của nó, nên nội dung cuộn hết cỡ vẫn còn một khoảng thở chứ không
+/// dính vào thanh.
+// ponytail: số đo tay theo thanh hiện tại; đổi cỡ thanh thì đổi cả số này.
+const chuaThanhDuoi = 136.0;
+
 /// Card with 2px ink border and a hard drop shadow.
 class PaperBox extends StatelessWidget {
   const PaperBox({
@@ -106,15 +112,17 @@ class PaperBox extends StatelessWidget {
       onTap == null ? _box(false) : Pressable(onTap: onTap!, builder: _box);
 }
 
-/// Vòng tiến độ kiểu giấy cắt: rãnh là một vòng mực mảnh, phần đã đi là một
-/// vòng giấy màu dày hơn nằm trên, giữa vòng là số. Cùng ngôn ngữ với [Pill] và
-/// [PaperBox] — viền mực, màu giấy, không gradient, không bóng mờ.
+/// Vòng tiến độ kiểu giấy cắt: một rãnh giấy kem viền mực, trên đó dán một dải
+/// giấy màu có bóng cứng đổ xuống — cùng ngôn ngữ với [Pill] và [PaperBox], chứ
+/// không phải vòng tròn trơn kiểu Material. Dải màu chạy từ 0 lên mỗi lần số
+/// đổi, kiểu kim đồng hồ quay tới chỗ của nó.
 class PaperRing extends StatelessWidget {
   const PaperRing({
     super.key,
     required this.value,
     required this.center,
     required this.label,
+    this.duoi,
     this.color = Paper.sun,
     this.size = 92,
   });
@@ -122,8 +130,9 @@ class PaperRing extends StatelessWidget {
   /// 0..1; ngoài khoảng đó thì kẹp lại cho vòng khỏi vẽ quá một lượt.
   final double value;
 
-  /// Số nằm giữa vòng, và nhãn dưới vòng.
+  /// Số nằm giữa vòng, chú thích nhỏ ngay dưới số, và nhãn dưới vòng.
   final String center;
+  final String? duoi;
   final String label;
   final Color color;
   final double size;
@@ -134,26 +143,49 @@ class PaperRing extends StatelessWidget {
       SizedBox(
         width: size,
         height: size,
-        child: CustomPaint(
-          painter: _RingPainter(value.clamp(0, 1), color),
-          child: Center(
-            child: Text(
-              center,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              style: TextStyle(
-                fontFamily: 'Baloo',
-                fontWeight: FontWeight.w800,
-                // Nhãn giữa vòng dài ngắn khác nhau ('3.21' với '18/42'), cỡ
-                // chữ theo đường kính để cái dài không chạm vào vòng.
-                fontSize: size * (center.length > 4 ? 0.21 : 0.26),
-                color: Paper.ink,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: value.clamp(0, 1)),
+          duration: const Duration(milliseconds: 900),
+          // Nhảy qua đích rồi lùi về một chút: dải giấy có đà, không phải
+          // thanh tiến trình trượt đều.
+          curve: Paper.popCurve,
+          builder: (_, v, con) =>
+              CustomPaint(painter: _RingPainter(v, color), child: con),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                center,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                style: TextStyle(
+                  fontFamily: 'Baloo',
+                  fontWeight: FontWeight.w800,
+                  height: 1,
+                  // Nhãn giữa vòng dài ngắn khác nhau ('3.21' với '18/42'), cỡ
+                  // chữ theo đường kính để cái dài không chạm vào vòng.
+                  fontSize: size * (center.length > 4 ? 0.2 : 0.25),
+                  color: Paper.ink,
+                ),
               ),
-            ),
+              if (duoi != null) ...[
+                const SizedBox(height: 3),
+                Text(
+                  duoi!,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: size * 0.1,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                    color: Paper.ink3,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),
-      const SizedBox(height: 6),
+      const SizedBox(height: 8),
       Text(
         label,
         textAlign: TextAlign.center,
@@ -174,29 +206,66 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Bề dày rãnh, trừ 1px viền mực mỗi bên.
-    final day = size.width * 0.14;
-    final giua = size.width / 2 - 1 - day / 2;
-    final tam = size.center(Offset.zero);
+    // Chừa chỗ cho bóng cứng đổ xuống phải, y như [Paper.shadow] nhưng ngắn
+    // hơn vì vòng nhỏ.
+    const bong = Offset(2.5, 2.5);
+    final day = size.width * 0.16;
+    final giua = (size.width - bong.dx) / 2 - 1 - day / 2;
+    final tam = size.center(Offset.zero) - bong / 2;
     final o = Rect.fromCircle(center: tam, radius: giua);
     final net = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = day
       ..strokeCap = StrokeCap.butt;
-    // Rãnh trống: mực mờ, đủ thấy vòng còn thiếu bao nhiêu.
-    canvas.drawCircle(tam, giua, net..color = Paper.ink.withValues(alpha: 0.1));
-    // Giấy màu đã đi được, từ 12 giờ chạy theo chiều kim đồng hồ.
-    if (value > 0) {
-      canvas.drawArc(o, -pi / 2, 2 * pi * value, false, net..color = color);
-    }
-    // Hai vòng mực kẹp lấy rãnh — mẩu giấy màu nằm trong khung mực, y như
-    // [Pill] và [PaperBox], chứ không phải vòng tròn trơn kiểu Material.
     final vien = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
+      ..strokeWidth = 1.6
       ..color = Paper.ink;
+
+    // Bóng cứng của cả cái vòng, vẽ trước nên nằm dưới.
+    canvas.drawCircle(tam + bong, giua, net..color = Paper.ink);
+    // Rãnh trống là giấy kem chứ không phải xám: vòng nằm trên thẻ trắng nên
+    // phải thấy được nó là một miếng giấy khác màu.
+    canvas.drawCircle(tam, giua, net..color = Paper.paper);
     canvas.drawCircle(tam, giua + day / 2, vien);
     canvas.drawCircle(tam, giua - day / 2, vien);
+
+    if (value <= 0) return;
+    // Dải giấy màu dán đè lên rãnh, từ 12 giờ chạy theo chiều kim đồng hồ.
+    // Vẽ dày hơn bằng mực trước rồi đè màu lên: viền ôm trọn cả hai đầu dải,
+    // khỏi phải tự dựng path cho hai cái đầu bo tròn.
+    final goc = 2 * pi * value;
+    canvas.drawArc(
+      o,
+      -pi / 2,
+      goc,
+      false,
+      net
+        ..color = Paper.ink
+        ..strokeWidth = day + 3.2
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawArc(
+      o,
+      -pi / 2,
+      goc,
+      false,
+      net
+        ..color = color
+        ..strokeWidth = day,
+    );
+    // Vệt sáng mảnh men theo mép trong dải màu — giấy màu bắt sáng, đủ để vòng
+    // không phẳng lì mà vẫn không có gradient.
+    canvas.drawArc(
+      Rect.fromCircle(center: tam, radius: giua - day / 2 + 2.6),
+      -pi / 2 + 0.12,
+      max(goc - 0.24, 0),
+      false,
+      net
+        ..color = Colors.white.withValues(alpha: 0.5)
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round,
+    );
   }
 
   @override

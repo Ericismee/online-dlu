@@ -102,7 +102,7 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
               20,
               MediaQuery.paddingOf(context).top + 20,
               20,
-              MediaQuery.paddingOf(context).bottom + 110,
+              MediaQuery.paddingOf(context).bottom + chuaThanhDuoi,
             ),
             children: [
               const Text(

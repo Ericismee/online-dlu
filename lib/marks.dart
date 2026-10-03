@@ -186,7 +186,8 @@ class _MarksScreenState extends State<MarksScreen>
                   20,
                   MediaQuery.paddingOf(context).top + 20,
                   20,
-                  MediaQuery.paddingOf(context).bottom + (pop ? 40 : 110),
+                  MediaQuery.paddingOf(context).bottom +
+                      (pop ? 40 : chuaThanhDuoi),
                 ),
                 children: [
                   Row(
