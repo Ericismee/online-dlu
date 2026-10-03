@@ -207,4 +207,10 @@ void main() {
     expect(notifications.single.sender, 'Giảng viên');
     expect(notifications.single.unread, isTrue);
   });
+
+  // lms.dlu.edu.vn không gửi chứng chỉ trung gian, app phải mang theo. PEM hỏng
+  // thì dựng client là ném luôn, nên chỉ cần dựng thử một cái là biết.
+  test('client mặc định dựng được với chứng chỉ trung gian mang theo', () {
+    expect(Lms.new, returnsNormally);
+  });
 }

@@ -1,6 +1,20 @@
 {
   "versions": [
     {
+      "version": "1.2.0",
+      "build": 12,
+      "date": "2026-10-03",
+      "changes": [
+        "Trang chủ có menu mới, chia nhóm rõ ràng; thêm vòng tiến độ GPA và số tiết đã học.",
+        "LMS đăng nhập xong tải dữ liệu ngay; sổ dữ liệu tách theo tài khoản, báo lỗi mật khẩu sai rõ hơn.",
+        "Chuông gộp thư Online và LMS, đồng nhất giao diện, lưu trạng thái đã xem trên máy.",
+        "Màn Cập nhật có nút tải bản phù hợp; lịch sử phiên bản và changelog đầy đủ hơn.",
+        "Thông tin tín chỉ, kỳ thi và giảng viên hiển thị gọn bằng huy hiệu.",
+        "Sửa lỗi menu làm ứng dụng dừng khi khởi động; đọc JSON và ghi dữ liệu hiệu quả hơn.",
+        "Sửa kết nối LMS trên Android bằng cách bổ sung chứng chỉ trung gian TLS, vẫn kiểm tra chứng chỉ máy chủ."
+      ]
+    },
+    {
       "version": "1.1.0",
       "build": 11,
       "date": "2026-10-03",

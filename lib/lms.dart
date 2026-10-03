@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show HttpClient, SecurityContext;
 import 'dart:math';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart' show IOClient;
 
 import 'db.dart';
 import 'luong.dart';
@@ -236,6 +238,57 @@ typedef LmsEvent = ({
 /// Mốc kết thúc cửa sổ của một việc.
 DateTime ketThuc(LmsEvent e) => e.start.add(e.keoDai);
 
+/// lms.dlu.edu.vn chỉ gửi chứng chỉ lá, thiếu chứng chỉ trung gian của Sectigo
+/// (portal-api thì gửi đủ). macOS/iOS tự tải khúc thiếu về theo AIA nên vẫn vào
+/// được, còn BoringSSL mà Dart dùng trên Android thì không — bắt tay TLS hỏng
+/// và app chỉ báo được "Không kết nối được LMS". Mang sẵn chứng chỉ trung gian
+/// theo app để nối đủ chuỗi, vẫn giữ nguyên kho gốc và vẫn kiểm chứng chỉ đàng
+/// hoàng — không bao giờ badCertificateCallback.
+// ponytail: chứng chỉ hết hạn 31/12/2030, hoặc sớm hơn nếu trường cấu hình lại
+// server cho gửi đủ chuỗi; lúc đó xoá cả khối này đi là xong.
+final _tinCay = SecurityContext(withTrustedRoots: true)
+  ..setTrustedCertificatesBytes(ascii.encode(_sectigo));
+
+/// Sectigo RSA Organization Validation Secure Server CA — lấy từ chính đường
+/// `CA Issuers` ghi trong chứng chỉ lá của lms.dlu.edu.vn.
+const _sectigo = '''
+-----BEGIN CERTIFICATE-----
+MIIGGTCCBAGgAwIBAgIQE31TnKp8MamkM3AZaIR6jTANBgkqhkiG9w0BAQwFADCB
+iDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFDASBgNVBAcTC0pl
+cnNleSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsxLjAsBgNV
+BAMTJVVTRVJUcnVzdCBSU0EgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkwHhcNMTgx
+MTAyMDAwMDAwWhcNMzAxMjMxMjM1OTU5WjCBlTELMAkGA1UEBhMCR0IxGzAZBgNV
+BAgTEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UEBxMHU2FsZm9yZDEYMBYGA1UE
+ChMPU2VjdGlnbyBMaW1pdGVkMT0wOwYDVQQDEzRTZWN0aWdvIFJTQSBPcmdhbml6
+YXRpb24gVmFsaWRhdGlvbiBTZWN1cmUgU2VydmVyIENBMIIBIjANBgkqhkiG9w0B
+AQEFAAOCAQ8AMIIBCgKCAQEAnJMCRkVKUkiS/FeN+S3qU76zLNXYqKXsW2kDwB0Q
+9lkz3v4HSKjojHpnSvH1jcM3ZtAykffEnQRgxLVK4oOLp64m1F06XvjRFnG7ir1x
+on3IzqJgJLBSoDpFUd54k2xiYPHkVpy3O/c8Vdjf1XoxfDV/ElFw4Sy+BKzL+k/h
+fGVqwECn2XylY4QZ4ffK76q06Fha2ZnjJt+OErK43DOyNtoUHZZYQkBuCyKFHFEi
+rsTIBkVtkuZntxkj5Ng2a4XQf8dS48+wdQHgibSov4o2TqPgbOuEQc6lL0giE5dQ
+YkUeCaXMn2xXcEAG2yDoG9bzk4unMp63RBUJ16/9fAEc2wIDAQABo4IBbjCCAWow
+HwYDVR0jBBgwFoAUU3m/WqorSs9UgOHYm8Cd8rIDZsswHQYDVR0OBBYEFBfZ1iUn
+Z/kxwklD2TA2RIxsqU/rMA4GA1UdDwEB/wQEAwIBhjASBgNVHRMBAf8ECDAGAQH/
+AgEAMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAbBgNVHSAEFDASMAYG
+BFUdIAAwCAYGZ4EMAQICMFAGA1UdHwRJMEcwRaBDoEGGP2h0dHA6Ly9jcmwudXNl
+cnRydXN0LmNvbS9VU0VSVHJ1c3RSU0FDZXJ0aWZpY2F0aW9uQXV0aG9yaXR5LmNy
+bDB2BggrBgEFBQcBAQRqMGgwPwYIKwYBBQUHMAKGM2h0dHA6Ly9jcnQudXNlcnRy
+dXN0LmNvbS9VU0VSVHJ1c3RSU0FBZGRUcnVzdENBLmNydDAlBggrBgEFBQcwAYYZ
+aHR0cDovL29jc3AudXNlcnRydXN0LmNvbTANBgkqhkiG9w0BAQwFAAOCAgEAThNA
+lsnD5m5bwOO69Bfhrgkfyb/LDCUW8nNTs3Yat6tIBtbNAHwgRUNFbBZaGxNh10m6
+pAKkrOjOzi3JKnSj3N6uq9BoNviRrzwB93fVC8+Xq+uH5xWo+jBaYXEgscBDxLmP
+bYox6xU2JPti1Qucj+lmveZhUZeTth2HvbC1bP6mESkGYTQxMD0gJ3NR0N6Fg9N3
+OSBGltqnxloWJ4Wyz04PToxcvr44APhL+XJ71PJ616IphdAEutNCLFGIUi7RPSRn
+R+xVzBv0yjTqJsHe3cQhifa6ezIejpZehEU4z4CqN2mLYBd0FUiRnG3wTqN3yhsc
+SPr5z0noX0+FCuKPkBurcEya67emP7SsXaRfz+bYipaQ908mgWB2XQ8kd5GzKjGf
+FlqyXYwcKapInI5v03hAcNt37N3j0VcFcC3mSZiIBYRiBXBWdoY5TtMibx3+bfEO
+s2LEPMvAhblhHrrhFYBZlAyuBbuMf1a+HNJav5fyakywxnB2sJCNwQs2uRHY1ihc
+6k/+JLcYCpsM0MF8XPtpvcyiTcaQvKZN8rG61ppnW5YCUtCC+cQKXA0o4D/I+pWV
+idWkvklsQLI+qGu41SWyxP7x09fn1txDAXYw+zuLXfdKiXyaNb78yvBXAfCNP6CH
+MntHWpdLgtJmwsQt6j8k9Kf5qLnjatkYYaA7jBU=
+-----END CERTIFICATE-----
+''';
+
 /// Moodle của trường (lms.dlu.edu.vn). Web service chính thức bị tắt
 /// (`/login/token.php` trả `enablewsdescription`), nên chỉ còn đường đăng nhập
 /// bằng form như trình duyệt:
@@ -248,7 +301,7 @@ DateTime ketThuc(LmsEvent e) => e.start.add(e.keoDai);
 /// 4. `POST /lib/ajax/service.php?sesskey=…&info=…` — dữ liệu.
 class Lms {
   Lms({http.Client? client, this._base = 'https://lms.dlu.edu.vn'})
-    : _client = client ?? http.Client();
+    : _client = client ?? IOClient(HttpClient(context: _tinCay));
 
   final http.Client _client;
   final String _base;
