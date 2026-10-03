@@ -176,6 +176,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _lmsUser = credentials.$1;
       });
     }
+    // Lấy dữ liệu ngay thay vì chờ nhịp sau: chuông với thẻ điểm danh đã nạp
+    // lượt đầu lúc LMS còn tắt, không gọi lại là quay về Trang chủ vẫn trống
+    // và người dùng phải tự kéo làm mới.
+    await LmsNhip.ngay();
   }
 
   @override

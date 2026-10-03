@@ -28,6 +28,9 @@ class LmsVault {
   static const _storage = FlutterSecureStorage();
 
   static Future<void> save(String username, String password) async {
+    // Đổi tài khoản thì phiên cũ hết dùng được, y như lúc xoá: không bỏ đi là
+    // lượt làm mới ngay sau đó vẫn đọc thông báo của chủ cũ.
+    Lms.boPhien();
     await _storage.write(key: 'lms_username', value: username);
     await _storage.write(key: 'lms_password', value: password);
   }
@@ -86,17 +89,25 @@ class LmsNhip {
     if (_hen == null && _nghe.isNotEmpty) _lap();
   }
 
+  /// Một lượt ngay, không chờ hết nhịp: vừa đăng nhập LMS xong mà chuông với
+  /// thẻ điểm danh đang mở thì chúng đã nạp lượt đầu lúc chưa có tài khoản,
+  /// không gọi lại là người dùng ngồi nhìn chỗ trống tới hai phút.
+  ///
+  /// Gọi lần lượt chứ không song song: cùng một server trường, mà lượt này
+  /// chưa về đã bắn lượt sau thì chỉ làm nó nặng thêm.
+  static Future<void> ngay() async {
+    for (final viec in [..._nghe]) {
+      try {
+        await viec();
+      } catch (_) {
+        // Một nơi hỏng không được làm đứng cả nhịp.
+      }
+    }
+  }
+
   static void _lap() {
     _hen = Timer(khoang(), () async {
-      // Gọi lần lượt chứ không song song: cùng một server trường, mà lượt
-      // này chưa về đã bắn lượt sau thì chỉ làm nó nặng thêm.
-      for (final viec in [..._nghe]) {
-        try {
-          await viec();
-        } catch (_) {
-          // Một nơi hỏng không được làm đứng cả nhịp.
-        }
-      }
+      await ngay();
       if (_nghe.isEmpty) {
         _hen = null;
       } else {

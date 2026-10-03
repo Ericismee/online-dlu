@@ -37,6 +37,17 @@ void main() {
     expect(a, luc);
   });
 
+  test('ngay() gọi liền, không chờ hết nhịp', () async {
+    // Nhịp dài hơn cả bài test: cái gì chạy được cũng chỉ do ngay().
+    LmsNhip.khoang = () => const Duration(minutes: 5);
+    var a = 0;
+    Future<void> mot() async => a++;
+    LmsNhip.them(mot);
+    await LmsNhip.ngay();
+    LmsNhip.bo(mot);
+    expect(a, 1);
+  });
+
   test('một nơi nổ lỗi không làm đứng nhịp của nơi khác', () async {
     var b = 0;
     Future<void> no() async => throw Exception('hỏng');
