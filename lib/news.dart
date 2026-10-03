@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'db.dart';
 import 'data.dart';
 import 'lms.dart';
 import 'paper.dart';
@@ -9,6 +10,11 @@ import 'su_kien.dart';
 int unread(Iterable<dynamic> messages) => messages
     .where((m) => m is LmsNotification ? m.unread : m['IsRead'] == 0)
     .length;
+
+const _nhomOnlineDaXem = 'thong_bao_online_da_xem';
+
+String _onlineId(Map message) =>
+    '${message['MessageID'] ?? message['ID'] ?? message['Id'] ?? message['id'] ?? '${message['SenderName']}:${message['CreationDate']}:${message['MessageSubject']}'}';
 
 /// Chuông + popup hộp thư, dán ở góc phải top bar.
 class Bell extends StatefulWidget {
@@ -216,6 +222,29 @@ class _Inbox extends StatefulWidget {
 
 class _InboxState extends State<_Inbox> {
   late List<LmsNotification> _lms = widget.lms;
+  late List<dynamic> _online = widget.online;
+
+  @override
+  void initState() {
+    super.initState();
+    _docOnlineDaXem();
+  }
+
+  Future<void> _docOnlineDaXem() async {
+    final daXem = {
+      for (final d in await Db.i.nhomDang(_nhomOnlineDaXem)) d.khoa,
+    };
+    if (!mounted) return;
+    setState(() {
+      _online = [
+        for (final message in widget.online)
+          if (daXem.contains(_onlineId(message)))
+            {...message, 'IsRead': 1}
+          else
+            message,
+      ];
+    });
+  }
 
   List<LmsEvent> get suKien => widget.suKien;
 
@@ -223,8 +252,17 @@ class _InboxState extends State<_Inbox> {
   /// màn với cờ trong tệp không có đường lệch nhau.
   Future<void> _daXem([String? id]) async {
     await LmsKho.danhDauDaXem(id);
+    if (id == null) {
+      for (final message in _online.where((m) => m['IsRead'] == 0)) {
+        await Db.i.ghi(_nhomOnlineDaXem, _onlineId(message));
+      }
+    }
     final lms = await LmsKho.doc();
-    if (mounted) setState(() => _lms = lms);
+    if (mounted) {
+      setState(() {
+        _lms = lms;
+      });
+    }
   }
 
   Future<void> _xem(LmsNotification n) async {
@@ -233,7 +271,7 @@ class _InboxState extends State<_Inbox> {
   }
 
   /// Thông báo LMS lên trước thư Online: nó mới là thứ đổi mỗi phút.
-  List<dynamic> get messages => [..._lms, ...widget.online];
+  List<dynamic> get messages => [..._lms, ..._online];
 
   @override
   Widget build(BuildContext context) => Dialog(
@@ -265,6 +303,15 @@ class _InboxState extends State<_Inbox> {
                   ),
                 ),
               ),
+              if (_lms.any((n) => n.unread) ||
+                  _online.any((m) => m['IsRead'] == 0))
+                PaperButton(
+                  label: 'Đã xem tất cả',
+                  color: Paper.mint,
+                  onColor: Paper.ink,
+                  onPressed: () => _daXem(),
+                ),
+              const SizedBox(width: 8),
               PaperButton(
                 label: 'Đóng',
                 color: Paper.card,
@@ -278,8 +325,6 @@ class _InboxState extends State<_Inbox> {
             child: ListView(
               shrinkWrap: true,
               children: [
-                // Việc chưa tới lên trước việc đã xong: hạn nộp bài đáng
-                // nhìn hơn cái thư báo "đã nhận bài của bạn".
                 if (suKien.isNotEmpty) ...[
                   const _Muc('Sự kiện sắp đến'),
                   SuKienNhom(suKien: suKien),
@@ -334,84 +379,66 @@ class _Message extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (m is LmsNotification) {
-      final n = m as LmsNotification;
-      return PaperBox(
-        color: n.unread ? Paper.sun : Paper.card,
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              clean(n.subject),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Paper.ink,
-              ),
-            ),
-            if (n.body.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(clean(n.body), maxLines: 3, overflow: TextOverflow.ellipsis),
-            ],
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Pill('LMS · ${clean(n.sender)}', color: Paper.mint),
-                Text(
-                  n.date,
-                  style: const TextStyle(fontSize: 12, color: Paper.ink2),
-                ),
-                if (onXem != null)
-                  PaperButton(
-                    label: 'Xem',
-                    fontSize: 13,
-                    color: Paper.sky,
-                    onColor: Paper.ink,
-                    onPressed: () => onXem!(n),
-                  ),
-                // Thông báo đã xem thì không có gì để đánh dấu nữa.
-                if (onDaXem != null && n.unread)
-                  PaperButton(
-                    label: 'Đã xem',
-                    fontSize: 13,
-                    color: Paper.card,
-                    onColor: Paper.ink,
-                    onPressed: () => onDaXem!(n.id),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-    final isNew = m['IsRead'] == 0;
+    final isLms = m is LmsNotification;
+    final n = isLms ? m as LmsNotification : null;
+    final online = isLms ? null : m as Map;
+    final unread = n?.unread ?? online?['IsRead'] == 0;
+    final subject = n?.subject ?? online?['MessageSubject'];
+    final sender = n?.sender ?? online?['SenderName'] as String? ?? '—';
+    final date = n?.date ?? online?['CreationDate'] as String? ?? '';
+    final body = n?.body ?? '';
     return PaperBox(
-      color: isNew ? Paper.sun : Paper.card,
+      color: unread ? Paper.sun : Paper.card,
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            clean(m['MessageSubject']),
+            clean(subject),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: Paper.ink,
             ),
           ),
+          if (body.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(clean(body), maxLines: 3, overflow: TextOverflow.ellipsis),
+          ],
           const SizedBox(height: 8),
-          Row(
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Pill(m['SenderName'] as String? ?? '—', color: Paper.mint),
-              const SizedBox(width: 6),
+              Pill(
+                '${isLms ? 'LMS' : 'Online'} · ${clean(sender)}',
+                color: Paper.mint,
+              ),
               Text(
-                m['CreationDate'] as String? ?? '',
+                date,
                 style: const TextStyle(fontSize: 12, color: Paper.ink2),
               ),
+              if (unread)
+                const Pill('Chưa xem', color: Paper.sun)
+              else
+                const Pill('Đã xem', color: Paper.card),
+              if (n != null && onXem != null)
+                PaperButton(
+                  label: 'Xem',
+                  fontSize: 13,
+                  color: Paper.sky,
+                  onColor: Paper.ink,
+                  onPressed: () => onXem!(n),
+                ),
+              if (n != null && onDaXem != null && n.unread)
+                PaperButton(
+                  label: 'Đã xem',
+                  fontSize: 13,
+                  color: Paper.card,
+                  onColor: Paper.ink,
+                  onPressed: () => onDaXem!(n.id),
+                ),
             ],
           ),
         ],
