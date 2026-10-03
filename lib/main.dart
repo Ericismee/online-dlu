@@ -537,13 +537,15 @@ class StaleDataWarning extends StatelessWidget {
         color: Paper.accent,
         child: Row(
           children: [
-            const Icon(Icons.warning_rounded, color: Paper.paper),
+            const Icon(Icons.warning_rounded, color: Paper.ink),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Đã hơn 1 ngày chưa làm mới — kéo xuống để cập nhật dữ liệu mới',
                 style: const TextStyle(
-                  color: Paper.paper,
+                  // Giấy trên cam chỉ 2.82:1, và đây đúng là câu cần đọc được
+                  // nhất trên Trang chủ.
+                  color: Paper.ink,
                   fontWeight: FontWeight.w700,
                 ),
               ),

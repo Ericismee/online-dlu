@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dlu_tkb/clock.dart';
 import 'package:dlu_tkb/lms.dart';
 import 'package:dlu_tkb/news.dart';
+import 'package:dlu_tkb/paper.dart';
 import 'package:dlu_tkb/portal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -164,8 +165,10 @@ void main() {
     await t.pumpAndSettle();
 
     expect((await LmsKho.doc()).single.unread, isFalse);
-    // Đã xem rồi thì không còn gì để đánh dấu.
-    expect(find.text('Đã xem'), findsNothing);
+    // Đã xem rồi thì không còn nút để đánh dấu, chỉ còn huy hiệu trạng thái —
+    // nên phải tìm theo widget, tìm theo chữ là bắt luôn cả huy hiệu.
+    expect(find.widgetWithText(PaperButton, 'Đã xem'), findsNothing);
+    expect(find.widgetWithText(Pill, 'Đã xem'), findsOneWidget);
   });
 
   testWidgets('nút Đã xem đánh dấu luôn, không cần mở ra', (t) async {
@@ -183,10 +186,11 @@ void main() {
     await t.tap(find.byType(Bell));
     await t.pumpAndSettle();
 
-    await t.tap(find.text('Đã xem'));
+    await t.tap(find.widgetWithText(PaperButton, 'Đã xem'));
     await t.pumpAndSettle();
     expect((await LmsKho.doc()).single.unread, isFalse);
-    expect(find.text('Đã xem'), findsNothing);
+    expect(find.widgetWithText(PaperButton, 'Đã xem'), findsNothing);
+    expect(find.widgetWithText(Pill, 'Đã xem'), findsOneWidget);
 
     // Đóng hộp thư là huy hiệu trên chuông cũng hết.
     await t.tap(find.text('Đóng'));

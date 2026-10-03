@@ -188,7 +188,8 @@ class _BellState extends State<Bell>
                           fontFamily: 'Baloo',
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
-                          color: Paper.card,
+                          // Kem trên cam chỉ 3.03:1, mực trên cam 5.23:1.
+                          color: Paper.ink,
                         ),
                       ),
                     ),
