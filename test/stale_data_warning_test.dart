@@ -6,10 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'db_tam.dart';
 
 void main() {
-  setUp(() async {
-    dungDbTam();
-    await Cache.open();
-  });
+  setUp(dungDbTam);
 
   tearDown(() => Cache.clear());
 

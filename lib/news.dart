@@ -7,14 +7,89 @@ import 'paper.dart';
 import 'portal.dart';
 import 'su_kien.dart';
 
-int unread(Iterable<dynamic> messages) => messages
-    .where((m) => m is LmsNotification ? m.unread : m['IsRead'] == 0)
-    .length;
+int unread(Iterable<dynamic> messages) => messages.where(_chuaXem).length;
+
+/// Thư Online coi là chưa xem khi portal không nói rõ nó đã đọc. Trước đây
+/// điều kiện là `IsRead == 0`, nên hộp thư mà portal trả về không có field đó
+/// thì mọi thư Online bị tính là đã xem: huy hiệu không lên số và nút "Đã xem
+/// tất cả" không bao giờ hiện.
+bool _chuaXem(dynamic m) =>
+    m is LmsNotification ? m.unread : (m as Map)['IsRead'] != 1;
 
 const _nhomOnlineDaXem = 'thong_bao_online_da_xem';
 
 String _onlineId(Map message) =>
     '${message['MessageID'] ?? message['ID'] ?? message['Id'] ?? message['id'] ?? '${message['SenderName']}:${message['CreationDate']}:${message['MessageSubject']}'}';
+
+/// Portal không có API đánh dấu đã đọc, nên cờ nằm trong máy và phải chồng lên
+/// danh sách lấy về — cả chỗ đếm huy hiệu lẫn chỗ hiện hộp thư, nếu không bấm
+/// "Đã xem tất cả" rồi đóng hộp thư là số trên chuông vẫn y nguyên.
+Future<List<dynamic>> apDaXemOnline(Iterable<dynamic> online) async {
+  final daXem = {for (final d in await Db.i.nhomDang(_nhomOnlineDaXem)) d.khoa};
+  return [
+    for (final m in online)
+      if (daXem.contains(_onlineId(m as Map))) {...m, 'IsRead': 1} else m,
+  ];
+}
+
+/// Một dòng hộp thư đã chuẩn hoá. Online và LMS đi chung một đường từ đây trở
+/// đi nên không còn chỗ nào cho hai nguồn hiện lệch nhau.
+typedef Tin = ({
+  String id,
+  bool laLms,
+  String nguon,
+  String subject,
+  String sender,
+  String date,
+  String body,
+  bool chuaXem,
+  LmsNotification? lms,
+});
+
+Tin tin(dynamic m) {
+  if (m is LmsNotification) {
+    return (
+      id: m.id,
+      laLms: true,
+      nguon: 'LMS',
+      subject: m.subject,
+      sender: m.sender,
+      date: m.date,
+      body: m.body,
+      chuaXem: m.unread,
+      lms: m,
+    );
+  }
+  final o = m as Map;
+  return (
+    id: _onlineId(o),
+    laLms: false,
+    nguon: 'Online',
+    subject: o['MessageSubject'] as String? ?? '',
+    sender: o['SenderName'] as String? ?? '—',
+    date: o['CreationDate'] as String? ?? '',
+    body: _bodyOnline(o),
+    chuaXem: _chuaXem(o),
+    lms: null,
+  );
+}
+
+/// ponytail: chưa dò được tên field nội dung của hộp thư portal, nên thử lần
+/// lượt các tên nó thường dùng. Không có cái nào thì coi như thư không có thân
+/// — đúng bằng những gì app hiện hôm nay, không tệ hơn.
+String _bodyOnline(Map o) {
+  for (final k in const [
+    'MessageContent',
+    'MessageBody',
+    'Content',
+    'Body',
+    'Message',
+  ]) {
+    final v = o[k];
+    if (v is String && v.trim().isNotEmpty) return v;
+  }
+  return '';
+}
 
 /// Chuông + popup hộp thư, dán ở góc phải top bar.
 class Bell extends StatefulWidget {
@@ -86,8 +161,9 @@ class _BellState extends State<Bell>
     } on PortalError {
       // LMS remains independent when Online is unavailable.
     }
+    final daXem = await apDaXemOnline(online);
     if (!mounted) return;
-    setState(() => _online = online);
+    setState(() => _online = daXem);
     await _lamMoiLms();
   }
 
@@ -125,8 +201,12 @@ class _BellState extends State<Bell>
   /// Đọc lại cờ đã xem sau khi đóng hộp thư, để số trên chuông khớp ngay.
   Future<void> _docLai() async {
     final lms = await LmsKho.doc();
+    final online = await apDaXemOnline(_online ?? const []);
     if (!mounted) return;
-    setState(() => _lms = lms);
+    setState(() {
+      _lms = lms;
+      _online = online;
+    });
     _chuaXem = unread(_tatCa);
   }
 
@@ -232,47 +312,42 @@ class _InboxState extends State<_Inbox> {
   }
 
   Future<void> _docOnlineDaXem() async {
-    final daXem = {
-      for (final d in await Db.i.nhomDang(_nhomOnlineDaXem)) d.khoa,
-    };
+    final online = await apDaXemOnline(widget.online);
     if (!mounted) return;
-    setState(() {
-      _online = [
-        for (final message in widget.online)
-          if (daXem.contains(_onlineId(message)))
-            {...message, 'IsRead': 1}
-          else
-            message,
-      ];
-    });
+    setState(() => _online = online);
   }
 
   List<LmsEvent> get suKien => widget.suKien;
 
-  /// Đánh dấu rồi đọc lại từ SQLite thay vì sửa tay bản ghi trên màn: cờ trên
-  /// màn với cờ trong tệp không có đường lệch nhau.
-  Future<void> _daXem([String? id]) async {
-    await LmsKho.danhDauDaXem(id);
-    if (id == null) {
-      for (final message in _online.where((m) => m['IsRead'] == 0)) {
-        await Db.i.ghi(_nhomOnlineDaXem, _onlineId(message));
+  /// Đánh dấu rồi đọc lại cờ từ nơi cất thay vì sửa tay bản ghi trên màn: cờ
+  /// trên màn với cờ trong tệp không có đường lệch nhau.
+  Future<void> _daXem([Tin? t]) async {
+    if (t == null || t.laLms) await LmsKho.danhDauDaXem(t?.id);
+    if (t == null) {
+      for (final m in _online.where(_chuaXem)) {
+        await Db.i.ghi(_nhomOnlineDaXem, _onlineId(m as Map));
       }
+    } else if (!t.laLms) {
+      await Db.i.ghi(_nhomOnlineDaXem, t.id);
     }
     final lms = await LmsKho.doc();
-    if (mounted) {
-      setState(() {
-        _lms = lms;
-      });
-    }
+    final online = await apDaXemOnline(widget.online);
+    if (!mounted) return;
+    setState(() {
+      _lms = lms;
+      _online = online;
+    });
   }
 
-  Future<void> _xem(LmsNotification n) async {
-    await showDialog(context: context, builder: (_) => _ChiTiet(n));
-    await _daXem(n.id);
+  Future<void> _xem(Tin t) async {
+    await showDialog(context: context, builder: (_) => _ChiTiet(t));
+    await _daXem(t);
   }
 
   /// Thông báo LMS lên trước thư Online: nó mới là thứ đổi mỗi phút.
-  List<dynamic> get messages => [..._lms, ..._online];
+  List<Tin> get messages => [
+    for (final m in [..._lms, ..._online]) tin(m),
+  ];
 
   @override
   Widget build(BuildContext context) => Dialog(
@@ -304,15 +379,6 @@ class _InboxState extends State<_Inbox> {
                   ),
                 ),
               ),
-              if (_lms.any((n) => n.unread) ||
-                  _online.any((m) => m['IsRead'] == 0))
-                PaperButton(
-                  label: 'Đã xem tất cả',
-                  color: Paper.mint,
-                  onColor: Paper.ink,
-                  onPressed: () => _daXem(),
-                ),
-              const SizedBox(width: 8),
               PaperButton(
                 label: 'Đóng',
                 color: Paper.card,
@@ -321,6 +387,21 @@ class _InboxState extends State<_Inbox> {
               ),
             ],
           ),
+          // Hàng riêng, không chen vào hàng tiêu đề: trên máy hẹp thì tiêu đề
+          // với nút Đóng đã ăn hết chiều ngang, nút này bị bóp còn mươi pixel.
+          if (messages.any((t) => t.chuaXem)) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: PaperButton(
+                label: 'Đã xem tất cả',
+                fontSize: 13,
+                color: Paper.mint,
+                onColor: Paper.ink,
+                onPressed: () => _daXem(),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Flexible(
             child: ListView(
@@ -371,25 +452,17 @@ class _Muc extends StatelessWidget {
 }
 
 class _Message extends StatelessWidget {
-  const _Message(this.m, {this.onXem, this.onDaXem});
-  final dynamic m;
+  const _Message(this.t, {this.onXem, this.onDaXem});
+  final Tin t;
 
-  /// Chỉ thông báo LMS mới xem/đánh dấu được; thư Online giữ nguyên như cũ.
-  final Future<void> Function(LmsNotification n)? onXem;
-  final Future<void> Function(String id)? onDaXem;
+  final Future<void> Function(Tin t)? onXem;
+  final Future<void> Function(Tin t)? onDaXem;
 
   @override
   Widget build(BuildContext context) {
-    final isLms = m is LmsNotification;
-    final n = isLms ? m as LmsNotification : null;
-    final online = isLms ? null : m as Map;
-    final unread = n?.unread ?? online?['IsRead'] == 0;
-    final subject = n?.subject ?? online?['MessageSubject'];
-    final sender = n?.sender ?? online?['SenderName'] as String? ?? '—';
-    final date = n?.date ?? online?['CreationDate'] as String? ?? '';
-    final body = n?.body ?? '';
+    final (subject, sender, date, body) = (t.subject, t.sender, t.date, t.body);
     return PaperBox(
-      color: unread ? Paper.sun : Paper.card,
+      color: t.chuaXem ? Paper.sun : Paper.card,
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -412,33 +485,30 @@ class _Message extends StatelessWidget {
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Pill(
-                '${isLms ? 'LMS' : 'Online'} · ${clean(sender)}',
-                color: Paper.mint,
-              ),
+              Pill('${t.nguon} · ${clean(sender)}', color: Paper.mint),
               Text(
                 date,
                 style: const TextStyle(fontSize: 12, color: Paper.ink2),
               ),
-              if (unread)
+              if (t.chuaXem)
                 const Pill('Chưa xem', color: Paper.sun)
               else
                 const Pill('Đã xem', color: Paper.card),
-              if (n != null && onXem != null)
+              if (onXem != null)
                 PaperButton(
                   label: 'Xem',
                   fontSize: 13,
                   color: Paper.sky,
                   onColor: Paper.ink,
-                  onPressed: () => onXem!(n),
+                  onPressed: () => onXem!(t),
                 ),
-              if (n != null && onDaXem != null && n.unread)
+              if (onDaXem != null && t.chuaXem)
                 PaperButton(
                   label: 'Đã xem',
                   fontSize: 13,
                   color: Paper.card,
                   onColor: Paper.ink,
-                  onPressed: () => onDaXem!(n.id),
+                  onPressed: () => onDaXem!(t),
                 ),
             ],
           ),
@@ -448,16 +518,16 @@ class _Message extends StatelessWidget {
   }
 }
 
-/// Nội dung đầy đủ một thông báo LMS. Hộp thư chỉ hiện 3 dòng đầu, thông báo
-/// của Moodle thì thường dài hơn thế.
+/// Nội dung đầy đủ một tin. Hộp thư chỉ hiện 3 dòng đầu, thông báo của Moodle
+/// thì thường dài hơn thế.
 class _ChiTiet extends StatelessWidget {
-  const _ChiTiet(this.n);
-  final LmsNotification n;
+  const _ChiTiet(this.t);
+  final Tin t;
 
   @override
   Widget build(BuildContext context) => PaperDialog(
-    title: clean(n.subject),
-    icon: Icons.school_rounded,
+    title: clean(t.subject),
+    icon: t.laLms ? Icons.school_rounded : Icons.mail_rounded,
     color: Paper.mint,
     maxWidth: 420,
     children: [
@@ -466,18 +536,23 @@ class _ChiTiet extends StatelessWidget {
         runSpacing: 6,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Pill('LMS · ${clean(n.sender)}', color: Paper.mint),
-          Text(n.date, style: const TextStyle(fontSize: 12, color: Paper.ink2)),
+          Pill('${t.nguon} · ${clean(t.sender)}', color: Paper.mint),
+          Text(t.date, style: const TextStyle(fontSize: 12, color: Paper.ink2)),
         ],
       ),
       const SizedBox(height: 12),
-      if (n.body.isNotEmpty)
+      if (t.body.isEmpty)
+        const Text(
+          'Thư này không có nội dung kèm theo.',
+          style: TextStyle(fontSize: 14, color: Paper.ink2),
+        )
+      else
         Flexible(
           child: SingleChildScrollView(
             child: PaperBox(
               padding: const EdgeInsets.all(14),
               child: Text(
-                clean(n.body),
+                clean(t.body),
                 style: const TextStyle(
                   fontSize: 14,
                   height: 1.45,

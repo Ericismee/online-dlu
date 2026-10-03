@@ -14,10 +14,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
-  setUp(() async {
-    dungDbTam();
-    await Cache.open();
-  });
+  setUp(dungDbTam);
 
   tearDown(() => Cache.clear());
 

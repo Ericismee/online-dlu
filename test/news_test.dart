@@ -55,6 +55,7 @@ void main() {
   Future<void> dungChuong(
     WidgetTester t, {
     List<LmsEvent> suKien = const [],
+    List<Map<String, dynamic>> online = const [],
   }) async {
     final now = DateTime.now();
     // Nhãn ngày của sự kiện đọc đồng hồ chung; tắt nhịp của nó cho khỏi còn
@@ -74,7 +75,7 @@ void main() {
             portal: Portal(
               client: MockClient(
                 (_) async => http.Response.bytes(
-                  utf8.encode(jsonEncode([])),
+                  utf8.encode(jsonEncode(online)),
                   200,
                   headers: {'content-type': 'application/json; charset=utf-8'},
                 ),
@@ -193,6 +194,42 @@ void main() {
     expect(find.widgetWithText(Pill, 'Đã xem'), findsOneWidget);
 
     // Đóng hộp thư là huy hiệu trên chuông cũng hết.
+    await t.tap(find.text('Đóng'));
+    await t.pumpAndSettle();
+    expect(find.text('1'), findsNothing);
+  });
+
+  testWidgets('thư Online hiện y như thông báo LMS và đánh dấu được', (
+    t,
+  ) async {
+    // Không có field IsRead — đúng như portal trả về — nên phải tính là chưa xem.
+    await dungChuong(
+      t,
+      online: [
+        {
+          'MessageID': 7,
+          'MessageSubject': 'Lịch thi học kỳ 1',
+          'SenderName': 'Phòng Đào tạo',
+          'CreationDate': '2026-10-01 09:00',
+        },
+      ],
+    );
+    expect(find.text('1'), findsOneWidget);
+
+    await t.tap(find.byType(Bell));
+    await t.pumpAndSettle();
+    expect(find.text('Đã xem tất cả'), findsOneWidget);
+    // Cùng bộ điều khiển với thông báo LMS, không còn thư chỉ đọc được.
+    expect(find.widgetWithText(PaperButton, 'Xem'), findsOneWidget);
+    expect(find.widgetWithText(PaperButton, 'Đã xem'), findsOneWidget);
+
+    await t.tap(find.widgetWithText(PaperButton, 'Đã xem'));
+    await t.pumpAndSettle();
+    expect(find.widgetWithText(PaperButton, 'Đã xem'), findsNothing);
+    expect(find.widgetWithText(Pill, 'Đã xem'), findsOneWidget);
+    expect(find.text('Đã xem tất cả'), findsNothing);
+
+    // Cờ nằm trong SQLite nên đóng hộp thư là huy hiệu cũng hết.
     await t.tap(find.text('Đóng'));
     await t.pumpAndSettle();
     expect(find.text('1'), findsNothing);
