@@ -38,7 +38,7 @@
           "date": "2026-10-03",
           "localizedDescription": "• Ô nhập mã sinh viên và mật khẩu đã có nhãn cho VoiceOver/TalkBack, trước đây chỉ đọc được là ô trống.\n• Chữ phụ trong toàn app đậm lên cho đủ tương phản, đọc được ngoài nắng và trên màn hình chỉnh sáng thấp.\n• Nút Điểm danh ngay và các nút nền cam đổi sang chữ mực cho rõ hơn.\n• Sửa nhãn ngày của Sự kiện sắp đến bị lệch khi app mở qua nửa đêm.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 11676239,
+          "size": 12635147,
           "minOSVersion": "15.0"
         }
       ],
