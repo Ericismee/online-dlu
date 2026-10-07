@@ -213,15 +213,29 @@ String _khoang(int phut) {
 }
 
 /// Còn bao lâu nữa hết đoạn đang chạy. Tan rồi hoặc tiết lạ thì null.
-/// Không nhắc lại số tiết khi đang học — nhãn bên cạnh đã ghi rồi.
+///
+/// Đang học thì nói thẳng cái sắp tới là gì — ra chơi, tiết liền kề, hay tan —
+/// chứ "còn 20 phút nữa" thì vẫn phải tự tra bảng giờ xem 20 phút nữa là được
+/// nghỉ hay chỉ sang tiết tiếp.
 String? demNguoc(dynamic item, DateTime now) {
   final n = lessonNow(item, now);
   return switch (n?.pha) {
     null || LessonPhase.xong => null,
     LessonPhase.chuaVao => 'Còn ${_khoang(n!.conPhut)} nữa',
-    LessonPhase.dangHoc => 'Còn ${_khoang(n!.conPhut)} nữa',
-    LessonPhase.raChoi => 'Vào tiết ${n!.tiet} sau ${_khoang(n.conPhut)}',
+    LessonPhase.dangHoc => 'Còn ${_khoang(n!.conPhut)} nữa ${_mocKe(item, n)}',
+    LessonPhase.raChoi => 'Còn ${_khoang(n!.conPhut)} nữa vào tiết ${n.tiet}',
   };
+}
+
+/// Hết tiết đang học thì tới cái gì. Tiết cuối của buổi là tan; còn tiết nữa
+/// thì xem bảng giờ: có khoảng trống trước tiết sau là ra chơi, không thì vào
+/// thẳng tiết kế.
+String _mocKe(dynamic item, LessonNow n) {
+  final tiet = n.tiet!;
+  if (tiet >= tietNo(item['EndTime'])) return 'tan lớp';
+  final ke = batDauPhut(tiet + 1);
+  if (ke == null) return 'tan lớp';
+  return ke > batDauPhut(tiet)! + tietPhut ? 'ra chơi' : 'qua tiết ${tiet + 1}';
 }
 
 /// Bản [lessonNow] cho lịch tự đặt: giờ tính thẳng bằng phút, không tra bảng
@@ -1159,6 +1173,7 @@ class _Lesson extends StatelessWidget {
     final cuoi = tietNo(i['EndTime']);
     final gio = khungGio(dau, cuoi);
     final pha = now == null ? null : lessonNow(i, now!);
+    final con = now == null ? null : demNguoc(i, now!);
     return PopIn(
       delay: delay,
       child: Padding(
@@ -1219,6 +1234,10 @@ class _Lesson extends StatelessWidget {
                       children: [
                         if (pha != null)
                           Pill(phaseTag(pha).$1, color: phaseTag(pha).$2),
+                        // Đếm ngược cho từng buổi trong danh sách, không chỉ
+                        // buổi nổi lên đầu: nhìn một lượt là biết tiết này còn
+                        // mấy phút, ra chơi lúc nào, buổi chiều còn bao lâu.
+                        if (con != null) Pill(con, color: Paper.peach),
                         Pill('Tiết $dau-$cuoi', color: Paper.sun),
                         Pill(buoi(dau), color: Paper.mint),
                         Pill('Phòng ${i['RoomID']}', color: Paper.sky),

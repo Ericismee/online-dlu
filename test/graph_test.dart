@@ -123,7 +123,8 @@ void main() {
     // Đang trong tiết thì vẫn là buổi hiện tại, không nhảy sang buổi sau.
     final giua = DateTime(2026, 9, 21, 8, 30);
     expect(tietKe(items, giua), items[0]);
-    expect(demNguoc(items[0], giua), 'Còn 40 phút nữa');
+    // Tiết 2 là tiết cuối của buổi nên hết tiết là tan.
+    expect(demNguoc(items[0], giua), 'Còn 40 phút nữa tan lớp');
     final trua = DateTime(2026, 9, 21, 11, 0);
     expect(tietKe(items, trua), items[1]);
     expect(demNguoc(items[1], trua), 'Còn 2 giờ nữa');
@@ -148,7 +149,21 @@ void main() {
     expect(phaseTag(luc(8, 30)!).$1, 'Đang học tiết 2');
     expect(
       demNguoc(buoi, DateTime(2026, 9, 21, 9, 15)),
-      'Vào tiết 3 sau 15 phút',
+      'Còn 15 phút nữa vào tiết 3',
+    );
+    // Tiết 1 tan 8h20 là vào tiết 2 ngay, tiết 2 tan 9h10 mới được ra chơi,
+    // còn tiết 4 là tiết cuối nên tan hẳn.
+    expect(
+      demNguoc(buoi, DateTime(2026, 9, 21, 7, 40)),
+      'Còn 40 phút nữa qua tiết 2',
+    );
+    expect(
+      demNguoc(buoi, DateTime(2026, 9, 21, 8, 30)),
+      'Còn 40 phút nữa ra chơi',
+    );
+    expect(
+      demNguoc(buoi, DateTime(2026, 9, 21, 10, 30)),
+      'Còn 40 phút nữa tan lớp',
     );
     expect(demNguoc(buoi, DateTime(2026, 9, 21, 11, 10)), isNull);
   });

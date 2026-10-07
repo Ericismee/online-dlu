@@ -176,6 +176,9 @@ void main() {
     await t.pump();
     await t.pump();
     expect(find.text('Đang học tiết 2'), findsWidgets);
+    // Đếm ngược nói rõ mốc kế là gì: tiết 2 tan 9h10, tiết 3 tới 9h30 mới
+    // vào, nên mười phút nữa là ra chơi chứ không phải vào tiết tiếp.
+    expect(find.text('Còn 10 phút nữa ra chơi'), findsWidgets);
     expect(find.text('Ngày mai'), findsNothing);
 
     // 11h30: tan hết rồi thì mới xem trước ngày mai.
