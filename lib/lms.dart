@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart' show IOClient;
 
+import 'cache.dart';
 import 'db.dart';
 import 'luong.dart';
 import 'portal.dart' show PortalError;
@@ -580,8 +581,51 @@ Future<List<LmsEvent>> suKienSapToi(
   for (final m in {(now.year, now.month), (den.year, den.month)}) {
     out.addAll(await l.calendar(s, m.$1, m.$2));
   }
-  return locSuKien(out, now, truoc: truoc, toiDa: toiDa);
+  final ds = locSuKien(out, now, truoc: truoc, toiDa: toiDa);
+  await luuSuKien(ds);
+  return ds;
 }
+
+/// Khoá cache của mẻ sự kiện lần trước.
+const khoaSuKien = 'lms:su_kien';
+
+/// Cất mẻ sự kiện lại để lượt sau có cái hiện ngay.
+Future<void> luuSuKien(List<LmsEvent> ds) =>
+    Cache.write(khoaSuKien, [for (final e in ds) _raJson(e)]);
+
+/// Sự kiện của lượt lấy trước, đọc thẳng từ cache đã nạp sẵn vào RAM nên gọi
+/// được ngay trong `build`. Lấy lại từ LMS mất cả lượt đăng nhập Moodle, có
+/// khi nửa phút; trong lúc đó vẫn phải có cái để nhìn, và mất mạng thì đây là
+/// tất cả những gì còn.
+///
+/// Lọc lại theo [now] vì mẻ cũ có thể đã qua mốc từ đời nào.
+List<LmsEvent> suKienDaLuu(DateTime now) {
+  final c = Cache.read(khoaSuKien);
+  if (c == null) return const [];
+  return locSuKien([
+    for (final m in c.$1 as List) _tuJson(m as Map<String, dynamic>),
+  ], now);
+}
+
+Map<String, dynamic> _raJson(LmsEvent e) => {
+  'name': e.name,
+  'course': e.course,
+  'start': e.start.toIso8601String(),
+  'keoDai': e.keoDai.inSeconds,
+  'loai': e.loai,
+  'url': e.url,
+  'instance': e.instance,
+};
+
+LmsEvent _tuJson(Map<String, dynamic> m) => (
+  name: m['name'] as String? ?? '',
+  course: m['course'] as String? ?? '',
+  start: DateTime.parse(m['start'] as String),
+  keoDai: Duration(seconds: m['keoDai'] as int? ?? 0),
+  loai: m['loai'] as String? ?? '',
+  url: m['url'] as String?,
+  instance: m['instance'] as int? ?? 0,
+);
 
 /// Bỏ mốc đã qua và mốc quá xa, sắp theo thời gian rồi cắt còn [toiDa]. Lịch
 /// tháng trả về cả tháng nên phần lọc này mới là thứ quyết định "sắp đến".

@@ -153,6 +153,10 @@ class _BellState extends State<Bell>
   }
 
   Future<void> _load() async {
+    // Thông báo LMS đã nằm sẵn trong SQLite từ nhịp trước: bày ra ngay. Đợi
+    // đăng nhập LMS xong mới hiện thì nó lên sau thư Online cả nửa phút, dù
+    // chữ đã nằm trong máy từ lâu.
+    await _docKho();
     final online = <dynamic>[];
     try {
       online.addAll(
@@ -181,7 +185,7 @@ class _BellState extends State<Bell>
     // Ba lượt riêng nhau: hộp thư hỏng thì sự kiện vẫn lên và ngược lại, còn
     // thông báo đã cất trong SQLite thì mất mạng cũng đọc ra được.
     // `suKienSapToi` tự trả rỗng khi chưa bật LMS nên khỏi hỏi lại ở đây.
-    final lms = await LmsKho.doc();
+    await _docKho();
     var suKien = _suKien;
     try {
       suKien = await (widget.suKien ?? suKienSapToi)(DateTime.now());
@@ -189,13 +193,23 @@ class _BellState extends State<Bell>
       // Giữ danh sách lần trước, mất mạng không được dọn sạch hộp thư.
     }
     if (!mounted) return;
-    setState(() {
-      _lms = lms;
-      _suKien = suKien;
-    });
+    setState(() => _suKien = suKien);
     final n = unread(_tatCa);
     if (n > _chuaXem) _wiggle.forward(from: 0);
     _chuaXem = n;
+  }
+
+  /// Thông báo và sự kiện LMS đã cất trong máy, không đụng tới mạng.
+  Future<void> _docKho() async {
+    final lms = await LmsKho.doc();
+    final suKien = suKienDaLuu(DateTime.now());
+    if (!mounted) return;
+    setState(() {
+      _lms = lms;
+      // Mẻ cũ chỉ để lấp chỗ trống trong lúc chờ LMS trả lời; có mẻ mới rồi
+      // thì đừng thụt lùi về nó.
+      if (_suKien.isEmpty) _suKien = suKien;
+    });
   }
 
   /// Đọc lại cờ đã xem sau khi đóng hộp thư, để số trên chuông khớp ngay.

@@ -490,6 +490,9 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                 // Điểm danh đứng trước mọi thẻ khác: cả ngày chỉ có mấy phút
                 // để điểm. Không có buổi nào hôm nay thì nó không chiếm chỗ.
                 const DiemDanhCard(),
+                // Đếm ngược việc LMS gần nhất, ngay dưới điểm danh: cả hai đều
+                // là "sắp hết giờ", khác nhau ở chỗ cái này tính bằng ngày.
+                const SuKienCard(),
                 // Các thẻ hiện ra lần lượt cho đỡ khô khan.
                 PopIn(
                   child: _Me(session: widget.session, lop: _lop),

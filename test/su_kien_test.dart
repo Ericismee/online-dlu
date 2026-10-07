@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:dlu_tkb/clock.dart';
 import 'package:dlu_tkb/lms.dart';
 import 'package:dlu_tkb/paper.dart';
 import 'package:dlu_tkb/su_kien.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'db_tam.dart';
 
 LmsEvent sk(
   DateTime start, {
@@ -31,6 +35,8 @@ LmsEvent dd(DateTime start, {String name = 'Điểm danh'}) => sk(
 );
 
 void main() {
+  setUp(dungDbTam);
+
   final now = DateTime(2026, 10, 3, 8);
 
   test('chỉ giữ sự kiện chưa tới và trong tầm nhìn trước', () {
@@ -89,6 +95,13 @@ void main() {
     expect(conLai(const Duration(minutes: 4, seconds: 10)), '5 phút');
     expect(conLai(const Duration(hours: 1, minutes: 20)), '1h20');
     expect(conLai(const Duration(hours: 2, minutes: 5)), '2h05');
+  });
+
+  test('quá một ngày thì đếm theo ngày cho dễ hình dung', () {
+    expect(conLai(const Duration(hours: 23, minutes: 59)), '23h59');
+    expect(conLai(const Duration(days: 2)), '2 ngày');
+    expect(conLai(const Duration(days: 3, hours: 4)), '3 ngày 4h');
+    expect(conLai(const Duration(days: 7)), '7 ngày');
   });
 
   test('điểm danh chỉ lấy buổi hôm nay và còn trong cửa sổ', () {
@@ -248,5 +261,79 @@ void main() {
     await dung(t, [sk(now.add(const Duration(days: 1)))], gon: 3);
     await t.pumpAndSettle();
     expect(find.textContaining('Xem thêm'), findsNothing);
+  });
+
+  Future<void> dungDemNguoc(
+    WidgetTester t, {
+    List<LmsEvent> kho = const [],
+    Future<List<LmsEvent>> Function(DateTime)? nguon,
+  }) async {
+    Clock.instance.set(now);
+    Clock.instance.stop();
+    if (kho.isNotEmpty) await luuSuKien(kho);
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SuKienCard(nguon: nguon ?? (_) async => const [])),
+      ),
+    );
+  }
+
+  testWidgets('thẻ đếm ngược nói việc gần nhất còn bao lâu', (t) async {
+    await dungDemNguoc(
+      t,
+      nguon: (_) async => [
+        sk(now.add(const Duration(days: 3, hours: 4)), name: 'Nộp bài Lab 4'),
+        sk(now.add(const Duration(days: 5)), name: 'Quiz chương 2'),
+      ],
+    );
+    await t.pumpAndSettle();
+
+    expect(find.text('Sắp tới'), findsOneWidget);
+    expect(find.text('Nộp bài Lab 4'), findsOneWidget);
+    expect(find.text('còn 3 ngày 4h'), findsOneWidget);
+    expect(find.text('Thứ 3, 6/10 · 12h00 · còn 1 việc nữa'), findsOneWidget);
+  });
+
+  testWidgets('không còn việc nào thì thẻ không chiếm chỗ', (t) async {
+    await dungDemNguoc(t);
+    await t.pumpAndSettle();
+    expect(find.byType(PaperBox), findsNothing);
+  });
+
+  // Đúng cái người dùng kêu: mẻ lần trước đã nằm trong máy mà vẫn phải chờ
+  // trọn lượt đăng nhập LMS mới thấy.
+  testWidgets('mẻ lần trước hiện ngay, không chờ lượt hỏi LMS', (t) async {
+    final cham = Completer<List<LmsEvent>>();
+    addTearDown(() {
+      if (!cham.isCompleted) cham.complete(const []);
+    });
+    await dungDemNguoc(
+      t,
+      kho: [sk(now.add(const Duration(days: 1)), name: 'Nộp bài Lab 4')],
+      nguon: (_) => cham.future,
+    );
+    await t.pump();
+
+    expect(find.text('Nộp bài Lab 4'), findsOneWidget);
+    expect(find.text('còn 1 ngày'), findsOneWidget);
+
+    cham.complete(const []);
+    await t.pumpAndSettle();
+  });
+
+  test('mẻ cất trong máy đọc lại đủ, mốc đã qua thì tự rụng', () async {
+    await luuSuKien([
+      sk(now.subtract(const Duration(days: 1)), name: 'Đã qua'),
+      sk(
+        now.add(const Duration(days: 2)),
+        name: 'Nộp bài Lab 4',
+        course: 'CNPM',
+        keoDai: const Duration(minutes: 5),
+      ),
+    ]);
+    final ds = suKienDaLuu(now);
+    expect(ds.map((e) => e.name), ['Nộp bài Lab 4']);
+    expect(ds.single.course, 'CNPM');
+    expect(ds.single.keoDai, const Duration(minutes: 5));
   });
 }

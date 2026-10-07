@@ -142,6 +142,55 @@ void main() {
     expect(find.text('Nộp bài Lab 4'), findsOneWidget);
   });
 
+  testWidgets('thông báo LMS lên ngay, không chờ lượt gọi mạng nào', (t) async {
+    await LmsKho.luu([
+      (
+        id: '9',
+        subject: 'Nộp bài Lab 4',
+        sender: 'Giảng viên',
+        date: '2026-10-02 08:00',
+        body: '',
+        unread: true,
+      ),
+    ]);
+    final now = DateTime.now();
+    Clock.instance.set(now);
+    Clock.instance.stop();
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Bell(
+            session: Session(
+              id: '1',
+              fullName: 'A',
+              token: 'tk',
+              expire: now.add(const Duration(hours: 1)),
+            ),
+            // Hộp thư Online ì ra nửa phút, y như lúc mạng trường yếu.
+            portal: Portal(
+              client: MockClient((_) async {
+                await Future<void>.delayed(const Duration(seconds: 30));
+                return http.Response.bytes(
+                  utf8.encode('[]'),
+                  200,
+                  headers: {'content-type': 'application/json; charset=utf-8'},
+                );
+              }),
+            ),
+            suKien: (_) async => const [],
+          ),
+        ),
+      ),
+    );
+    await t.pump();
+
+    // Chữ đã nằm trong SQLite rồi thì huy hiệu phải có ngay, khỏi đợi ai.
+    expect(find.text('1'), findsOneWidget);
+
+    await t.pump(const Duration(seconds: 30));
+    await t.pumpAndSettle();
+  });
+
   testWidgets('bấm Xem là mở nội dung rồi tự đánh dấu đã xem', (t) async {
     await LmsKho.luu([
       (

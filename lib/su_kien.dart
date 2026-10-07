@@ -28,11 +28,16 @@ String nhanNgay(DateTime ngay, DateTime now) {
 String gioPhut(DateTime t) =>
     '${t.hour}h${t.minute.toString().padLeft(2, '0')}';
 
-/// Đếm ngược ngắn gọn, làm tròn lên phút: "4 phút", "1h20".
+/// Đếm ngược ngắn gọn, làm tròn lên phút: "4 phút", "1h20", "3 ngày 4h".
+/// Quá một ngày thì đếm theo ngày: hạn nộp bài tuần sau mà ghi "168h00" thì
+/// phải ngồi chia mới biết là bao lâu.
 String conLai(Duration d) {
   final phut = (d.inSeconds / 60).ceil();
   if (phut < 60) return '$phut phút';
-  return '${phut ~/ 60}h${(phut % 60).toString().padLeft(2, '0')}';
+  final gio = phut ~/ 60;
+  if (gio < 24) return '${gio}h${(phut % 60).toString().padLeft(2, '0')}';
+  final ngay = gio ~/ 24;
+  return gio % 24 == 0 ? '$ngay ngày' : '$ngay ngày ${gio % 24}h';
 }
 
 /// Buổi điểm danh Moodle không khai `timeduration` thì cho một cửa sổ chừng
@@ -220,6 +225,162 @@ class _Buoi extends StatelessWidget {
                 Uri.parse(url),
                 mode: LaunchMode.externalApplication,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Thẻ đếm ngược trên Trang chủ: việc LMS gần nhất còn bao lâu nữa, kèm số
+/// việc còn lại trong tầm nhìn. Chưa bật LMS hay không còn việc nào thì thẻ
+/// biến mất hẳn.
+///
+/// Mẻ của lượt trước nằm trong cache nên mở app là thấy ngay; lượt hỏi LMS
+/// chạy ngầm theo [LmsNhip] rồi thay số sau.
+class SuKienCard extends StatefulWidget {
+  const SuKienCard({super.key, this.nguon});
+
+  /// Nguồn dữ liệu; để trống là lấy thật từ LMS. Chỉ test mới truyền vào.
+  final Future<List<LmsEvent>> Function(DateTime now)? nguon;
+
+  @override
+  State<SuKienCard> createState() => _SuKienCardState();
+}
+
+class _SuKienCardState extends State<SuKienCard> with Reloadable<SuKienCard> {
+  List<LmsEvent> _ds = const [];
+
+  @override
+  Future<void> reload() => _load();
+
+  @override
+  void initState() {
+    super.initState();
+    _ds = suKienDaLuu(Clock.instance.value);
+    LmsNhip.them(_load);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    LmsNhip.bo(_load);
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    var ds = _ds;
+    try {
+      ds = await (widget.nguon ?? suKienSapToi)(DateTime.now());
+    } on PortalError {
+      // Giữ mẻ cũ: mất mạng không có nghĩa là hết hạn nộp bài.
+    }
+    if (mounted) setState(() => _ds = ds);
+  }
+
+  @override
+  Widget build(BuildContext context) => Ticker(
+    builder: (_, now) {
+      // Lọc lại theo giờ hiện tại chứ không theo lúc tải: việc qua mốc là tự
+      // rụng, khỏi chờ lượt sau.
+      final ds = locSuKien(_ds, now);
+      if (ds.isEmpty) return const SizedBox.shrink();
+      return Column(
+        children: [
+          _DemNguoc(ds.first, now, con: ds.length - 1),
+          const SizedBox(height: 20),
+        ],
+      );
+    },
+  );
+}
+
+/// Việc gần nhất: tên, môn, mốc và còn bao lâu. Bấm là mở nó trên LMS.
+class _DemNguoc extends StatelessWidget {
+  const _DemNguoc(this.e, this.now, {required this.con});
+  final LmsEvent e;
+  final DateTime now;
+
+  /// Số việc còn lại phía sau việc này.
+  final int con;
+
+  @override
+  Widget build(BuildContext context) {
+    final conBaoLau = e.start.difference(now);
+    // Dưới một ngày là gấp: đổi sang giấy cam cho nó đập vào mắt.
+    final gap = conBaoLau < const Duration(days: 1);
+    final url = e.url;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: url == null || url.isEmpty
+          ? null
+          : () =>
+                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      child: PaperBox(
+        color: gap ? Paper.peach : Paper.card,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Paper.card,
+                    border: Paper.border,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: Paper.shadow(3),
+                  ),
+                  child: const Icon(
+                    Icons.hourglass_bottom_rounded,
+                    size: 20,
+                    color: Paper.ink,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Sắp tới',
+                    style: TextStyle(
+                      fontFamily: 'Baloo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: Paper.ink,
+                    ),
+                  ),
+                ),
+                Pill(
+                  'còn ${conLai(conBaoLau)}',
+                  color: gap ? Paper.accent : Paper.sun,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              clean(e.name),
+              style: const TextStyle(
+                fontFamily: 'Baloo',
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                height: 1.2,
+                color: Paper.ink,
+              ),
+            ),
+            if (e.course.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Flexible(child: Pill(clean(e.course), color: Paper.sky)),
+                ],
+              ),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              '${nhanNgay(DateTime(e.start.year, e.start.month, e.start.day), now)}'
+              ' · ${gioPhut(e.start)}'
+              '${con > 0 ? ' · còn $con việc nữa' : ''}',
+              style: const TextStyle(fontSize: 13, color: Paper.ink2),
             ),
           ],
         ),
