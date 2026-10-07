@@ -137,72 +137,6 @@ void main() {
     expect(diemDanh([e], now), hasLength(1));
   });
 
-  Future<void> dungThe(WidgetTester t, List<LmsEvent> ds) async {
-    // Tắt hẹn nhịp để test tự tua giờ, và để không còn Timer treo lúc kết thúc.
-    Clock.instance.set(now);
-    Clock.instance.stop();
-    await t.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: DiemDanhCard(nguon: (_) async => ds)),
-      ),
-    );
-    await t.pumpAndSettle();
-  }
-
-  testWidgets('thẻ điểm danh nói đủ môn, khung giờ và còn bao lâu', (t) async {
-    await dungThe(t, [dd(DateTime(2026, 10, 3, 8, 30))]);
-    expect(find.text('Điểm danh'), findsOneWidget);
-    expect(find.text('DPctk47'), findsOneWidget);
-    expect(find.text('Hôm nay · 8h30–8h35 · mở sau 30 phút'), findsOneWidget);
-    expect(find.text('Chưa mở'), findsOneWidget);
-    expect(find.text('Mở trên LMS'), findsOneWidget);
-  });
-
-  testWidgets('đang trong cửa sổ thì thẻ đổi sang giục điểm ngay', (t) async {
-    await dungThe(t, [dd(DateTime(2026, 10, 3, 7, 58))]);
-    expect(find.text('Đang mở'), findsOneWidget);
-    expect(find.text('Hôm nay · 7h58–8h03 · còn 3 phút'), findsOneWidget);
-    expect(find.text('Điểm danh ngay'), findsOneWidget);
-  });
-
-  testWidgets('không có buổi nào hôm nay thì thẻ không chiếm chỗ', (t) async {
-    await dungThe(t, [dd(DateTime(2026, 10, 4, 7, 45))]);
-    expect(find.byType(PaperBox), findsNothing);
-  });
-
-  testWidgets('buổi mở sau khi vào app vẫn bắt được, khỏi mở lại app', (
-    t,
-  ) async {
-    // Giáo viên tạo buổi điểm danh ngay tại lớp: lượt lấy đầu tiên chưa có gì.
-    var ds = <LmsEvent>[];
-    LmsNhip.khoang = () => const Duration(milliseconds: 50);
-    addTearDown(() => LmsNhip.khoang = () => const Duration(seconds: 90));
-    Clock.instance.set(now);
-    Clock.instance.stop();
-    await t.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: DiemDanhCard(nguon: (_) async => ds)),
-      ),
-    );
-    await t.pumpAndSettle();
-    expect(find.text('Điểm danh'), findsNothing);
-
-    ds = [dd(DateTime(2026, 10, 3, 8, 1))];
-    await t.pump(const Duration(milliseconds: 60));
-    await t.pumpAndSettle();
-    expect(find.text('Điểm danh'), findsOneWidget);
-  });
-
-  testWidgets('hết cửa sổ là thẻ tự rụng, khỏi chờ làm mới', (t) async {
-    await dungThe(t, [dd(DateTime(2026, 10, 3, 8, 1))]);
-    expect(find.text('Điểm danh'), findsOneWidget);
-
-    // Đồng hồ chung nhảy phút, không gọi lại mạng.
-    Clock.instance.set(DateTime(2026, 10, 3, 8, 6));
-    await t.pumpAndSettle();
-    expect(find.text('Điểm danh'), findsNothing);
-  });
-
   Future<void> dung(WidgetTester t, List<LmsEvent> suKien, {int gon = 3}) {
     // Giờ cố định: lấy DateTime.now() thì chạy lúc gần nửa đêm là "hôm nay +
     // 2 giờ" nhảy sang mai, nhãn ngày lệch và test đổ oan.
@@ -282,16 +216,57 @@ void main() {
     await dungDemNguoc(
       t,
       nguon: (_) async => [
-        sk(now.add(const Duration(days: 3, hours: 4)), name: 'Nộp bài Lab 4'),
-        sk(now.add(const Duration(days: 5)), name: 'Quiz chương 2'),
+        sk(now.add(const Duration(hours: 4)), name: 'Nộp bài Lab 4'),
+        sk(now.add(const Duration(days: 1)), name: 'Quiz chương 2'),
       ],
     );
     await t.pumpAndSettle();
 
     expect(find.text('Sắp tới'), findsOneWidget);
     expect(find.text('Nộp bài Lab 4'), findsOneWidget);
-    expect(find.text('còn 3 ngày 4h'), findsOneWidget);
-    expect(find.text('Thứ 3, 6/10 · 12h00 · còn 1 việc nữa'), findsOneWidget);
+    expect(find.text('còn 4h00'), findsOneWidget);
+    expect(find.text('Hôm nay · 12h00 · còn 1 việc nữa'), findsOneWidget);
+  });
+
+  testWidgets('việc còn cả tuần nữa thì chưa phải "sắp tới"', (t) async {
+    await dungDemNguoc(
+      t,
+      nguon: (_) async => [
+        sk(now.add(const Duration(days: 7)), name: 'Nộp bài Lab 4'),
+      ],
+    );
+    await t.pumpAndSettle();
+    expect(find.byType(PaperBox), findsNothing);
+  });
+
+  testWidgets('buổi điểm danh đã có thẻ riêng thì không đếm ngược lại', (
+    t,
+  ) async {
+    await dungDemNguoc(
+      t,
+      nguon: (_) async => [
+        dd(now.add(const Duration(hours: 1))),
+        sk(now.add(const Duration(days: 2)), name: 'Nộp bài Lab 4'),
+      ],
+    );
+    await t.pumpAndSettle();
+
+    // Thẻ đếm ngược nhảy qua buổi điểm danh, nói việc kế tiếp — và đếm số
+    // việc còn lại cũng không tính buổi đó nữa.
+    expect(find.text('Điểm danh'), findsNothing);
+    expect(find.text('Nộp bài Lab 4'), findsOneWidget);
+    expect(find.textContaining('việc nữa'), findsNothing);
+  });
+
+  testWidgets('chỉ còn mỗi buổi điểm danh thì thẻ đếm ngược biến mất', (
+    t,
+  ) async {
+    await dungDemNguoc(
+      t,
+      nguon: (_) async => [dd(now.add(const Duration(hours: 1)))],
+    );
+    await t.pumpAndSettle();
+    expect(find.byType(PaperBox), findsNothing);
   });
 
   testWidgets('không còn việc nào thì thẻ không chiếm chỗ', (t) async {

@@ -215,6 +215,10 @@ void main() {
     await t.pumpAndSettle();
 
     expect((await LmsKho.doc()).single.unread, isFalse);
+    // Xem rồi là dòng dồn xuống mục thông báo cũ, hộp thư chỉ còn tin mới.
+    expect(find.text('Nộp bài Lab 4'), findsNothing);
+    await t.tap(find.text('Thông báo cũ (1)'));
+    await t.pumpAndSettle();
     // Đã xem rồi thì không còn nút để đánh dấu, chỉ còn huy hiệu trạng thái —
     // nên phải tìm theo widget, tìm theo chữ là bắt luôn cả huy hiệu.
     expect(find.widgetWithText(PaperButton, 'Đã xem'), findsNothing);
@@ -239,6 +243,8 @@ void main() {
     await t.tap(find.widgetWithText(PaperButton, 'Đã xem'));
     await t.pumpAndSettle();
     expect((await LmsKho.doc()).single.unread, isFalse);
+    await t.tap(find.text('Thông báo cũ (1)'));
+    await t.pumpAndSettle();
     expect(find.widgetWithText(PaperButton, 'Đã xem'), findsNothing);
     expect(find.widgetWithText(Pill, 'Đã xem'), findsOneWidget);
 
@@ -246,6 +252,36 @@ void main() {
     await t.tap(find.text('Đóng'));
     await t.pumpAndSettle();
     expect(find.text('1'), findsNothing);
+  });
+
+  testWidgets('vuốt là xoá thông báo, nhịp LMS sau không nhận lại', (t) async {
+    const tin = (
+      id: '9',
+      subject: 'Nộp bài Lab 4',
+      sender: 'Giảng viên',
+      date: '2026-10-02 08:00',
+      body: '',
+      unread: true,
+    );
+    await LmsKho.luu([tin]);
+    await dungChuong(t);
+    await t.tap(find.byType(Bell));
+    await t.pumpAndSettle();
+
+    await t.drag(find.text('Nộp bài Lab 4'), const Offset(500, 0));
+    await t.pumpAndSettle();
+    expect(find.text('Nộp bài Lab 4'), findsNothing);
+    expect(find.text('Hộp thư trống.'), findsOneWidget);
+    expect(await LmsKho.doc(), isEmpty);
+
+    // Xoá không phải là mất: mở mục thông báo cũ ra là đọc lại được.
+    await t.tap(find.text('Thông báo cũ (1)'));
+    await t.pumpAndSettle();
+    expect(find.text('Nộp bài Lab 4'), findsOneWidget);
+
+    // Moodle vẫn trả tin đó về mỗi nhịp vì server không biết mình đã bỏ.
+    await LmsKho.luu([tin]);
+    expect(await LmsKho.doc(), isEmpty);
   });
 
   testWidgets('thư Online hiện y như thông báo LMS và đánh dấu được', (
@@ -273,6 +309,8 @@ void main() {
     expect(find.widgetWithText(PaperButton, 'Đã xem'), findsOneWidget);
 
     await t.tap(find.widgetWithText(PaperButton, 'Đã xem'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Thông báo cũ (1)'));
     await t.pumpAndSettle();
     expect(find.widgetWithText(PaperButton, 'Đã xem'), findsNothing);
     expect(find.widgetWithText(Pill, 'Đã xem'), findsOneWidget);

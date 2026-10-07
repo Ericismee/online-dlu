@@ -158,6 +158,11 @@ class Db extends _$Db {
   Future<List<KhoData>> nhomDang(String nhom) =>
       (select(kho)..where((t) => t.nhom.equals(nhom) & t.bat)).get();
 
+  /// Cả nhóm, kể cả dòng đã ẩn — để biết khoá nào từng có mà người dùng đã
+  /// xoá, chứ không ghi lại y nguyên lần sau.
+  Future<List<KhoData>> nhomCa(String nhom) =>
+      (select(kho)..where((t) => t.nhom.equals(nhom))).get();
+
   Future<void> ghi(
     String nhom,
     String khoa, {

@@ -18,17 +18,27 @@ bool _chuaXem(dynamic m) =>
 
 const _nhomOnlineDaXem = 'thong_bao_online_da_xem';
 
+/// Thư Online người dùng đã vuốt xoá. Portal không có API xoá nên cờ nằm
+/// trong máy, y như cờ đã xem.
+const _nhomOnlineAn = 'thong_bao_online_an';
+
 String _onlineId(Map message) =>
     '${message['MessageID'] ?? message['ID'] ?? message['Id'] ?? message['id'] ?? '${message['SenderName']}:${message['CreationDate']}:${message['MessageSubject']}'}';
 
 /// Portal không có API đánh dấu đã đọc, nên cờ nằm trong máy và phải chồng lên
 /// danh sách lấy về — cả chỗ đếm huy hiệu lẫn chỗ hiện hộp thư, nếu không bấm
 /// "Đã xem tất cả" rồi đóng hộp thư là số trên chuông vẫn y nguyên.
+/// Thư đã vuốt xoá tính luôn là đã xem: huy hiệu khỏi đếm nó, mà nó vẫn còn
+/// trong danh sách để nằm ở mục "Thông báo cũ".
 Future<List<dynamic>> apDaXemOnline(Iterable<dynamic> online) async {
   final daXem = {for (final d in await Db.i.nhomDang(_nhomOnlineDaXem)) d.khoa};
+  final an = {for (final d in await Db.i.nhomDang(_nhomOnlineAn)) d.khoa};
   return [
     for (final m in online)
-      if (daXem.contains(_onlineId(m as Map))) {...m, 'IsRead': 1} else m,
+      if (daXem.contains(_onlineId(m as Map)) || an.contains(_onlineId(m)))
+        {...m, 'IsRead': 1}
+      else
+        m,
   ];
 }
 
@@ -89,6 +99,37 @@ String _bodyOnline(Map o) {
     if (v is String && v.trim().isNotEmpty) return v;
   }
   return '';
+}
+
+/// Tiêu đề một trang kèm chuông ở góc phải — đúng chỗ chuông vẫn đứng trên
+/// Trang chủ, nên trang nào mở ra chuông cũng nằm y một vị trí.
+class TieuDeTrang extends StatelessWidget {
+  const TieuDeTrang(this.title, {super.key, required this.session, this.phai});
+  final String title;
+  final Session session;
+
+  /// Thay chuông bằng thứ khác — trang mở dạng đẩy thì chỗ đó là nút Quay lại.
+  final Widget? phai;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Baloo',
+            fontWeight: FontWeight.w800,
+            fontSize: 30,
+            color: Paper.ink,
+          ),
+        ),
+      ),
+      const SizedBox(width: 12),
+      phai ?? Bell(session: session),
+    ],
+  );
 }
 
 /// Chuông + popup hộp thư, dán ở góc phải top bar.
@@ -322,13 +363,9 @@ class _InboxState extends State<_Inbox> {
   @override
   void initState() {
     super.initState();
-    _docOnlineDaXem();
-  }
-
-  Future<void> _docOnlineDaXem() async {
-    final online = await apDaXemOnline(widget.online);
-    if (!mounted) return;
-    setState(() => _online = online);
+    // Đọc lại ngay lúc mở: chuông chỉ đưa sang danh sách tin còn hiện, mục
+    // "Thông báo cũ" cần cả những dòng đã xem và đã xoá.
+    _docLai();
   }
 
   List<LmsEvent> get suKien => widget.suKien;
@@ -344,7 +381,29 @@ class _InboxState extends State<_Inbox> {
     } else if (!t.laLms) {
       await Db.i.ghi(_nhomOnlineDaXem, t.id);
     }
-    final lms = await LmsKho.doc();
+    await _docLai();
+  }
+
+  Future<void> _xem(Tin t) async {
+    await showDialog(context: context, builder: (_) => _ChiTiet(t));
+    await _daXem(t);
+  }
+
+  /// Vuốt là tin rời hộp thư, xuống nằm ở mục "Thông báo cũ" — nơi cất chỉ
+  /// tắt cờ nên chữ vẫn còn, mở mục cũ ra là đọc lại được.
+  Future<void> _xoa(Tin t) async {
+    if (t.laLms) {
+      await LmsKho.xoa(t.id);
+    } else {
+      await Db.i.ghi(_nhomOnlineAn, t.id);
+    }
+    await _docLai();
+  }
+
+  /// Đọc lại cả hai nguồn từ nơi cất, kể cả dòng đã xoá: cờ trên màn với cờ
+  /// trong máy không có đường lệch nhau.
+  Future<void> _docLai() async {
+    final lms = await LmsKho.doc(caDaXoa: true);
     final online = await apDaXemOnline(widget.online);
     if (!mounted) return;
     setState(() {
@@ -353,15 +412,43 @@ class _InboxState extends State<_Inbox> {
     });
   }
 
-  Future<void> _xem(Tin t) async {
-    await showDialog(context: context, builder: (_) => _ChiTiet(t));
-    await _daXem(t);
-  }
-
   /// Thông báo LMS lên trước thư Online: nó mới là thứ đổi mỗi phút.
   List<Tin> get messages => [
     for (final m in [..._lms, ..._online]) tin(m),
   ];
+
+  /// Hộp thư chỉ bày tin chưa xem; tin đã xem dồn xuống mục "Thông báo cũ",
+  /// mở ra xem lại khi cần chứ không chen vào chỗ tin mới.
+  List<Tin> get _moi => [
+    for (final t in messages)
+      if (t.chuaXem) t,
+  ];
+
+  List<Tin> get _cu => [
+    for (final t in messages)
+      if (!t.chuaXem) t,
+  ];
+
+  /// Đang mở mục thông báo cũ hay không.
+  bool _moCu = false;
+
+  /// Một dòng hộp thư: vuốt ngang là xoá. Dòng trong mục cũ thì không vuốt
+  /// nữa — nó đã nằm đúng chỗ của nó rồi, mà Dismissible cũng không cho dòng
+  /// vừa vuốt ở lại cùng một danh sách.
+  Widget _dong(Tin t, {bool cu = false}) {
+    final than = _Message(t, onXem: _xem, onDaXem: _daXem);
+    if (cu) return than;
+    return Dismissible(
+      key: ValueKey('moi:${t.nguon}:${t.id}'),
+      background: const _NenXoa(),
+      secondaryBackground: const _NenXoa(phai: true),
+      onDismissed: (_) => _xoa(t),
+      // Dismissible xếp nền với dòng vào một Stack kiểu loose, thả ra là thẻ
+      // co lại vừa đúng chữ của nó — mỗi thẻ một bề ngang. Ép dòng rộng hết
+      // hộp thư thì cả chồng thẻ mới thẳng mép.
+      child: SizedBox(width: double.infinity, child: than),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => Dialog(
@@ -402,18 +489,33 @@ class _InboxState extends State<_Inbox> {
             ],
           ),
           // Hàng riêng, không chen vào hàng tiêu đề: trên máy hẹp thì tiêu đề
-          // với nút Đóng đã ăn hết chiều ngang, nút này bị bóp còn mươi pixel.
-          if (messages.any((t) => t.chuaXem)) ...[
+          // với nút Đóng đã ăn hết chiều ngang, hai nút này bị bóp còn mươi
+          // pixel. Wrap chứ không Row: máy hẹp thì nút sau xuống dòng.
+          if (_moi.isNotEmpty || _cu.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: PaperButton(
-                label: 'Đã xem tất cả',
-                fontSize: 13,
-                color: Paper.mint,
-                onColor: Paper.ink,
-                onPressed: () => _daXem(),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (_moi.isNotEmpty)
+                  PaperButton(
+                    label: 'Đã xem tất cả',
+                    fontSize: 13,
+                    color: Paper.mint,
+                    onColor: Paper.ink,
+                    onPressed: () => _daXem(),
+                  ),
+                if (_cu.isNotEmpty)
+                  PaperButton(
+                    label: _moCu
+                        ? 'Ẩn thông báo cũ'
+                        : 'Thông báo cũ (${_cu.length})',
+                    fontSize: 13,
+                    color: Paper.card,
+                    onColor: Paper.ink,
+                    onPressed: () => setState(() => _moCu = !_moCu),
+                  ),
+              ],
             ),
           ],
           const SizedBox(height: 12),
@@ -427,14 +529,22 @@ class _InboxState extends State<_Inbox> {
                   const SizedBox(height: 18),
                   const _Muc('Hộp thư'),
                 ],
-                if (messages.isEmpty)
+                if (_moi.isEmpty)
                   const Text(
                     'Hộp thư trống.',
                     style: TextStyle(color: Paper.ink2),
                   ),
-                for (final (i, m) in messages.indexed) ...[
+                for (final (i, m) in _moi.indexed) ...[
                   if (i > 0) const SizedBox(height: 10),
-                  _Message(m, onXem: _xem, onDaXem: _daXem),
+                  _dong(m),
+                ],
+                if (_moCu) ...[
+                  const SizedBox(height: 18),
+                  const _Muc('Thông báo cũ'),
+                  for (final (i, t) in _cu.indexed) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    _dong(t, cu: true),
+                  ],
                 ],
               ],
             ),
@@ -462,6 +572,25 @@ class _Muc extends StatelessWidget {
         color: Paper.ink,
       ),
     ),
+  );
+}
+
+/// Nền lộ ra sau dòng đang bị vuốt. Vuốt chiều nào cũng xoá nên hai chiều
+/// cùng một nền, chỉ đổi phía đặt thùng rác.
+class _NenXoa extends StatelessWidget {
+  const _NenXoa({this.phai = false});
+  final bool phai;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    alignment: phai ? Alignment.centerRight : Alignment.centerLeft,
+    padding: const EdgeInsets.symmetric(horizontal: 18),
+    decoration: BoxDecoration(
+      color: Paper.rose,
+      border: Paper.border,
+      borderRadius: BorderRadius.all(Paper.radius),
+    ),
+    child: const Icon(Icons.delete_rounded, color: Paper.ink),
   );
 }
 

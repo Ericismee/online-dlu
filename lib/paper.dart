@@ -125,6 +125,7 @@ class PaperRing extends StatelessWidget {
     this.duoi,
     this.color = Paper.sun,
     this.size = 92,
+    this.duration = const Duration(milliseconds: 900),
   });
 
   /// 0..1; ngoài khoảng đó thì kẹp lại cho vòng khỏi vẽ quá một lượt.
@@ -137,6 +138,10 @@ class PaperRing extends StatelessWidget {
   final Color color;
   final double size;
 
+  /// Thời gian dải giấy bò tới [value] mới. Để [Duration.zero] khi vòng đã
+  /// được điều khiển từ ngoài (giữ ngón tay), không thì nó bò sau ngón tay.
+  final Duration duration;
+
   @override
   Widget build(BuildContext context) => Column(
     children: [
@@ -145,7 +150,7 @@ class PaperRing extends StatelessWidget {
         height: size,
         child: TweenAnimationBuilder<double>(
           tween: Tween(end: value.clamp(0, 1)),
-          duration: const Duration(milliseconds: 900),
+          duration: duration,
           // Nhảy qua đích rồi lùi về một chút: dải giấy có đà, không phải
           // thanh tiến trình trượt đều.
           curve: Paper.popCurve,

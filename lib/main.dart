@@ -487,12 +487,9 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                 Ticker(builder: (_, now) => StaleDataWarning(now: now)),
                 const UpdateBanner(),
                 const Changelog(),
-                // Điểm danh đứng trước mọi thẻ khác: cả ngày chỉ có mấy phút
-                // để điểm. Không có buổi nào hôm nay thì nó không chiếm chỗ.
-                const DiemDanhCard(),
-                // Đếm ngược việc LMS gần nhất, ngay dưới điểm danh: cả hai đều
-                // là "sắp hết giờ", khác nhau ở chỗ cái này tính bằng ngày.
-                const SuKienCard(),
+                // Dưới mấy lời nhắc của chính app (cập nhật, dữ liệu cũ, đổi
+                // mới) là tới mình: thẻ tên rồi tới hai vòng tiến độ, xong mới
+                // đến các thẻ theo ngày.
                 // Các thẻ hiện ra lần lượt cho đỡ khô khan.
                 PopIn(
                   child: _Me(session: widget.session, lop: _lop),
@@ -500,18 +497,24 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                 const SizedBox(height: 20),
                 PopIn(
                   delay: const Duration(milliseconds: 70),
+                  child: TienDoCard(session: widget.session),
+                ),
+                const SizedBox(height: 20),
+                // Việc LMS sắp đến hạn: chỉ hiện khi đã cận kề, nên nó đứng
+                // đây là đúng — thấy trước cả lịch hôm nay.
+                const SuKienCard(),
+                // Điểm danh nằm ngay trong dòng tiết của mục "Hôm nay":
+                // nó là việc của chính buổi học đó.
+                PopIn(
+                  delay: const Duration(milliseconds: 140),
                   child: TodayLessons(session: widget.session),
                 ),
                 PopIn(
-                  delay: const Duration(milliseconds: 140),
+                  delay: const Duration(milliseconds: 180),
                   child: Ticker(
                     builder: (_, now) =>
                         _NextExam(session: widget.session, now: now),
                   ),
-                ),
-                PopIn(
-                  delay: const Duration(milliseconds: 180),
-                  child: TienDoCard(session: widget.session),
                 ),
                 const SizedBox(height: 20),
                 PopIn(
@@ -690,10 +693,9 @@ class _Header extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 12),
-      Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: Bell(session: session),
-      ),
+      // Không chèn lề: chuông phải đúng một mức với chuông của các trang khác,
+      // đổi tab mà nó nhích lên nhích xuống là thấy ngay.
+      Bell(session: session),
     ],
   );
 }
@@ -792,15 +794,7 @@ class ScheduleTab extends StatelessWidget {
             MediaQuery.paddingOf(context).bottom + chuaThanhDuoi,
           ),
           children: [
-            const Text(
-              'Thời khoá biểu',
-              style: TextStyle(
-                fontFamily: 'Baloo',
-                fontWeight: FontWeight.w800,
-                fontSize: 30,
-                color: Paper.ink,
-              ),
-            ),
+            TieuDeTrang('Thời khoá biểu', session: session),
             const SizedBox(height: 12),
             Ticker(
               builder: (_, now) => MonthGraph(session: session, now: now),

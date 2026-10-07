@@ -57,8 +57,7 @@ List<LmsEvent> diemDanh(List<LmsEvent> suKien, DateTime now) {
       suKien
           .where(
             (e) =>
-                (e.loai == 'attendance' ||
-                    e.name.toLowerCase().contains('điểm danh')) &&
+                laDiemDanh(e) &&
                 DateTime(e.start.year, e.start.month, e.start.day) == homNay &&
                 _dong(e).isAfter(now),
           )
@@ -66,6 +65,11 @@ List<LmsEvent> diemDanh(List<LmsEvent> suKien, DateTime now) {
         ..sort((a, b) => a.start.compareTo(b.start));
   return out;
 }
+
+/// Việc này có phải buổi điểm danh không. `modulename` là chuẩn, tên chỉ là
+/// đường lùi cho bản Moodle nào đặt khác.
+bool laDiemDanh(LmsEvent e) =>
+    e.loai == 'attendance' || e.name.toLowerCase().contains('điểm danh');
 
 DateTime _dong(LmsEvent e) =>
     e.keoDai == Duration.zero ? e.start.add(_cuaSoToiThieu) : ketThuc(e);
@@ -78,72 +82,52 @@ Future<List<LmsEvent>> diemDanhHomNay(DateTime now, {Lms? lms}) async {
   return diemDanh(await (lms ?? Lms()).calendar(s, now.year, now.month), now);
 }
 
-/// Thẻ điểm danh trên Trang chủ, đứng trên mọi thẻ khác: cả ngày chỉ có mấy
-/// phút để điểm, trễ là mất buổi. Không có buổi nào hôm nay thì thẻ biến mất
-/// hẳn, và cứ mỗi phút nó tự soi lại giờ nên hết cửa sổ là tự rụng.
-///
-/// Giáo viên hay mở buổi điểm danh ngay tại lớp, không tạo trước, nên thẻ còn
-/// hỏi lại LMS theo [LmsNhip] — chỉ lấy lúc mở app thì buổi mở sau đó mình
-/// không bao giờ thấy.
-class DiemDanhCard extends StatefulWidget {
-  const DiemDanhCard({super.key, this.nguon});
+/// Vào buổi điểm danh. Hiện tại là mở Moodle; sau này điểm thẳng trong app
+/// thì sửa đúng một chỗ này, mọi nút điểm danh đều đi qua đây.
+/// Lịch tháng không kèm link tới buổi điểm danh, nhưng trang ngày của Moodle
+/// mở được bằng mốc giờ, và trong đó có đường vào buổi đó.
+Future<void> moDiemDanh(LmsEvent e) => launchUrl(
+  Uri.parse(
+    e.url ??
+        'https://lms.dlu.edu.vn/calendar/view.php?view=day'
+            '&time=${e.start.millisecondsSinceEpoch ~/ 1000}',
+  ),
+  mode: LaunchMode.externalApplication,
+).then((_) {});
 
-  /// Nguồn dữ liệu; để trống là lấy thật từ LMS. Chỉ test mới truyền vào.
-  final Future<List<LmsEvent>> Function(DateTime now)? nguon;
+/// Gần giờ điểm chừng này thì thẻ điểm danh leo lên đầu mục "Hôm nay": huy
+/// hiệu nằm trong dòng tiết quá nhỏ, lướt qua là không ai thấy có điểm danh.
+const _noiBatTruoc = Duration(minutes: 30);
 
-  @override
-  State<DiemDanhCard> createState() => _DiemDanhCardState();
-}
+bool diemDanhNoiBat(LmsEvent e, DateTime now) =>
+    e.start.difference(now) <= _noiBatTruoc;
 
-class _DiemDanhCardState extends State<DiemDanhCard>
-    with Reloadable<DiemDanhCard> {
-  List<LmsEvent> _ds = const [];
-
-  @override
-  Future<void> reload() => _load();
-
-  @override
-  void initState() {
-    super.initState();
-    LmsNhip.them(_load);
-    _load();
-  }
+/// Huy hiệu điểm danh gắn ngay trong dòng tiết học: chưa tới giờ thì chỉ là
+/// cái nhãn, tới cửa sổ điểm là thành nút bấm được.
+class ChipDiemDanh extends StatelessWidget {
+  const ChipDiemDanh(this.e, this.now, {super.key});
+  final LmsEvent e;
+  final DateTime now;
 
   @override
-  void dispose() {
-    LmsNhip.bo(_load);
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    var ds = _ds;
-    try {
-      ds = await (widget.nguon ?? diemDanhHomNay)(DateTime.now());
-    } on PortalError {
-      // Giữ danh sách cũ; mất mạng không có nghĩa là hết buổi điểm danh.
+  Widget build(BuildContext context) {
+    final mo = !e.start.isAfter(now);
+    if (!mo) {
+      return Pill('Điểm danh ${gioPhut(e.start)}', color: Paper.sun);
     }
-    if (mounted) setState(() => _ds = ds);
+    return PaperButton(
+      label: 'Điểm danh ngay',
+      fontSize: 13,
+      color: Paper.accent,
+      onPressed: () => moDiemDanh(e),
+    );
   }
-
-  @override
-  Widget build(BuildContext context) => Ticker(
-    builder: (_, now) {
-      // Lọc lại theo giờ hiện tại, không chỉ theo lúc tải: thẻ phải tự rụng
-      // đúng phút cửa sổ đóng, khỏi chờ lượt làm mới sau.
-      final ds = diemDanh(_ds, now);
-      if (ds.isEmpty) return const SizedBox.shrink();
-      return Column(
-        children: [
-          for (final e in ds) _Buoi(e, now),
-          const SizedBox(height: 20),
-        ],
-      );
-    },
-  );
 }
 
-class _Buoi extends StatelessWidget {
-  const _Buoi(this.e, this.now);
+/// Thẻ đầy đủ cho một buổi điểm danh không gắn được vào tiết nào trong ngày
+/// (lịch chính quy trống, hay giờ điểm lệch hẳn khỏi khung tiết).
+class BuoiDiemDanh extends StatelessWidget {
+  const BuoiDiemDanh(this.e, this.now, {super.key});
   final LmsEvent e;
   final DateTime now;
 
@@ -151,12 +135,6 @@ class _Buoi extends StatelessWidget {
   Widget build(BuildContext context) {
     final mo = !e.start.isAfter(now);
     final dong = _dong(e);
-    final url =
-        e.url ??
-        // Lịch tháng không kèm link tới buổi điểm danh, nhưng trang ngày của
-        // Moodle thì mở được bằng mốc giờ, và trong đó có đường vào buổi đó.
-        'https://lms.dlu.edu.vn/calendar/view.php?view=day'
-            '&time=${e.start.millisecondsSinceEpoch ~/ 1000}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: PaperBox(
@@ -221,10 +199,7 @@ class _Buoi extends StatelessWidget {
             PaperButton(
               label: mo ? 'Điểm danh ngay' : 'Mở trên LMS',
               color: mo ? Paper.accent : Paper.card,
-              onPressed: () => launchUrl(
-                Uri.parse(url),
-                mode: LaunchMode.externalApplication,
-              ),
+              onPressed: () => moDiemDanh(e),
             ),
           ],
         ),
@@ -232,6 +207,10 @@ class _Buoi extends StatelessWidget {
     );
   }
 }
+
+/// Xa hơn chừng này thì thôi, không làm thẻ đếm ngược nữa — nó chen lên đầu
+/// Trang chủ nên phải là việc thật sự sắp phải làm.
+const _sapToi = Duration(days: 2);
 
 /// Thẻ đếm ngược trên Trang chủ: việc LMS gần nhất còn bao lâu nữa, kèm số
 /// việc còn lại trong tầm nhìn. Chưa bật LMS hay không còn việc nào thì thẻ
@@ -284,7 +263,14 @@ class _SuKienCardState extends State<SuKienCard> with Reloadable<SuKienCard> {
     builder: (_, now) {
       // Lọc lại theo giờ hiện tại chứ không theo lúc tải: việc qua mốc là tự
       // rụng, khỏi chờ lượt sau.
-      final ds = locSuKien(_ds, now);
+      // Điểm danh là việc của buổi học, đã nằm trong mục "Hôm nay" cùng thẻ
+      // riêng của nó — đếm ngược tới buổi điểm danh tuần sau thì chẳng để làm
+      // gì. Và chỉ nhận việc đã gần: "Sắp tới" mà còn bảy ngày là không còn
+      // nghĩa gì, danh sách dài hạn đã nằm trong chuông.
+      final ds = [
+        for (final e in locSuKien(_ds, now))
+          if (!laDiemDanh(e) && e.start.difference(now) <= _sapToi) e,
+      ];
       if (ds.isEmpty) return const SizedBox.shrink();
       return Column(
         children: [

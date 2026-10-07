@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'data.dart';
 import 'graph.dart';
+import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -105,15 +106,7 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
               MediaQuery.paddingOf(context).bottom + chuaThanhDuoi,
             ),
             children: [
-              const Text(
-                'Lịch thi',
-                style: TextStyle(
-                  fontFamily: 'Baloo',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 30,
-                  color: Paper.ink,
-                ),
-              ),
+              TieuDeTrang('Lịch thi', session: widget.session),
               const SizedBox(height: 12),
               Row(
                 children: [

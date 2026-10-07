@@ -130,8 +130,12 @@ class LmsKho {
 
   /// Mọi thông báo đã từng lấy về, mới nhất lên trước. [KhoData.luc] là lúc
   /// ghi nên không dùng để sắp — sắp theo ngày của chính thông báo.
-  static Future<List<LmsNotification>> doc() async {
-    final dong = await Db.i.nhomDang(nhomThongBao);
+  /// [caDaXoa] lấy cả dòng đã vuốt xoá — hộp thư cần chúng để bày lại trong
+  /// mục "Thông báo cũ"; chỗ nào chỉ đếm tin mới thì để nguyên mặc định.
+  static Future<List<LmsNotification>> doc({bool caDaXoa = false}) async {
+    final dong = caDaXoa
+        ? await Db.i.nhomCa(nhomThongBao)
+        : await Db.i.nhomDang(nhomThongBao);
     // Nhịp LMS gọi hàm này 90 giây một lượt và hộp thư chỉ dài ra theo thời
     // gian, nên cả đống đi một lượt sang isolate khác mà giải mã.
     final m = await giaiMaNhieu([for (final d in dong) d.giaTri]);
@@ -149,12 +153,17 @@ class LmsKho {
   ///
   /// Thông báo đã có thì giữ nguyên cờ đã xem: server không biết mình đã xem
   /// trong app, ghi đè là nó chưa đọc lại lần nữa.
+  /// Thông báo người dùng đã vuốt xoá thì không nhận lại: Moodle vẫn trả nó
+  /// về mỗi nhịp vì server không biết mình đã bỏ.
   static Future<void> luu(Iterable<LmsNotification> moi) async {
-    final cu = {
-      for (final d in await Db.i.nhomDang(nhomThongBao)) d.khoa: d.giaTri,
+    final dong = await Db.i.nhomCa(nhomThongBao);
+    final cu = {for (final d in dong) d.khoa: d.giaTri};
+    final daXoa = {
+      for (final d in dong)
+        if (!d.bat) d.khoa,
     };
     for (final n in moi) {
-      if (n.id.isEmpty) continue;
+      if (n.id.isEmpty || daXoa.contains(n.id)) continue;
       // Cùng một hàm dựng JSON nên so chuỗi là đủ, khỏi so từng khoá.
       final json = jsonEncode({
         'subject': n.subject,
@@ -188,6 +197,13 @@ class LmsKho {
       _daXem: false,
     }),
   );
+
+  /// Vuốt xoá một thông báo: ẩn dòng đi, chữ vẫn nằm trong máy. Đánh dấu đã
+  /// xem luôn — xoá rồi mà huy hiệu trên chuông vẫn đếm nó thì vô lý.
+  static Future<void> xoa(String id) async {
+    await danhDauDaXem(id);
+    await Db.i.an(nhomThongBao, id);
+  }
 
   /// Đăng nhập LMS lại được thì cất tin cảnh báo đi — ẩn chứ không xoá.
   static Future<void> thoiBaoSaiMatKhau() =>

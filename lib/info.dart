@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
+import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -134,27 +135,17 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
             MediaQuery.paddingOf(context).bottom + chuaThanhDuoi,
           ),
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Hồ sơ sinh viên',
-                    style: TextStyle(
-                      fontFamily: 'Baloo',
-                      fontWeight: FontWeight.w800,
-                      fontSize: 30,
-                      color: Paper.ink,
-                    ),
-                  ),
-                ),
-                if (Navigator.of(context).canPop())
-                  PaperButton(
-                    label: 'Quay lại',
-                    color: Paper.card,
-                    onColor: Paper.ink,
-                    onPressed: () => Navigator.pop(context),
-                  ),
-              ],
+            TieuDeTrang(
+              'Hồ sơ sinh viên',
+              session: widget.session,
+              phai: Navigator.of(context).canPop()
+                  ? PaperButton(
+                      label: 'Quay lại',
+                      color: Paper.card,
+                      onColor: Paper.ink,
+                      onPressed: () => Navigator.pop(context),
+                    )
+                  : null,
             ),
             const SizedBox(height: 16),
             if (_error != null)

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'data.dart';
+import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -190,27 +191,17 @@ class _MarksScreenState extends State<MarksScreen>
                       (pop ? 40 : chuaThanhDuoi),
                 ),
                 children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Điểm',
-                          style: TextStyle(
-                            fontFamily: 'Baloo',
-                            fontWeight: FontWeight.w800,
-                            fontSize: 30,
-                            color: Paper.ink,
-                          ),
-                        ),
-                      ),
-                      if (pop)
-                        PaperButton(
-                          label: 'Quay lại',
-                          color: Paper.card,
-                          onColor: Paper.ink,
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                    ],
+                  TieuDeTrang(
+                    'Điểm',
+                    session: widget.session,
+                    phai: pop
+                        ? PaperButton(
+                            label: 'Quay lại',
+                            color: Paper.card,
+                            onColor: Paper.ink,
+                            onPressed: () => Navigator.pop(context),
+                          )
+                        : null,
                   ),
                   const SizedBox(height: 16),
                   if (_error != null)
