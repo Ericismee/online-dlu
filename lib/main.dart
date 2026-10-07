@@ -462,50 +462,61 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 940),
         child: PullRefresh(
-          child: ListView(
+          // Không dùng ListView: thẻ nào cuộn khuất là nó dẹp đi, lúc quay lại
+          // dựng lại từ đầu — mỗi thẻ ở đây initState là gọi portal, hiện
+          // khung chờ rồi mới cao trở lại, nên chiều cao trang cứ đổi. Trên
+          // iOS kéo quá mép là chiều cao đổi lúc đang nảy, nảy lại làm thẻ
+          // khác dựng lại, thành vòng lặp nhảy lên nhảy xuống không dứt. Dựng
+          // sẵn cả cột thì chiều cao đứng yên; có mười thẻ, không đắt.
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
               20,
               MediaQuery.paddingOf(context).top + 20,
               20,
               MediaQuery.paddingOf(context).bottom + chuaThanhDuoi,
             ),
-            children: [
-              Ticker(
-                builder: (_, now) => _Header(now: now, session: widget.session),
-              ),
-              const SizedBox(height: 16),
-              Ticker(builder: (_, now) => StaleDataWarning(now: now)),
-              const UpdateBanner(),
-              const Changelog(),
-              // Điểm danh đứng trước mọi thẻ khác: cả ngày chỉ có mấy phút
-              // để điểm. Không có buổi nào hôm nay thì nó không chiếm chỗ.
-              const DiemDanhCard(),
-              // Các thẻ hiện ra lần lượt cho đỡ khô khan.
-              PopIn(
-                child: _Me(session: widget.session, lop: _lop),
-              ),
-              const SizedBox(height: 20),
-              PopIn(
-                delay: const Duration(milliseconds: 70),
-                child: TodayLessons(session: widget.session),
-              ),
-              PopIn(
-                delay: const Duration(milliseconds: 140),
-                child: Ticker(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Ticker(
                   builder: (_, now) =>
-                      _NextExam(session: widget.session, now: now),
+                      _Header(now: now, session: widget.session),
                 ),
-              ),
-              PopIn(
-                delay: const Duration(milliseconds: 180),
-                child: TienDoCard(session: widget.session),
-              ),
-              const SizedBox(height: 20),
-              PopIn(
-                delay: const Duration(milliseconds: 220),
-                child: MenuCard(onGo: widget.onGo, session: widget.session),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Ticker(builder: (_, now) => StaleDataWarning(now: now)),
+                const UpdateBanner(),
+                const Changelog(),
+                // Điểm danh đứng trước mọi thẻ khác: cả ngày chỉ có mấy phút
+                // để điểm. Không có buổi nào hôm nay thì nó không chiếm chỗ.
+                const DiemDanhCard(),
+                // Các thẻ hiện ra lần lượt cho đỡ khô khan.
+                PopIn(
+                  child: _Me(session: widget.session, lop: _lop),
+                ),
+                const SizedBox(height: 20),
+                PopIn(
+                  delay: const Duration(milliseconds: 70),
+                  child: TodayLessons(session: widget.session),
+                ),
+                PopIn(
+                  delay: const Duration(milliseconds: 140),
+                  child: Ticker(
+                    builder: (_, now) =>
+                        _NextExam(session: widget.session, now: now),
+                  ),
+                ),
+                PopIn(
+                  delay: const Duration(milliseconds: 180),
+                  child: TienDoCard(session: widget.session),
+                ),
+                const SizedBox(height: 20),
+                PopIn(
+                  delay: const Duration(milliseconds: 220),
+                  child: MenuCard(onGo: widget.onGo, session: widget.session),
+                ),
+              ],
+            ),
           ),
         ),
       ),
