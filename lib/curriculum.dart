@@ -95,7 +95,7 @@ class _CurriculumScreenState extends State<CurriculumScreen>
                             'Chương trình đào tạo',
                             maxLines: 1,
                             style: TextStyle(
-                              fontFamily: 'Baloo',
+                              fontFamily: 'Display',
                               fontWeight: FontWeight.w800,
                               fontSize: 30,
                               color: Paper.ink,
@@ -150,7 +150,7 @@ class _CurriculumScreenState extends State<CurriculumScreen>
                     for (var i = 0; i < 3; i++)
                       const Padding(
                         padding: EdgeInsets.only(bottom: 12),
-                        child: Skeleton(height: 140, radius: 16, ink: true),
+                        child: Skeleton(height: 140, ink: true),
                       )
                   else
                     for (final (term, subjects) in byTerm(rows))
@@ -181,7 +181,7 @@ class _Term extends StatelessWidget {
             child: Text(
               term,
               style: const TextStyle(
-                fontFamily: 'Baloo',
+                fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
                 color: Paper.ink,

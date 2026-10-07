@@ -174,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Text(
                     'Cài đặt',
                     style: TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 30,
                       color: Paper.ink,
@@ -436,7 +436,7 @@ class _CongTac extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final v = value;
-    if (v == null) return const Skeleton(height: 60, radius: 16, ink: true);
+    if (v == null) return const Skeleton(height: 60, ink: true);
     final phu = this.phu;
     return PaperBox(
       color: v ? color : Paper.card,
@@ -525,7 +525,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
               const Text(
                 'Ứng dụng đang khoá',
                 style: TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 22,
                   color: Paper.ink,
@@ -608,7 +608,7 @@ class _NhacToggleState extends State<NhacToggle> {
   @override
   Widget build(BuildContext context) {
     final bat = _bat;
-    if (bat == null) return const Skeleton(height: 64, radius: 16, ink: true);
+    if (bat == null) return const Skeleton(height: 64, ink: true);
     return Column(
       children: [
         PaperBox(

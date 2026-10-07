@@ -103,7 +103,7 @@ class _BehaviorScreenState extends State<BehaviorScreen>
                       child: Text(
                         'Điểm rèn luyện',
                         style: TextStyle(
-                          fontFamily: 'Baloo',
+                          fontFamily: 'Display',
                           fontWeight: FontWeight.w800,
                           fontSize: 30,
                           color: Paper.ink,
@@ -128,7 +128,7 @@ class _BehaviorScreenState extends State<BehaviorScreen>
                     ),
                   )
                 else if (_scores == null)
-                  const Skeleton(height: 160, radius: 16, ink: true)
+                  const Skeleton(height: 160, ink: true)
                 else
                   PaperBox(
                     child: Column(
@@ -251,7 +251,7 @@ class _BehaviorDetailScreenState extends State<BehaviorDetailScreen>
                             'Phiếu rèn luyện',
                             maxLines: 1,
                             style: TextStyle(
-                              fontFamily: 'Baloo',
+                              fontFamily: 'Display',
                               fontWeight: FontWeight.w800,
                               fontSize: 30,
                               color: Paper.ink,
@@ -307,9 +307,9 @@ class _BehaviorDetailScreenState extends State<BehaviorDetailScreen>
                       ),
                     )
                   else if (_data == null) ...[
-                    const Skeleton(height: 110, radius: 16, ink: true),
+                    const Skeleton(height: 110, ink: true),
                     const SizedBox(height: 12),
-                    const Skeleton(height: 200, radius: 16, ink: true),
+                    const Skeleton(height: 200, ink: true),
                   ] else if (rows.isEmpty)
                     PaperBox(
                       child: Container(
@@ -321,7 +321,7 @@ class _BehaviorDetailScreenState extends State<BehaviorDetailScreen>
                         child: const Text(
                           'Kỳ này chưa chấm',
                           style: TextStyle(
-                            fontFamily: 'Baloo',
+                            fontFamily: 'Display',
                             fontWeight: FontWeight.w800,
                             fontSize: 26,
                             color: Paper.ink,
@@ -362,7 +362,7 @@ class _Total extends StatelessWidget {
           Text(
             '$diem',
             style: const TextStyle(
-              fontFamily: 'Baloo',
+              fontFamily: 'Display',
               fontWeight: FontWeight.w800,
               fontSize: 42,
               height: 1,
@@ -403,7 +403,7 @@ class _Group extends StatelessWidget {
                 child: Text(
                   g.name,
                   style: const TextStyle(
-                    fontFamily: 'Baloo',
+                    fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
                     height: 1.2,

@@ -213,9 +213,9 @@ class _MarksScreenState extends State<MarksScreen>
                       ),
                     )
                   else if (_years == null) ...[
-                    const Skeleton(height: 110, radius: 16, ink: true),
+                    const Skeleton(height: 110, ink: true),
                     const SizedBox(height: 16),
-                    const Skeleton(height: 240, radius: 16, ink: true),
+                    const Skeleton(height: 240, ink: true),
                   ] else if (pick == null)
                     PaperBox(
                       child: Container(
@@ -227,7 +227,7 @@ class _MarksScreenState extends State<MarksScreen>
                         child: const Text(
                           'Chưa có điểm',
                           style: TextStyle(
-                            fontFamily: 'Baloo',
+                            fontFamily: 'Display',
                             fontWeight: FontWeight.w800,
                             fontSize: 30,
                             color: Paper.ink,
@@ -341,7 +341,7 @@ class TotalCard extends StatelessWidget {
         const Text(
           'Tích luỹ toàn khoá',
           style: TextStyle(
-            fontFamily: 'Baloo',
+            fontFamily: 'Display',
             fontWeight: FontWeight.w800,
             fontSize: 20,
             color: Paper.ink,
@@ -389,7 +389,7 @@ class _Term extends StatelessWidget {
               child: Text(
                 '$year · $term',
                 style: const TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
                   color: Paper.ink,
@@ -420,7 +420,7 @@ class _Term extends StatelessWidget {
                   child: const Text(
                     'Chưa có điểm',
                     style: TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 26,
                       color: Paper.ink,
@@ -533,7 +533,7 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
                       child: Text(
                         'Thử GPA',
                         style: TextStyle(
-                          fontFamily: 'Baloo',
+                          fontFamily: 'Display',
                           fontWeight: FontWeight.w800,
                           fontSize: 30,
                           color: Paper.ink,
@@ -563,7 +563,7 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
                       Text(
                         'GPA dự kiến ${gpa.toStringAsFixed(2)}/4',
                         style: const TextStyle(
-                          fontFamily: 'Baloo',
+                          fontFamily: 'Display',
                           fontWeight: FontWeight.w800,
                           fontSize: 24,
                           color: Paper.ink,
@@ -769,7 +769,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                       child: Text(
                         'Cải thiện',
                         style: TextStyle(
-                          fontFamily: 'Baloo',
+                          fontFamily: 'Display',
                           fontWeight: FontWeight.w800,
                           fontSize: 30,
                           color: Paper.ink,
@@ -801,9 +801,9 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                     ),
                   )
                 else if (_years == null) ...[
-                  const Skeleton(height: 120, radius: 16, ink: true),
+                  const Skeleton(height: 120, ink: true),
                   const SizedBox(height: 16),
-                  const Skeleton(height: 260, radius: 16, ink: true),
+                  const Skeleton(height: 260, ink: true),
                 ] else ...[
                   _KeHoach(
                     gpa: _gpa,
@@ -840,7 +840,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                       child: const Text(
                         'Không có môn nào dưới B — chưa cần cải thiện môn nào.',
                         style: TextStyle(
-                          fontFamily: 'Baloo',
+                          fontFamily: 'Display',
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
                           color: Paper.ink,
@@ -851,7 +851,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                     const Text(
                       'Nên ưu tiên',
                       style: TextStyle(
-                        fontFamily: 'Baloo',
+                        fontFamily: 'Display',
                         fontWeight: FontWeight.w800,
                         fontSize: 20,
                         color: Paper.ink,
@@ -878,7 +878,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                   const Text(
                     'Môn tự do',
                     style: TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 20,
                       color: Paper.ink,
@@ -984,8 +984,8 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
             decoration: BoxDecoration(
               color: Paper.paper,
               border: Paper.border,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: Paper.shadow(6),
+              borderRadius: BorderRadius.all(Paper.radius),
+              boxShadow: Paper.shadow(8),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -994,7 +994,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                 const Text(
                   'Thêm môn tự do',
                   style: TextStyle(
-                    fontFamily: 'Baloo',
+                    fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 20,
                     color: Paper.ink,
@@ -1006,7 +1006,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                     controller: ten,
                     autofocus: true,
                     style: const TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w700,
                       color: Paper.ink,
                     ),
@@ -1015,7 +1015,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                       border: InputBorder.none,
                       hintText: 'Tên môn (vd: Tiếng Anh 2)',
                       hintStyle: TextStyle(
-                        fontFamily: 'Baloo',
+                        fontFamily: 'Display',
                         fontWeight: FontWeight.w700,
                         color: Paper.ink2,
                       ),
@@ -1096,7 +1096,7 @@ class _O extends StatelessWidget {
     decoration: BoxDecoration(
       color: Paper.card,
       border: Paper.border,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.all(Paper.radius),
       boxShadow: Paper.shadow(3),
     ),
     child: child,
@@ -1128,7 +1128,7 @@ class _KeHoach extends StatelessWidget {
               Text(
                 gpa.toStringAsFixed(2),
                 style: const TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 24,
                   color: Paper.ink2,
@@ -1145,7 +1145,7 @@ class _KeHoach extends StatelessWidget {
               Text(
                 '${moi.toStringAsFixed(2)}/4',
                 style: const TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 30,
                   color: Paper.ink,
@@ -1201,7 +1201,7 @@ class _GoiYCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: chon ? Paper.mint : Paper.card,
         border: Paper.border,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.all(Paper.radius),
         boxShadow: Paper.shadow(down ? 0 : (chon ? 4 : 2)),
       ),
       child: Column(
@@ -1217,12 +1217,12 @@ class _GoiYCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: hang <= 3 ? Paper.accent : Paper.paper,
                   border: Paper.border,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.all(Paper.radius),
                 ),
                 child: Text(
                   '$hang',
                   style: const TextStyle(
-                    fontFamily: 'Baloo',
+                    fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
                     color: Paper.ink,
@@ -1275,7 +1275,7 @@ class _GoiYCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Paper.paper,
                     border: Paper.border,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.all(Paper.radius),
                   ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
@@ -1283,7 +1283,7 @@ class _GoiYCard extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         color: Paper.accent,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.all(Paper.radius),
                       ),
                     ),
                   ),
@@ -1293,7 +1293,7 @@ class _GoiYCard extends StatelessWidget {
               Text(
                 '+${goiY.tang.toStringAsFixed(2)}',
                 style: const TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                   color: Paper.ink,

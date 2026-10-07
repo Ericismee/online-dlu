@@ -95,7 +95,7 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                         child: Text(
                           'Học phần',
                           style: TextStyle(
-                            fontFamily: 'Baloo',
+                            fontFamily: 'Display',
                             fontWeight: FontWeight.w800,
                             fontSize: 30,
                             color: Paper.ink,
@@ -181,7 +181,7 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                     for (var i = 0; i < 4; i++)
                       const Padding(
                         padding: EdgeInsets.only(bottom: 12),
-                        child: Skeleton(height: 96, radius: 16, ink: true),
+                        child: Skeleton(height: 96, ink: true),
                       )
                   else if (all.isNotEmpty && list.isEmpty)
                     PaperBox(
@@ -201,7 +201,7 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                         child: const Text(
                           'Chưa đăng ký',
                           style: TextStyle(
-                            fontFamily: 'Baloo',
+                            fontFamily: 'Display',
                             fontWeight: FontWeight.w800,
                             fontSize: 30,
                             color: Paper.ink,
@@ -239,7 +239,7 @@ class _Course extends StatelessWidget {
           Text(
             subjectName(c['CurriculumName']),
             style: const TextStyle(
-              fontFamily: 'Baloo',
+              fontFamily: 'Display',
               fontWeight: FontWeight.w800,
               fontSize: 18,
               color: Paper.ink,

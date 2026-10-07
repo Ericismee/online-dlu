@@ -1,24 +1,25 @@
 import 'dart:async';
-import 'dart:math' show max, pi;
+import 'dart:math' show pi;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'cache.dart';
 
-/// Palette lifted from codex-resets.com: cozy paper + hard ink borders.
+/// Bảng màu và token lấy đúng theo neubrutalism.com: nền kem, mực đen tuyền,
+/// viền dày, bóng cứng không nhoè, góc vuông.
 class Paper {
-  static const paper = Color(0xFFFFF4DD);
-  static const ink = Color(0xFF26201A);
-  static const ink2 = Color(0xFF5C5347);
-  static const ink3 = Color(0xFF877B6B);
-  static const card = Color(0xFFFFFDF7);
-  static const accent = Color(0xFFFF5C2B);
-  static const sun = Color(0xFFFFD84D);
-  static const rose = Color(0xFFFFB9CC);
-  static const sky = Color(0xFFA5DCFF);
-  static const peach = Color(0xFFFFB07A);
-  static const mint = Color(0xFFB9E6A6);
+  static const paper = Color(0xFFFFFDF5); // --bg
+  static const ink = Color(0xFF000000); // --ink
+  static const ink2 = Color(0xFF444444);
+  static const ink3 = Color(0xFF666666);
+  static const card = Color(0xFFFFFFFF); // --surface
+  static const accent = Color(0xFFFF6B6B); // --pink
+  static const sun = Color(0xFFFFD23F); // --yellow
+  static const rose = Color(0xFFFF4444); // --red: hỏng, trượt, trùng giờ
+  static const sky = Color(0xFF74B9FF); // --blue
+  static const peach = Color(0xFFFFA552); // --orange
+  static const mint = Color(0xFF88D498); // --green
 
   /// 'monospace' resolves to nothing on macOS — name real families first.
   static const mono = TextStyle(
@@ -26,12 +27,14 @@ class Paper {
     fontFeatures: [FontFeature.tabularFigures()],
   );
 
-  static const radius = Radius.circular(14);
-  static final border = Border.all(color: ink, width: 2);
+  /// Neubrutalism gốc để góc vuông, nhưng trên màn điện thoại nhìn gắt và khó
+  /// chịu — bo 12 như mặc định của app SaaS, mọi thứ khác vẫn giữ nguyên chất.
+  static const radius = Radius.circular(12);
+  static final border = Border.all(color: ink, width: 3);
 
-  /// Hard offset shadow, no blur — the whole look hangs on this.
-  /// Bóng khối đổ chéo như codex-resets.com (--shadow: 4px 4px 0 ink).
-  static List<BoxShadow> shadow([double d = 4]) => [
+  /// Bóng cứng, lệch hẳn, không nhoè — cả cái nhìn treo vào đây.
+  /// Thang của neubrutalism.com: sm 3, md 5, lg 8, xl 12.
+  static List<BoxShadow> shadow([double d = 5]) => [
     BoxShadow(color: ink, offset: Offset(d, d)),
   ];
 
@@ -47,7 +50,7 @@ class Paper {
   static const easeOut = Cubic(0.22, 1, 0.36, 1);
 
   static ThemeData theme() {
-    const display = 'Baloo';
+    const display = 'Display';
     final base = ThemeData.light(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: paper,
@@ -61,13 +64,15 @@ class Paper {
           .copyWith(
             titleLarge: const TextStyle(
               fontFamily: display,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               fontSize: 22,
+              height: 1.15,
             ),
             titleMedium: const TextStyle(
               fontFamily: display,
               fontWeight: FontWeight.w700,
               fontSize: 16,
+              height: 1.15,
             ),
           ),
       dividerColor: ink,
@@ -164,7 +169,7 @@ class PaperRing extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 style: TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   height: 1,
                   // Nhãn giữa vòng dài ngắn khác nhau ('3.21' với '18/42'), cỡ
@@ -248,7 +253,7 @@ class _RingPainter extends CustomPainter {
       net
         ..color = Paper.ink
         ..strokeWidth = day + 3.2
-        ..strokeCap = StrokeCap.round,
+        ..strokeCap = StrokeCap.butt,
     );
     canvas.drawArc(
       o,
@@ -258,18 +263,6 @@ class _RingPainter extends CustomPainter {
       net
         ..color = color
         ..strokeWidth = day,
-    );
-    // Vệt sáng mảnh men theo mép trong dải màu — giấy màu bắt sáng, đủ để vòng
-    // không phẳng lì mà vẫn không có gradient.
-    canvas.drawArc(
-      Rect.fromCircle(center: tam, radius: giua - day / 2 + 2.6),
-      -pi / 2 + 0.12,
-      max(goc - 0.24, 0),
-      false,
-      net
-        ..color = Colors.white.withValues(alpha: 0.5)
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round,
     );
   }
 
@@ -292,12 +285,14 @@ class Pill extends StatelessWidget {
   Pill withInk(Color c) => Pill(label, color: color, ink: c);
 
   @override
+  // .badge của neubrutalism.com: viền mảnh 2px, bóng cứng nhỏ, chữ giãn.
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     decoration: BoxDecoration(
       color: color,
-      border: Border.all(color: Paper.ink, width: 1.5),
-      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: Paper.ink, width: 2),
+      borderRadius: BorderRadius.all(Paper.radius),
+      boxShadow: Paper.shadow(3),
     ),
     child: Text(
       label,
@@ -305,7 +300,12 @@ class Pill extends StatelessWidget {
       // Flexible để nó còn chỗ mà cắt, chứ trong Wrap là tràn qua mép.
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ink),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.6,
+        color: ink,
+      ),
     ),
   );
 }
@@ -339,22 +339,27 @@ class PaperButton extends StatefulWidget {
 class _PaperButtonState extends State<PaperButton> {
   Widget _than(bool down) {
     final tat = widget.onPressed == null;
+    // .btn / .btn-small: nút nhỏ thì đệm hẹp và bóng nhỏ theo.
+    final nho = (widget.fontSize ?? 16) <= 13;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: nho ? 16 : 24,
+        vertical: nho ? 8 : 12,
+      ),
       decoration: BoxDecoration(
         color: tat ? Paper.card : widget.color,
         border: Paper.border,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.all(Paper.radius),
         // Nút tắt nằm bẹt xuống giấy: không bóng là thấy ngay nó không bấm
         // được, khỏi cần chữ mờ mới hiểu.
-        boxShadow: Paper.shadow(tat || down ? 0 : 4),
+        boxShadow: Paper.shadow(tat || down ? 0 : (nho ? 3 : 5)),
       ),
       child: Text(
         widget.label,
         textAlign: TextAlign.center,
         style: TextStyle(
-          fontFamily: 'Baloo',
-          fontWeight: FontWeight.w800,
+          fontFamily: 'Display',
+          fontWeight: FontWeight.w700,
           fontSize: widget.fontSize,
           color: tat ? Paper.ink3 : widget.onColor,
         ),
@@ -366,7 +371,7 @@ class _PaperButtonState extends State<PaperButton> {
   Widget build(BuildContext context) {
     final onPressed = widget.onPressed;
     if (onPressed == null) return _than(false);
-    return Pressable(onTap: onPressed, shift: 3, builder: _than);
+    return Pressable(onTap: onPressed, builder: _than);
   }
 }
 
@@ -403,15 +408,9 @@ class _Dots extends CustomPainter {
 
 /// Mẩu giấy xám nhấp nháy nhẹ, dùng làm chỗ chờ khi API chưa về.
 class Skeleton extends StatefulWidget {
-  const Skeleton({
-    super.key,
-    this.width,
-    this.height = 14,
-    this.radius = 8,
-    this.ink = false,
-  });
+  const Skeleton({super.key, this.width, this.height = 14, this.ink = false});
   final double? width;
-  final double height, radius;
+  final double height;
 
   /// true = có viền mực, dùng cho các ô to như ô lịch.
   final bool ink;
@@ -442,9 +441,9 @@ class _SkeletonState extends State<Skeleton>
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
-        color: const Color(0xFFE7DCC4),
+        color: const Color(0xFFF5F0E8),
         border: widget.ink ? Paper.border : null,
-        borderRadius: BorderRadius.circular(widget.radius),
+        borderRadius: BorderRadius.all(Paper.radius),
       ),
     ),
   );
@@ -470,7 +469,7 @@ class Choice extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         border: Paper.border,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.all(Paper.radius),
         boxShadow: Paper.shadow(down ? 0 : 3),
       ),
       child: Row(
@@ -479,7 +478,7 @@ class Choice extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontFamily: 'Baloo',
+              fontFamily: 'Display',
               fontWeight: FontWeight.w800,
               fontSize: 14,
               color: Paper.ink,
@@ -507,8 +506,8 @@ Future<String?> chooseOption(
       decoration: BoxDecoration(
         color: Paper.paper,
         border: Paper.border,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: Paper.shadow(6),
+        borderRadius: BorderRadius.all(Paper.radius),
+        boxShadow: Paper.shadow(8),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -529,13 +528,13 @@ Future<String?> chooseOption(
                     decoration: BoxDecoration(
                       color: o == current ? Paper.sun : Paper.card,
                       border: Paper.border,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: Paper.shadow(2),
+                      borderRadius: BorderRadius.all(Paper.radius),
+                      boxShadow: Paper.shadow(3),
                     ),
                     child: Text(
                       o,
                       style: const TextStyle(
-                        fontFamily: 'Baloo',
+                        fontFamily: 'Display',
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                         color: Paper.ink,
@@ -810,7 +809,7 @@ class PaperField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     OutlineInputBorder border(Color c) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.all(Paper.radius),
       borderSide: BorderSide(color: c, width: 2),
     );
     return Semantics(
@@ -837,7 +836,7 @@ class PaperField extends StatelessWidget {
           border: border(Paper.ink),
           enabledBorder: border(Paper.ink),
           disabledBorder: border(Paper.ink3),
-          focusedBorder: border(Paper.accent),
+          focusedBorder: border(Paper.sky),
         ),
       ),
     );
@@ -872,8 +871,8 @@ class PaperDialog extends StatelessWidget {
       decoration: BoxDecoration(
         color: Paper.paper,
         border: Paper.border,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: Paper.shadow(6),
+        borderRadius: BorderRadius.all(Paper.radius),
+        boxShadow: Paper.shadow(8),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -889,7 +888,7 @@ class PaperDialog extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: color,
                   border: Paper.border,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.all(Paper.radius),
                   boxShadow: Paper.shadow(3),
                 ),
                 child: Icon(icon, size: 22, color: Paper.ink),
@@ -899,7 +898,7 @@ class PaperDialog extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontFamily: 'Baloo',
+                    fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 20,
                     height: 1.15,
@@ -948,7 +947,7 @@ class _SearchBoxState extends State<SearchBox> {
     decoration: BoxDecoration(
       color: Paper.card,
       border: Paper.border,
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.all(Paper.radius),
       boxShadow: Paper.shadow(3),
     ),
     child: Row(

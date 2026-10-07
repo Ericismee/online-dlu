@@ -537,7 +537,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontFamily: 'Baloo',
+                                    fontFamily: 'Display',
                                     fontWeight: FontWeight.w800,
                                     fontSize: 22,
                                     color: Paper.ink,
@@ -616,7 +616,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                   for (var i = 0; i < lead; i++) const SizedBox(),
                   if (_days == null)
                     for (var d = 1; d <= days; d++)
-                      const Skeleton(height: 44, radius: 6, ink: true)
+                      const Skeleton(height: 44, ink: true)
                   else
                     for (var d = 1; d <= days; d++)
                       _Cell(
@@ -804,7 +804,7 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
                       color: Paper.ink,
@@ -820,7 +820,7 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
                 children: [
                   Skeleton(width: 190, height: 16),
                   SizedBox(height: 10),
-                  Skeleton(width: 240, height: 24, radius: 12),
+                  Skeleton(width: 240, height: 24),
                   SizedBox(height: 10),
                   Skeleton(width: 130, height: 12),
                 ],
@@ -835,13 +835,13 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
                 decoration: BoxDecoration(
                   color: Paper.sun,
                   border: Paper.border,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.all(Paper.radius),
                   boxShadow: Paper.shadow(3),
                 ),
                 child: const Text(
                   'Không có tiết',
                   style: TextStyle(
-                    fontFamily: 'Baloo',
+                    fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 20,
                     color: Paper.ink,
@@ -902,8 +902,8 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
           decoration: BoxDecoration(
             color: Paper.paper,
             border: Paper.border,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: Paper.shadow(6),
+            borderRadius: BorderRadius.all(Paper.radius),
+            boxShadow: Paper.shadow(8),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -912,7 +912,7 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
               const Text(
                 'Đặt lịch riêng',
                 style: TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
                   color: Paper.ink,
@@ -924,14 +924,14 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                 decoration: BoxDecoration(
                   color: Paper.card,
                   border: Paper.border,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.all(Paper.radius),
                   boxShadow: Paper.shadow(3),
                 ),
                 child: TextField(
                   controller: ten,
                   autofocus: true,
                   style: const TextStyle(
-                    fontFamily: 'Baloo',
+                    fontFamily: 'Display',
                     fontWeight: FontWeight.w700,
                     color: Paper.ink,
                   ),
@@ -940,7 +940,7 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                     border: InputBorder.none,
                     hintText: 'VD: Lên ATC',
                     hintStyle: TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w700,
                       color: Paper.ink2,
                     ),
@@ -955,7 +955,7 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                 decoration: BoxDecoration(
                   color: Paper.card,
                   border: Paper.border,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.all(Paper.radius),
                   boxShadow: Paper.shadow(3),
                 ),
                 child: TextField(
@@ -1054,8 +1054,8 @@ Future<TimeOfDay?> _chonGio(BuildContext context, TimeOfDay initial) {
         decoration: BoxDecoration(
           color: Paper.paper,
           border: Paper.border,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: Paper.shadow(6),
+          borderRadius: BorderRadius.all(Paper.radius),
+          boxShadow: Paper.shadow(8),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1063,7 +1063,7 @@ Future<TimeOfDay?> _chonGio(BuildContext context, TimeOfDay initial) {
             const Text(
               'Chọn giờ',
               style: TextStyle(
-                fontFamily: 'Baloo',
+                fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
                 color: Paper.ink,
@@ -1097,7 +1097,7 @@ Future<TimeOfDay?> _chonGio(BuildContext context, TimeOfDay initial) {
                       const Text(
                         ':',
                         style: TextStyle(
-                          fontFamily: 'Baloo',
+                          fontFamily: 'Display',
                           fontWeight: FontWeight.w800,
                           fontSize: 22,
                           color: Paper.ink,
@@ -1143,7 +1143,7 @@ Future<TimeOfDay?> _chonGio(BuildContext context, TimeOfDay initial) {
   );
 }
 
-/// Một bánh xe cuộn chọn số, kiểu giấy: chữ Baloo đậm, không viền mặc định
+/// Một bánh xe cuộn chọn số: chữ tiêu đề đậm, không viền mặc định
 /// của Cupertino.
 class _BanhXeSo extends StatelessWidget {
   const _BanhXeSo({
@@ -1169,7 +1169,7 @@ class _BanhXeSo extends StatelessWidget {
           child: Text(
             (i * step).toString().padLeft(2, '0'),
             style: const TextStyle(
-              fontFamily: 'Baloo',
+              fontFamily: 'Display',
               fontWeight: FontWeight.w700,
               fontSize: 18,
               color: Paper.ink,
@@ -1215,7 +1215,7 @@ class _Lesson extends StatelessWidget {
                       Text(
                         gio.$1,
                         style: const TextStyle(
-                          fontFamily: 'Baloo',
+                          fontFamily: 'Display',
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
                           color: Paper.ink,
@@ -1332,7 +1332,7 @@ class _LessonRieng extends StatelessWidget {
                     Text(
                       _gio(c.batDau),
                       style: const TextStyle(
-                        fontFamily: 'Baloo',
+                        fontFamily: 'Display',
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
                         color: Paper.ink,
@@ -1454,7 +1454,7 @@ class _TietKeRieng extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                       color: Paper.ink,
@@ -1468,7 +1468,7 @@ class _TietKeRieng extends StatelessWidget {
           Text(
             c.tieuDe,
             style: const TextStyle(
-              fontFamily: 'Baloo',
+              fontFamily: 'Display',
               fontWeight: FontWeight.w800,
               fontSize: 20,
               height: 1.15,
@@ -1527,8 +1527,8 @@ class _Legend extends StatelessWidget {
         height: dot ? 10 : 14,
         decoration: BoxDecoration(
           color: color,
-          border: Border.all(color: Paper.ink, width: 1.5),
-          borderRadius: dot ? null : BorderRadius.circular(4),
+          border: Border.all(color: Paper.ink, width: 2),
+          borderRadius: dot ? null : BorderRadius.all(Paper.radius),
           shape: dot ? BoxShape.circle : BoxShape.rectangle,
         ),
       ),
@@ -1572,8 +1572,8 @@ class _Cell extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: mau,
-                border: Border.all(color: Paper.ink, width: picked ? 3 : 1.5),
-                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Paper.ink, width: picked ? 4 : 2),
+                borderRadius: BorderRadius.all(Paper.radius),
                 boxShadow: picked ? Paper.shadow(down ? 0 : 2) : null,
               ),
               child: Text(
@@ -1627,8 +1627,8 @@ class _Arrow extends StatelessWidget {
         decoration: BoxDecoration(
           color: Paper.card,
           border: Paper.border,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: Paper.shadow(2),
+          borderRadius: BorderRadius.all(Paper.radius),
+          boxShadow: Paper.shadow(3),
         ),
         child: Icon(icon, size: 20, color: Paper.ink),
       ),
@@ -1657,8 +1657,8 @@ class _MonthPickerState extends State<_MonthPicker> {
       decoration: BoxDecoration(
         color: Paper.paper,
         border: Paper.border,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: Paper.shadow(6),
+        borderRadius: BorderRadius.all(Paper.radius),
+        boxShadow: Paper.shadow(8),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1675,7 +1675,7 @@ class _MonthPickerState extends State<_MonthPicker> {
                 child: Text(
                   '$_year',
                   style: const TextStyle(
-                    fontFamily: 'Baloo',
+                    fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 22,
                     color: Paper.ink,
@@ -1711,13 +1711,13 @@ class _MonthPickerState extends State<_MonthPicker> {
                             ? Paper.sun
                             : Paper.card,
                         border: Paper.border,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: Paper.shadow(2),
+                        borderRadius: BorderRadius.all(Paper.radius),
+                        boxShadow: Paper.shadow(3),
                       ),
                       child: Text(
                         'Th $m',
                         style: const TextStyle(
-                          fontFamily: 'Baloo',
+                          fontFamily: 'Display',
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                           color: Paper.ink,
@@ -1887,7 +1887,7 @@ class _TodayLessonsState extends State<TodayLessons>
       if (_ngay == null) {
         return const Padding(
           padding: EdgeInsets.only(bottom: 20),
-          child: Skeleton(height: 120, radius: 16, ink: true),
+          child: Skeleton(height: 120, ink: true),
         );
       }
       final homNay = DateTime(now.year, now.month, now.day);
@@ -1996,7 +1996,7 @@ class _Ngay extends StatelessWidget {
         Text(
           tieuDe,
           style: const TextStyle(
-            fontFamily: 'Baloo',
+            fontFamily: 'Display',
             fontWeight: FontWeight.w800,
             fontSize: 22,
             color: Paper.ink,
@@ -2096,7 +2096,7 @@ class _TietKe extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                       color: Paper.ink,
@@ -2110,7 +2110,7 @@ class _TietKe extends StatelessWidget {
           Text(
             subjectName(item['CurriculumName']),
             style: const TextStyle(
-              fontFamily: 'Baloo',
+              fontFamily: 'Display',
               fontWeight: FontWeight.w800,
               fontSize: 20,
               height: 1.15,

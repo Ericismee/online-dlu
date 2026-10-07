@@ -119,7 +119,7 @@ class TieuDeTrang extends StatelessWidget {
         child: Text(
           title,
           style: const TextStyle(
-            fontFamily: 'Baloo',
+            fontFamily: 'Display',
             fontWeight: FontWeight.w800,
             fontSize: 30,
             color: Paper.ink,
@@ -292,7 +292,7 @@ class _BellState extends State<Bell>
                 decoration: BoxDecoration(
                   color: Paper.card,
                   border: Paper.border,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.all(Paper.radius),
                   boxShadow: Paper.shadow(3),
                 ),
                 child: Icon(
@@ -315,12 +315,12 @@ class _BellState extends State<Bell>
                       decoration: BoxDecoration(
                         color: Paper.accent,
                         border: Paper.border,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.all(Paper.radius),
                       ),
                       child: Text(
                         '$n',
                         style: const TextStyle(
-                          fontFamily: 'Baloo',
+                          fontFamily: 'Display',
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
                           // Kem trên cam chỉ 3.03:1, mực trên cam 5.23:1.
@@ -459,8 +459,8 @@ class _InboxState extends State<_Inbox> {
       decoration: BoxDecoration(
         color: Paper.paper,
         border: Paper.border,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: Paper.shadow(6),
+        borderRadius: BorderRadius.all(Paper.radius),
+        boxShadow: Paper.shadow(8),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -473,7 +473,7 @@ class _InboxState extends State<_Inbox> {
                 child: Text(
                   'Thông báo',
                   style: TextStyle(
-                    fontFamily: 'Baloo',
+                    fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 22,
                     color: Paper.ink,
@@ -566,7 +566,7 @@ class _Muc extends StatelessWidget {
     child: Text(
       text,
       style: const TextStyle(
-        fontFamily: 'Baloo',
+        fontFamily: 'Display',
         fontWeight: FontWeight.w800,
         fontSize: 16,
         color: Paper.ink,

@@ -183,11 +183,11 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: const [
-                Skeleton(width: 220, height: 34, radius: 10),
+                Skeleton(width: 220, height: 34),
                 SizedBox(height: 20),
-                Skeleton(height: 120, radius: 16, ink: true),
+                Skeleton(height: 120, ink: true),
                 SizedBox(height: 16),
-                Skeleton(height: 320, radius: 16, ink: true),
+                Skeleton(height: 320, ink: true),
               ],
             ),
           ),
@@ -301,20 +301,13 @@ class _TopBlur extends StatelessWidget {
   const _TopBlur();
 
   @override
-  // Chỉ là dải gradient màu giấy: BackdropFilter làm mờ cả khung hình
-  // mỗi frame trong khi nền vốn đã một màu, nhìn không khác gì.
+  // Dải giấy đặc: nội dung cuộn qua thì khuất hẳn, không nhoè không chuyển sắc.
   Widget build(BuildContext context) => Align(
     alignment: Alignment.topCenter,
     child: IgnorePointer(
       child: Container(
         height: MediaQuery.paddingOf(context).top,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Paper.paper, Paper.paper.withValues(alpha: 0)],
-          ),
-        ),
+        color: Paper.paper,
       ),
     ),
   );
@@ -345,7 +338,7 @@ class PaperBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: Paper.card,
         border: Paper.border,
-        borderRadius: const BorderRadius.all(Radius.circular(24)),
+        borderRadius: const BorderRadius.all(Paper.radius),
         boxShadow: Paper.shadow(5),
       ),
       child: Row(
@@ -387,7 +380,7 @@ class _Tab extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: on ? color : Colors.transparent,
                     border: on ? Paper.border : null,
-                    borderRadius: const BorderRadius.all(Radius.circular(12)),
+                    borderRadius: const BorderRadius.all(Paper.radius),
                     boxShadow: on ? Paper.shadow(down ? 0 : 3) : null,
                   ),
                   child: asset != null
@@ -411,7 +404,7 @@ class _Tab extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontSize: 12,
                   fontWeight: on ? FontWeight.w800 : FontWeight.w600,
                   color: on ? Paper.ink : Paper.ink2,
@@ -592,7 +585,7 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_xong) return const Skeleton(height: 196, radius: 16, ink: true);
+    if (!_xong) return const Skeleton(height: 196, ink: true);
     final gpa = _gpa;
     final tiet = _tiet;
     if (gpa == null && (tiet == null || tiet.$2 == 0)) {
@@ -608,7 +601,7 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
               const Text(
                 'Tiến độ',
                 style: TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                   color: Paper.ink,
@@ -672,7 +665,7 @@ class _Header extends StatelessWidget {
             const Text(
               'Đại Học Đà Lạt',
               style: TextStyle(
-                fontFamily: 'Baloo',
+                fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 34,
                 height: 1.1,
@@ -754,7 +747,7 @@ class _Me extends StatelessWidget {
         Text(
           session.fullName,
           style: const TextStyle(
-            fontFamily: 'Baloo',
+            fontFamily: 'Display',
             fontWeight: FontWeight.w800,
             fontSize: 22,
             height: 1.2,
@@ -842,7 +835,7 @@ class _NextExamState extends State<_NextExam> with Reloadable<_NextExam> {
     if (_exams == null) {
       return const Padding(
         padding: EdgeInsets.only(bottom: 20),
-        child: Skeleton(height: 120, radius: 16, ink: true),
+        child: Skeleton(height: 120, ink: true),
       );
     }
     final today = DateTime(widget.now.year, widget.now.month, widget.now.day);
@@ -858,7 +851,7 @@ class _NextExamState extends State<_NextExam> with Reloadable<_NextExam> {
           const Text(
             'Sắp thi',
             style: TextStyle(
-              fontFamily: 'Baloo',
+              fontFamily: 'Display',
               fontWeight: FontWeight.w800,
               fontSize: 22,
               color: Paper.ink,
@@ -950,7 +943,7 @@ class MenuCard extends StatelessWidget {
       const Text(
         'Menu',
         style: TextStyle(
-          fontFamily: 'Baloo',
+          fontFamily: 'Display',
           fontWeight: FontWeight.w800,
           fontSize: 22,
           color: Paper.ink,
@@ -968,13 +961,13 @@ class MenuCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: d.$3,
               border: Paper.border,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: Paper.shadow(2),
+              borderRadius: BorderRadius.all(Paper.radius),
+              boxShadow: Paper.shadow(3),
             ),
             child: Text(
               d.$2,
               style: const TextStyle(
-                fontFamily: 'Baloo',
+                fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 14,
                 color: Paper.ink,
@@ -1038,7 +1031,7 @@ class _MenuO extends StatelessWidget {
       decoration: BoxDecoration(
         color: Paper.card,
         border: Paper.border,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.all(Paper.radius),
         boxShadow: Paper.shadow(down ? 0 : 3),
       ),
       child: Row(
@@ -1050,7 +1043,7 @@ class _MenuO extends StatelessWidget {
             decoration: BoxDecoration(
               color: color,
               border: Border.all(color: Paper.ink, width: 2),
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.all(Paper.radius),
             ),
             child: Icon(icon, size: 21, color: Paper.ink),
           ),
@@ -1061,7 +1054,7 @@ class _MenuO extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontFamily: 'Baloo',
+                fontFamily: 'Display',
                 fontSize: 13,
                 height: 1.15,
                 fontWeight: FontWeight.w700,

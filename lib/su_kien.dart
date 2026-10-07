@@ -149,7 +149,7 @@ class BuoiDiemDanh extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Paper.card,
                     border: Paper.border,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.all(Paper.radius),
                     boxShadow: Paper.shadow(3),
                   ),
                   child: const Icon(
@@ -163,7 +163,7 @@ class BuoiDiemDanh extends StatelessWidget {
                   child: Text(
                     clean(e.name),
                     style: const TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
                       color: Paper.ink,
@@ -315,7 +315,7 @@ class _DemNguoc extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Paper.card,
                     border: Paper.border,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.all(Paper.radius),
                     boxShadow: Paper.shadow(3),
                   ),
                   child: const Icon(
@@ -329,7 +329,7 @@ class _DemNguoc extends StatelessWidget {
                   child: Text(
                     'Sắp tới',
                     style: TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
                       color: Paper.ink,
@@ -346,7 +346,7 @@ class _DemNguoc extends StatelessWidget {
             Text(
               clean(e.name),
               style: const TextStyle(
-                fontFamily: 'Baloo',
+                fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 17,
                 height: 1.2,
@@ -411,7 +411,7 @@ class _SuKienNhomState extends State<SuKienNhom> {
                 Text(
                   nhanNgay(ngay, now),
                   style: const TextStyle(
-                    fontFamily: 'Baloo',
+                    fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                     color: Paper.ink2,
@@ -481,7 +481,7 @@ class SuKienHang extends StatelessWidget {
               child: Text(
                 gioPhut(e.start),
                 style: const TextStyle(
-                  fontFamily: 'Baloo',
+                  fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                   color: Paper.ink,

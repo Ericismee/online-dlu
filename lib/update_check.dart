@@ -460,7 +460,7 @@ class _ChangelogScreenState extends State<ChangelogScreen>
                         child: Text(
                           'Cập nhật',
                           style: TextStyle(
-                            fontFamily: 'Baloo',
+                            fontFamily: 'Display',
                             fontWeight: FontWeight.w800,
                             fontSize: 30,
                             color: Paper.ink,
@@ -535,7 +535,7 @@ class _ChangelogScreenState extends State<ChangelogScreen>
                     ),
                   const SizedBox(height: 20),
                   if (lichSu == null)
-                    const Skeleton(height: 120, radius: 16, ink: true)
+                    const Skeleton(height: 120, ink: true)
                   else
                     for (final m in lichSu)
                       Padding(
@@ -575,7 +575,7 @@ class _BanCard extends StatelessWidget {
             Text(
               'v${ban.version}',
               style: const TextStyle(
-                fontFamily: 'Baloo',
+                fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
                 color: Paper.ink,

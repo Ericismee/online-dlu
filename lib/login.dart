@@ -82,8 +82,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: BoxDecoration(
                         color: Paper.card,
                         border: Paper.border,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: Paper.shadow(4),
+                        borderRadius: BorderRadius.all(Paper.radius),
+                        boxShadow: Paper.shadow(5),
                       ),
                       child: Image.asset(
                         'assets/logo_icon.png',
@@ -97,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     'Đại Học Đà Lạt',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 38,
                       height: 1.1,
@@ -229,7 +229,7 @@ class _Check extends StatelessWidget {
     decoration: BoxDecoration(
       color: on ? Paper.mint : Paper.card,
       border: Paper.border,
-      borderRadius: BorderRadius.circular(7),
+      borderRadius: BorderRadius.all(Paper.radius),
     ),
     child: on ? const Icon(Icons.check, size: 15, color: Paper.ink) : null,
   );

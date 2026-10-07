@@ -209,8 +209,8 @@ class _Card extends StatelessWidget {
             decoration: BoxDecoration(
               color: Paper.paper,
               border: Paper.border,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: Paper.shadow(2),
+              borderRadius: BorderRadius.all(Paper.radius),
+              boxShadow: Paper.shadow(3),
             ),
             child: const Icon(Icons.person_rounded, size: 30, color: Paper.ink),
           ),
@@ -225,7 +225,7 @@ class _Card extends StatelessWidget {
                   Text(
                     clean(info['HoTen']),
                     style: const TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 22,
                       height: 1.1,
@@ -289,7 +289,7 @@ class _Group extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                fontFamily: 'Baloo',
+                fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
                 color: Paper.ink,
@@ -378,7 +378,7 @@ class _StudentCardState extends State<_StudentCard> {
                   child: Text(
                     'Thẻ sinh viên',
                     style: TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 20,
                       color: Paper.ink,
@@ -407,7 +407,7 @@ class _StudentCardState extends State<_StudentCard> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Paper.border,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.all(Paper.radius),
                 ),
                 child: Center(
                   child: BarcodeWidget(

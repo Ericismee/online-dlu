@@ -145,7 +145,7 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
                 for (var i = 0; i < 4; i++)
                   const Padding(
                     padding: EdgeInsets.only(bottom: 12),
-                    child: Skeleton(height: 96, radius: 16, ink: true),
+                    child: Skeleton(height: 96, ink: true),
                   )
               else if (list.isEmpty)
                 Container(
@@ -157,7 +157,7 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
                   child: const Text(
                     'Không có lịch thi',
                     style: TextStyle(
-                      fontFamily: 'Baloo',
+                      fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 30,
                       height: 1.25,
