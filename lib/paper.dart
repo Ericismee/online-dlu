@@ -545,11 +545,16 @@ class Choice extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.color,
+    this.chon,
   });
   final String label;
   final VoidCallback onTap;
   final Color? color;
-  Color get _color => color ?? Paper.sun;
+
+  /// Null là nút mở bảng chọn (có mũi tên). Có giá trị thì nó là nút gạt:
+  /// bật thì tô màu, tắt thì để trơn như giấy nền.
+  final bool? chon;
+  Color get _color => chon == false ? Paper.card : (color ?? Paper.sun);
 
   @override
   Widget build(BuildContext context) => Pressable(
@@ -574,7 +579,8 @@ class Choice extends StatelessWidget {
               color: Paper.ink,
             ),
           ),
-          Icon(Icons.expand_more_rounded, size: 18, color: Paper.ink2),
+          if (chon == null)
+            Icon(Icons.expand_more_rounded, size: 18, color: Paper.ink2),
         ],
       ),
     ),
@@ -694,6 +700,57 @@ Future<bool> confirmDialog(
       ),
     ) ??
     false;
+
+/// Hộp thoại nhiều lựa chọn, trả chỉ số nút được bấm (null là huỷ). Dùng khi
+/// câu hỏi không gói được vào có/không — vd xoá một buổi của mục lặp thì còn
+/// phải biết là xoá buổi này hay cả chuỗi.
+Future<int?> chonDialog(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required List<String> lua,
+  IconData icon = Icons.help_outline_rounded,
+}) => showDialog<int>(
+  context: context,
+  builder: (_) => PaperDialog(
+    title: title,
+    icon: icon,
+    children: [
+      PaperBox(
+        padding: const EdgeInsets.all(14),
+        child: Text(
+          body,
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+            color: Paper.ink2,
+          ),
+        ),
+      ),
+      const SizedBox(height: 16),
+      for (final (n, l) in lua.indexed) ...[
+        SizedBox(
+          width: double.infinity,
+          child: PaperButton(
+            label: l,
+            onPressed: () => Navigator.pop(context, n),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ],
+      SizedBox(
+        width: double.infinity,
+        child: PaperButton(
+          label: 'Huỷ',
+          color: Paper.card,
+          onColor: Paper.ink,
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+    ],
+  ),
+);
 
 /// Kéo xuống làm mới: gọi portal thật, data cũ vẫn nằm đó tới khi có data mới.
 /// Đổi ý thì kéo ngược lên là vòng xoay tắt ngay, khỏi ngồi chờ server trường.

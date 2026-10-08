@@ -431,6 +431,35 @@ class $LichRiengsTable extends LichRiengs
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _lapMeta = const VerificationMeta('lap');
+  @override
+  late final GeneratedColumn<String> lap = GeneratedColumn<String>(
+    'lap',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _denNgayMeta = const VerificationMeta(
+    'denNgay',
+  );
+  @override
+  late final GeneratedColumn<String> denNgay = GeneratedColumn<String>(
+    'den_ngay',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _gocMeta = const VerificationMeta('goc');
+  @override
+  late final GeneratedColumn<int> goc = GeneratedColumn<int>(
+    'goc',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _batMeta = const VerificationMeta('bat');
   @override
   late final GeneratedColumn<bool> bat = GeneratedColumn<bool>(
@@ -462,6 +491,9 @@ class $LichRiengsTable extends LichRiengs
     ketThuc,
     mau,
     viTri,
+    lap,
+    denNgay,
+    goc,
     bat,
     luc,
   ];
@@ -522,6 +554,24 @@ class $LichRiengsTable extends LichRiengs
         viTri.isAcceptableOrUnknown(data['vi_tri']!, _viTriMeta),
       );
     }
+    if (data.containsKey('lap')) {
+      context.handle(
+        _lapMeta,
+        lap.isAcceptableOrUnknown(data['lap']!, _lapMeta),
+      );
+    }
+    if (data.containsKey('den_ngay')) {
+      context.handle(
+        _denNgayMeta,
+        denNgay.isAcceptableOrUnknown(data['den_ngay']!, _denNgayMeta),
+      );
+    }
+    if (data.containsKey('goc')) {
+      context.handle(
+        _gocMeta,
+        goc.isAcceptableOrUnknown(data['goc']!, _gocMeta),
+      );
+    }
     if (data.containsKey('bat')) {
       context.handle(
         _batMeta,
@@ -573,6 +623,18 @@ class $LichRiengsTable extends LichRiengs
         DriftSqlType.string,
         data['${effectivePrefix}vi_tri'],
       ),
+      lap: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}lap'],
+      ),
+      denNgay: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}den_ngay'],
+      ),
+      goc: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}goc'],
+      ),
       bat: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}bat'],
@@ -598,6 +660,18 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
   final int? ketThuc;
   final int mau;
   final String? viTri;
+
+  /// Các thứ trong tuần mục này lặp lại, dạng '2,4' theo [DateTime.weekday].
+  /// Null là mục chỉ xảy ra đúng ngày [ngay].
+  final String? lap;
+
+  /// Lặp tới hết ngày này (yyyy-mm-dd). Null là lặp không hạn.
+  final String? denNgay;
+
+  /// Dòng ngoại lệ của một mục lặp: [goc] là id mục lặp, [ngay] là buổi bị
+  /// đụng tới. `bat = false` nghĩa là buổi đó bỏ, còn bật thì là buổi đó sửa
+  /// riêng. Mục lặp vẫn nằm nguyên, đúng luật không xoá gì.
+  final int? goc;
   final bool bat;
   final DateTime luc;
   const LichRieng({
@@ -608,6 +682,9 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
     this.ketThuc,
     required this.mau,
     this.viTri,
+    this.lap,
+    this.denNgay,
+    this.goc,
     required this.bat,
     required this.luc,
   });
@@ -624,6 +701,15 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
     map['mau'] = Variable<int>(mau);
     if (!nullToAbsent || viTri != null) {
       map['vi_tri'] = Variable<String>(viTri);
+    }
+    if (!nullToAbsent || lap != null) {
+      map['lap'] = Variable<String>(lap);
+    }
+    if (!nullToAbsent || denNgay != null) {
+      map['den_ngay'] = Variable<String>(denNgay);
+    }
+    if (!nullToAbsent || goc != null) {
+      map['goc'] = Variable<int>(goc);
     }
     map['bat'] = Variable<bool>(bat);
     map['luc'] = Variable<DateTime>(luc);
@@ -643,6 +729,11 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
       viTri: viTri == null && nullToAbsent
           ? const Value.absent()
           : Value(viTri),
+      lap: lap == null && nullToAbsent ? const Value.absent() : Value(lap),
+      denNgay: denNgay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(denNgay),
+      goc: goc == null && nullToAbsent ? const Value.absent() : Value(goc),
       bat: Value(bat),
       luc: Value(luc),
     );
@@ -661,6 +752,9 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
       ketThuc: serializer.fromJson<int?>(json['ketThuc']),
       mau: serializer.fromJson<int>(json['mau']),
       viTri: serializer.fromJson<String?>(json['viTri']),
+      lap: serializer.fromJson<String?>(json['lap']),
+      denNgay: serializer.fromJson<String?>(json['denNgay']),
+      goc: serializer.fromJson<int?>(json['goc']),
       bat: serializer.fromJson<bool>(json['bat']),
       luc: serializer.fromJson<DateTime>(json['luc']),
     );
@@ -676,6 +770,9 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
       'ketThuc': serializer.toJson<int?>(ketThuc),
       'mau': serializer.toJson<int>(mau),
       'viTri': serializer.toJson<String?>(viTri),
+      'lap': serializer.toJson<String?>(lap),
+      'denNgay': serializer.toJson<String?>(denNgay),
+      'goc': serializer.toJson<int?>(goc),
       'bat': serializer.toJson<bool>(bat),
       'luc': serializer.toJson<DateTime>(luc),
     };
@@ -689,6 +786,9 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
     Value<int?> ketThuc = const Value.absent(),
     int? mau,
     Value<String?> viTri = const Value.absent(),
+    Value<String?> lap = const Value.absent(),
+    Value<String?> denNgay = const Value.absent(),
+    Value<int?> goc = const Value.absent(),
     bool? bat,
     DateTime? luc,
   }) => LichRieng(
@@ -699,6 +799,9 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
     ketThuc: ketThuc.present ? ketThuc.value : this.ketThuc,
     mau: mau ?? this.mau,
     viTri: viTri.present ? viTri.value : this.viTri,
+    lap: lap.present ? lap.value : this.lap,
+    denNgay: denNgay.present ? denNgay.value : this.denNgay,
+    goc: goc.present ? goc.value : this.goc,
     bat: bat ?? this.bat,
     luc: luc ?? this.luc,
   );
@@ -711,6 +814,9 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
       ketThuc: data.ketThuc.present ? data.ketThuc.value : this.ketThuc,
       mau: data.mau.present ? data.mau.value : this.mau,
       viTri: data.viTri.present ? data.viTri.value : this.viTri,
+      lap: data.lap.present ? data.lap.value : this.lap,
+      denNgay: data.denNgay.present ? data.denNgay.value : this.denNgay,
+      goc: data.goc.present ? data.goc.value : this.goc,
       bat: data.bat.present ? data.bat.value : this.bat,
       luc: data.luc.present ? data.luc.value : this.luc,
     );
@@ -726,6 +832,9 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
           ..write('ketThuc: $ketThuc, ')
           ..write('mau: $mau, ')
           ..write('viTri: $viTri, ')
+          ..write('lap: $lap, ')
+          ..write('denNgay: $denNgay, ')
+          ..write('goc: $goc, ')
           ..write('bat: $bat, ')
           ..write('luc: $luc')
           ..write(')'))
@@ -733,8 +842,20 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, ngay, tieuDe, batDau, ketThuc, mau, viTri, bat, luc);
+  int get hashCode => Object.hash(
+    id,
+    ngay,
+    tieuDe,
+    batDau,
+    ketThuc,
+    mau,
+    viTri,
+    lap,
+    denNgay,
+    goc,
+    bat,
+    luc,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -746,6 +867,9 @@ class LichRieng extends DataClass implements Insertable<LichRieng> {
           other.ketThuc == this.ketThuc &&
           other.mau == this.mau &&
           other.viTri == this.viTri &&
+          other.lap == this.lap &&
+          other.denNgay == this.denNgay &&
+          other.goc == this.goc &&
           other.bat == this.bat &&
           other.luc == this.luc);
 }
@@ -758,6 +882,9 @@ class LichRiengsCompanion extends UpdateCompanion<LichRieng> {
   final Value<int?> ketThuc;
   final Value<int> mau;
   final Value<String?> viTri;
+  final Value<String?> lap;
+  final Value<String?> denNgay;
+  final Value<int?> goc;
   final Value<bool> bat;
   final Value<DateTime> luc;
   const LichRiengsCompanion({
@@ -768,6 +895,9 @@ class LichRiengsCompanion extends UpdateCompanion<LichRieng> {
     this.ketThuc = const Value.absent(),
     this.mau = const Value.absent(),
     this.viTri = const Value.absent(),
+    this.lap = const Value.absent(),
+    this.denNgay = const Value.absent(),
+    this.goc = const Value.absent(),
     this.bat = const Value.absent(),
     this.luc = const Value.absent(),
   });
@@ -779,6 +909,9 @@ class LichRiengsCompanion extends UpdateCompanion<LichRieng> {
     this.ketThuc = const Value.absent(),
     this.mau = const Value.absent(),
     this.viTri = const Value.absent(),
+    this.lap = const Value.absent(),
+    this.denNgay = const Value.absent(),
+    this.goc = const Value.absent(),
     this.bat = const Value.absent(),
     required DateTime luc,
   }) : ngay = Value(ngay),
@@ -793,6 +926,9 @@ class LichRiengsCompanion extends UpdateCompanion<LichRieng> {
     Expression<int>? ketThuc,
     Expression<int>? mau,
     Expression<String>? viTri,
+    Expression<String>? lap,
+    Expression<String>? denNgay,
+    Expression<int>? goc,
     Expression<bool>? bat,
     Expression<DateTime>? luc,
   }) {
@@ -804,6 +940,9 @@ class LichRiengsCompanion extends UpdateCompanion<LichRieng> {
       if (ketThuc != null) 'ket_thuc': ketThuc,
       if (mau != null) 'mau': mau,
       if (viTri != null) 'vi_tri': viTri,
+      if (lap != null) 'lap': lap,
+      if (denNgay != null) 'den_ngay': denNgay,
+      if (goc != null) 'goc': goc,
       if (bat != null) 'bat': bat,
       if (luc != null) 'luc': luc,
     });
@@ -817,6 +956,9 @@ class LichRiengsCompanion extends UpdateCompanion<LichRieng> {
     Value<int?>? ketThuc,
     Value<int>? mau,
     Value<String?>? viTri,
+    Value<String?>? lap,
+    Value<String?>? denNgay,
+    Value<int?>? goc,
     Value<bool>? bat,
     Value<DateTime>? luc,
   }) {
@@ -828,6 +970,9 @@ class LichRiengsCompanion extends UpdateCompanion<LichRieng> {
       ketThuc: ketThuc ?? this.ketThuc,
       mau: mau ?? this.mau,
       viTri: viTri ?? this.viTri,
+      lap: lap ?? this.lap,
+      denNgay: denNgay ?? this.denNgay,
+      goc: goc ?? this.goc,
       bat: bat ?? this.bat,
       luc: luc ?? this.luc,
     );
@@ -857,6 +1002,15 @@ class LichRiengsCompanion extends UpdateCompanion<LichRieng> {
     if (viTri.present) {
       map['vi_tri'] = Variable<String>(viTri.value);
     }
+    if (lap.present) {
+      map['lap'] = Variable<String>(lap.value);
+    }
+    if (denNgay.present) {
+      map['den_ngay'] = Variable<String>(denNgay.value);
+    }
+    if (goc.present) {
+      map['goc'] = Variable<int>(goc.value);
+    }
     if (bat.present) {
       map['bat'] = Variable<bool>(bat.value);
     }
@@ -876,6 +1030,9 @@ class LichRiengsCompanion extends UpdateCompanion<LichRieng> {
           ..write('ketThuc: $ketThuc, ')
           ..write('mau: $mau, ')
           ..write('viTri: $viTri, ')
+          ..write('lap: $lap, ')
+          ..write('denNgay: $denNgay, ')
+          ..write('goc: $goc, ')
           ..write('bat: $bat, ')
           ..write('luc: $luc')
           ..write(')'))
@@ -1097,6 +1254,9 @@ typedef $$LichRiengsTableCreateCompanionBuilder = LichRiengsCompanion Function({
   Value<int?> ketThuc,
   Value<int> mau,
   Value<String?> viTri,
+  Value<String?> lap,
+  Value<String?> denNgay,
+  Value<int?> goc,
   Value<bool> bat,
   required DateTime luc,
 });
@@ -1108,6 +1268,9 @@ typedef $$LichRiengsTableUpdateCompanionBuilder = LichRiengsCompanion Function({
   Value<int?> ketThuc,
   Value<int> mau,
   Value<String?> viTri,
+  Value<String?> lap,
+  Value<String?> denNgay,
+  Value<int?> goc,
   Value<bool> bat,
   Value<DateTime> luc,
 });
@@ -1152,6 +1315,21 @@ class $$LichRiengsTableFilterComposer extends Composer<_$Db, $LichRiengsTable> {
 
   ColumnFilters<String> get viTri => $composableBuilder(
     column: $table.viTri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lap => $composableBuilder(
+    column: $table.lap,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get denNgay => $composableBuilder(
+    column: $table.denNgay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get goc => $composableBuilder(
+    column: $table.goc,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1210,6 +1388,21 @@ class $$LichRiengsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get lap => $composableBuilder(
+    column: $table.lap,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get denNgay => $composableBuilder(
+    column: $table.denNgay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get goc => $composableBuilder(
+    column: $table.goc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get bat => $composableBuilder(
     column: $table.bat,
     builder: (column) => ColumnOrderings(column),
@@ -1250,6 +1443,15 @@ class $$LichRiengsTableAnnotationComposer
 
   GeneratedColumn<String> get viTri =>
       $composableBuilder(column: $table.viTri, builder: (column) => column);
+
+  GeneratedColumn<String> get lap =>
+      $composableBuilder(column: $table.lap, builder: (column) => column);
+
+  GeneratedColumn<String> get denNgay =>
+      $composableBuilder(column: $table.denNgay, builder: (column) => column);
+
+  GeneratedColumn<int> get goc =>
+      $composableBuilder(column: $table.goc, builder: (column) => column);
 
   GeneratedColumn<bool> get bat =>
       $composableBuilder(column: $table.bat, builder: (column) => column);
@@ -1293,6 +1495,9 @@ class $$LichRiengsTableTableManager
                 Value<int?> ketThuc = const Value.absent(),
                 Value<int> mau = const Value.absent(),
                 Value<String?> viTri = const Value.absent(),
+                Value<String?> lap = const Value.absent(),
+                Value<String?> denNgay = const Value.absent(),
+                Value<int?> goc = const Value.absent(),
                 Value<bool> bat = const Value.absent(),
                 Value<DateTime> luc = const Value.absent(),
               }) => LichRiengsCompanion(
@@ -1303,6 +1508,9 @@ class $$LichRiengsTableTableManager
                 ketThuc: ketThuc,
                 mau: mau,
                 viTri: viTri,
+                lap: lap,
+                denNgay: denNgay,
+                goc: goc,
                 bat: bat,
                 luc: luc,
               ),
@@ -1315,6 +1523,9 @@ class $$LichRiengsTableTableManager
                 Value<int?> ketThuc = const Value.absent(),
                 Value<int> mau = const Value.absent(),
                 Value<String?> viTri = const Value.absent(),
+                Value<String?> lap = const Value.absent(),
+                Value<String?> denNgay = const Value.absent(),
+                Value<int?> goc = const Value.absent(),
                 Value<bool> bat = const Value.absent(),
                 required DateTime luc,
               }) => LichRiengsCompanion.insert(
@@ -1325,6 +1536,9 @@ class $$LichRiengsTableTableManager
                 ketThuc: ketThuc,
                 mau: mau,
                 viTri: viTri,
+                lap: lap,
+                denNgay: denNgay,
+                goc: goc,
                 bat: bat,
                 luc: luc,
               ),

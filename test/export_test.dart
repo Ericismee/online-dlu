@@ -69,7 +69,10 @@ void main() {
     await t.pump();
     // Không xuất thẳng: phải có hộp hỏi với đủ hai lựa chọn.
     expect(find.textContaining('tháng 9/2026 vào Lịch?'), findsOneWidget);
-    expect(find.textContaining('buổi học'), findsOneWidget);
+    expect(
+      find.textContaining('sẽ được chép sang ứng dụng Lịch'),
+      findsOneWidget,
+    );
     expect(find.text('Huỷ'), findsOneWidget);
 
     await t.tap(find.text('Huỷ'));

@@ -14,6 +14,7 @@ const nhomCache = 'cache';
 const nhomCaiDat = 'cai_dat';
 const nhomMoc = 'moc';
 const nhomThongBao = 'thong_bao';
+const nhomGoiY = 'goi_y';
 
 /// Mọi thứ app lưu lâu dài đều nằm trong một tệp SQLite, không có gì bị xoá
 /// thật: mỗi dòng mang cờ [bat]. `bat = false` nghĩa là "ẩn đi" — người dùng
@@ -46,6 +47,19 @@ class LichRiengs extends Table {
   IntColumn get mau =>
       integer().withDefault(const Constant(customLichMauMacDinh))();
   TextColumn get viTri => text().nullable()();
+
+  /// Các thứ trong tuần mục này lặp lại, dạng '2,4' theo [DateTime.weekday].
+  /// Null là mục chỉ xảy ra đúng ngày [ngay].
+  TextColumn get lap => text().nullable()();
+
+  /// Lặp tới hết ngày này (yyyy-mm-dd). Null là lặp không hạn.
+  TextColumn get denNgay => text().nullable()();
+
+  /// Dòng ngoại lệ của một mục lặp: [goc] là id mục lặp, [ngay] là buổi bị
+  /// đụng tới. `bat = false` nghĩa là buổi đó bỏ, còn bật thì là buổi đó sửa
+  /// riêng. Mục lặp vẫn nằm nguyên, đúng luật không xoá gì.
+  IntColumn get goc => integer().nullable()();
+
   BoolColumn get bat => boolean().withDefault(const Constant(true))();
   DateTimeColumn get luc => dateTime()();
 }
@@ -55,7 +69,20 @@ class Db extends _$Db {
   Db(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, tu, den) async {
+      // Sổ cũ chỉ có mục lịch một lần; thêm cột là đủ, dòng cũ giữ nguyên.
+      if (tu < 2) {
+        await m.addColumn(lichRiengs, lichRiengs.lap);
+        await m.addColumn(lichRiengs, lichRiengs.denNgay);
+        await m.addColumn(lichRiengs, lichRiengs.goc);
+      }
+    },
+  );
 
   /// Một kết nối dùng chung cả app. Test gọi [dungTam] để thay bằng bộ nhớ.
   static Db? _i;

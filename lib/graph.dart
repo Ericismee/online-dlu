@@ -11,6 +11,7 @@ import 'cache.dart';
 import 'clock.dart';
 import 'custom_lich.dart';
 import 'data.dart';
+import 'goi_y_gio.dart';
 import 'ics.dart';
 import 'lms.dart';
 import 'paper.dart';
@@ -198,7 +199,85 @@ List<Object> ganLichTrongNgay(List<dynamic> items, List<CustomLich> rieng) {
   int gioVao(Object o) => o is CustomLich
       ? o.batDau
       : (batDauPhut(tietNo((o as dynamic)['BeginTime'])) ?? 0);
-  return [...items, ...rieng]..sort((a, b) => gioVao(a).compareTo(gioVao(b)));
+  // Cùng giờ thì lịch chính quy đứng trước: `List.sort` không ổn định nên
+  // không chốt thứ tự là hai thẻ đổi chỗ qua lại mỗi lượt vẽ lại.
+  int hang(Object o) => o is CustomLich ? 1 : 0;
+  return [...items, ...rieng]..sort((a, b) {
+    final g = gioVao(a).compareTo(gioVao(b));
+    return g != 0 ? g : hang(a).compareTo(hang(b));
+  });
+}
+
+/// Lịch chính quy của một ngày đọc thẳng từ cache, không gọi portal — để nơi
+/// không cầm token (vd thẻ "Sắp tới") vẫn biết hôm đó bận giờ nào. Chưa tải
+/// tháng ấy bao giờ thì trả rỗng, coi như ngày trống.
+List<dynamic> lichNgayTuCache(DateTime d) {
+  final (year, term) = yearTermFor(d);
+  final raw = Cache.read(
+    '/api/student/DrawingSchedules_v2'
+    '?namhoc=$year&hocky=$term&tuan=${isoWeek(d)}',
+  )?.$1;
+  if (raw is! Map) return const [];
+  final ds = (raw['ResultDataSchedule'] as List?) ?? const [];
+  return itemsByDay(ds, DateTime(d.year, d.month))[d.day] ?? const [];
+}
+
+/// Màu riêng cho buổi làm bài sinh ra từ hạn LMS — xanh, để phân biệt với
+/// mục tự đặt bình thường (hồng).
+const mauViecLms = 0xFFA5DCFF;
+
+/// Giờ làm bài đề xuất cho một hạn LMS: một buổi 90 phút chen vào chỗ trống
+/// gần nhất của hôm nay, né tiết học, né lịch tự đặt đã có, né cả giờ đã trôi
+/// qua và phần sau hạn nộp.
+///
+/// Trả mục chưa lưu — nơi gọi hỏi người dùng rồi mới ghi vào sổ.
+Future<(DateTime, CustomLich)> deXuatViec(LmsEvent e, DateTime now) async {
+  final ngay = DateTime(now.year, now.month, now.day);
+  final buoi = lichNgayTuCache(ngay);
+  final sauNay = now.hour * 60 + now.minute + 30;
+  final ban = <(int, int)>[
+    ...khoangBan(buoi, await CustomLichStore.forDay(ngay)),
+    // Giờ đã qua (và 30 phút tới) coi như kín: xếp vào quá khứ thì vô nghĩa.
+    (0, sauNay),
+    // Hạn ngay trong hôm nay thì phần sau hạn cũng bỏ.
+    if (DateTime(e.start.year, e.start.month, e.start.day) == ngay)
+      (e.start.hour * 60 + e.start.minute, 24 * 60),
+  ];
+  final gio = await GoiYGio.goiY(dacTrungNgay(ngay, buoi), ban: ban);
+  // Kín sạch thì bandit đành trả khung đầu ngày; đẩy về sau giờ hiện tại chứ
+  // đừng đề xuất một giờ đã trôi qua.
+  final batDau = gio < sauNay ? sauNay : gio;
+  return (
+    ngay,
+    CustomLich(
+      tieuDe: 'Làm: ${clean(e.name)}',
+      batDau: batDau,
+      ketThuc: batDau + 90,
+      mau: mauViecLms,
+    ),
+  );
+}
+
+/// Các khoảng giờ đã kín của một ngày (phút từ 0h) — tiết chính quy cộng lịch
+/// tự đặt đã có. Bộ gợi ý dựa vào đây để khỏi đề xuất giờ đang bận.
+List<(int, int)> khoangBan(
+  Iterable<dynamic> items, [
+  Iterable<CustomLich> rieng = const [],
+]) => [
+  for (final i in items) ?_khoangChinhQuy(i),
+  for (final c in rieng) (c.batDau, c.ketThuc ?? c.batDau + 60),
+];
+
+/// Ngữ cảnh một ngày cho bộ gợi ý giờ: cuối tuần không, và hôm đó phải lên
+/// lớp buổi nào.
+List<double> dacTrungNgay(DateTime d, Iterable<dynamic> items) {
+  final b = items.map((i) => buoi(toNum(i['PeriodID']).toInt())).toSet();
+  return dacTrungGoiY(
+    cuoiTuan: d.weekday >= DateTime.saturday,
+    sang: b.contains('Sáng'),
+    chieu: b.contains('Chiều'),
+    toi: b.contains('Tối'),
+  );
 }
 
 /// Sắp phải đi rồi: còn 15 phút hoặc ít hơn tới giờ vào lớp.
@@ -457,21 +536,34 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
   /// Đặt lịch riêng cho ngày đang chọn. Thẻ ngày tự nạp lại nhờ
   /// [Cache.reloadAll] nên khỏi cầm tay nhau qua lại.
   Future<void> _datLichRieng(DateTime ngay) async {
-    final item = await _hoiLichRieng(context);
+    final buoi = _days?[ngay.day] ?? const [];
+    final x = dacTrungNgay(ngay, buoi);
+    // Gợi ý phải né giờ đã kín: thói quen có thích 14h mấy mà hôm đó 14h có
+    // tiết thì đề xuất 14h cũng chỉ tổ bắt người dùng sửa tay.
+    final goi = await GoiYGio.goiY(
+      x,
+      ban: khoangBan(buoi, _rieng[ngay.day] ?? const []),
+    );
+    if (!mounted) return;
+    final item = await _hoiLichRieng(context, goiY: goi);
     if (item == null) return;
     await CustomLichStore.add(ngay, item);
+    // Chốt giờ nào thì khung đó được thưởng — lần sau gợi ý sát hơn.
+    await GoiYGio.ghiNhan(x: x, goiYPhut: goi, chonPhut: item.batDau);
     Cache.reloadAll();
   }
 
   Future<void> _xuatLich(DateTime month) async {
     final days = _days;
     if (days == null) return;
-    final n = icsCount(days);
+    final rieng = _rieng;
+    final n = icsCount(days, rieng);
     final ok = await confirmDialog(
       context,
       title: 'Thêm lịch tháng ${month.month}/${month.year} vào Lịch?',
       body:
-          '$n buổi học sẽ được chép sang ứng dụng Lịch của máy, '
+          '$n buổi (kể cả lịch tự đặt) sẽ được chép sang ứng dụng Lịch '
+          'của máy, '
           'kèm nhắc trước giờ vào lớp 15 phút.\n\n'
           'Bấm Thêm rồi chọn Lịch trong danh sách hiện ra.',
       ok: 'Thêm',
@@ -482,7 +574,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
       ShareParams(
         files: [
           XFile.fromData(
-            utf8.encode(icsMonth(month, days)),
+            utf8.encode(icsMonth(month, days, rieng: rieng)),
             mimeType: 'text/calendar',
             name: ten,
           ),
@@ -750,7 +842,28 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
   }
 
   Future<void> _xoa(int i) async {
-    await CustomLichStore.remove(widget.day, i);
+    final ds = await CustomLichStore.buoiTrongNgay(widget.day);
+    if (i < 0 || i >= ds.length) return;
+    // Mục lặp thì phải hỏi: bỏ đúng buổi này hay dẹp cả chuỗi. Đoán hộ là
+    // kiểu gì cũng có lúc xoá mất cả học kỳ của người ta.
+    if (ds[i].lapLai) {
+      if (!mounted) return;
+      final chon = await chonDialog(
+        context,
+        title: 'Xoá "${ds[i].item.tieuDe}"',
+        body: 'Mục này lặp hàng tuần.',
+        lua: const ['Chỉ buổi này', 'Cả chuỗi lặp'],
+        icon: Icons.delete_outline_rounded,
+      );
+      if (chon == null) return;
+      if (chon == 1) {
+        await CustomLichStore.xoaChuoi(widget.day, i);
+      } else {
+        await CustomLichStore.remove(widget.day, i);
+      }
+    } else {
+      await CustomLichStore.remove(widget.day, i);
+    }
     await _load();
     Cache.reloadAll();
   }
@@ -883,11 +996,25 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
 }
 
 /// Hỏi tiêu đề, giờ đi (bắt buộc) và giờ về (tuỳ chọn) cho một mục lịch tự đặt.
-Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
+/// [goiY] là giờ đi bộ gợi ý đề xuất (phút từ 0h) — điền sẵn để người dùng
+/// chỉ việc bấm Thêm, nhưng vẫn sửa được như thường.
+/// Giờ về đặt trước giờ đi thì mục vừa thêm đã "xong" ngay, mà cảnh báo đụng
+/// giờ cũng tính sai vì khoảng giờ lật ngược. Chặn ngay từ ô nhập.
+bool _gioNguoc(TimeOfDay? di, TimeOfDay? ve) =>
+    di != null &&
+    ve != null &&
+    ve.hour * 60 + ve.minute <= di.hour * 60 + di.minute;
+
+Future<CustomLich?> _hoiLichRieng(BuildContext context, {int? goiY}) async {
   final ten = TextEditingController();
   final viTri = TextEditingController();
-  TimeOfDay? di;
+  TimeOfDay? di = goiY == null
+      ? null
+      : TimeOfDay(hour: goiY ~/ 60, minute: goiY % 60);
+  var theoGoiY = goiY != null;
   TimeOfDay? ve;
+  var mau = customLichMauMacDinh;
+  final lap = <int>{};
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -927,6 +1054,33 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                 child: TextField(
                   controller: ten,
                   autofocus: true,
+                  // Mẫu nhanh: gõ lại đúng tên cũ thì giờ, màu và vị trí lần
+                  // trước tự điền — việc lặp đi lặp lại thì khỏi gõ lại.
+                  onChanged: (v) async {
+                    final cu = await CustomLichStore.mauGanNhat(v);
+                    if (cu == null || !ctx.mounted) return;
+                    if (ten.text.trim().toLowerCase() !=
+                        cu.tieuDe.trim().toLowerCase()) {
+                      return;
+                    }
+                    setState(() {
+                      if (theoGoiY) {
+                        di = TimeOfDay(
+                          hour: cu.batDau ~/ 60,
+                          minute: cu.batDau % 60,
+                        );
+                        theoGoiY = false;
+                      }
+                      ve ??= cu.ketThuc == null
+                          ? null
+                          : TimeOfDay(
+                              hour: cu.ketThuc! ~/ 60,
+                              minute: cu.ketThuc! % 60,
+                            );
+                      mau = cu.mau;
+                      if (viTri.text.isEmpty) viTri.text = cu.viTri ?? '';
+                    });
+                  },
                   style: TextStyle(
                     fontFamily: 'Display',
                     fontWeight: FontWeight.w700,
@@ -975,13 +1129,19 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                   Choice(
                     label: di == null
                         ? 'Giờ đi'
-                        : _gio(di!.hour * 60 + di!.minute),
+                        : '${_gio(di!.hour * 60 + di!.minute)}'
+                              '${theoGoiY ? ' · gợi ý' : ''}',
                     onTap: () async {
                       final t = await _chonGio(
                         ctx,
                         di ?? const TimeOfDay(hour: 7, minute: 0),
                       );
-                      if (t != null) setState(() => di = t);
+                      if (t != null) {
+                        setState(() {
+                          di = t;
+                          theoGoiY = false;
+                        });
+                      }
                     },
                   ),
                   Choice(
@@ -999,6 +1159,39 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              Text(
+                'Lặp hàng tuần',
+                style: TextStyle(
+                  fontFamily: 'Display',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: Paper.ink2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (var t = DateTime.monday; t <= DateTime.sunday; t++)
+                    Choice(
+                      label: _tenThu(t),
+                      chon: lap.contains(t),
+                      color: Paper.sky,
+                      onTap: () => setState(
+                        () => lap.contains(t) ? lap.remove(t) : lap.add(t),
+                      ),
+                    ),
+                ],
+              ),
+              if (_gioNguoc(di, ve)) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Giờ về phải sau giờ đi',
+                  style: TextStyle(color: Paper.rose, fontSize: 13),
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -1015,7 +1208,11 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
                     color: Paper.sun,
                     onColor: Paper.ink,
                     onPressed: () {
-                      if (ten.text.trim().isEmpty || di == null) return;
+                      if (ten.text.trim().isEmpty ||
+                          di == null ||
+                          _gioNguoc(di, ve)) {
+                        return;
+                      }
                       Navigator.pop(ctx, true);
                     },
                   ),
@@ -1027,14 +1224,19 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context) async {
       ),
     ),
   );
-  if (ok != true || di == null) return null;
+  if (ok != true || di == null || _gioNguoc(di, ve)) return null;
   return CustomLich(
     tieuDe: ten.text.trim(),
     batDau: di!.hour * 60 + di!.minute,
     ketThuc: ve == null ? null : ve!.hour * 60 + ve!.minute,
+    mau: mau,
     viTri: viTri.text.trim().isEmpty ? null : viTri.text.trim(),
+    lap: lap,
   );
 }
+
+/// 'T2'…'CN' cho các nút chọn thứ.
+String _tenThu(int thu) => thu == DateTime.sunday ? 'CN' : 'T${thu + 1}';
 
 /// Chọn giờ kiểu giấy: hai bánh xe giờ/phút thay cho đồng hồ tròn mặc định
 /// của Material — cái đó không hợp phong cách viền dày, bóng cứng của app.
