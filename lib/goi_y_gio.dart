@@ -16,8 +16,8 @@ int khungCuaGio(int phut) =>
     ((phut ~/ 60 - goiYKhungDau) ~/ 2).clamp(0, goiYSoKhung - 1);
 
 /// Các khung còn đặt được: khung nào bị một khoảng trong [ban] đè lên thì bỏ.
-/// Kín hết thì trả rỗng, nghĩa là xét lại cả ngày — thà gợi ý một giờ chen
-/// vào còn hơn đứng im không đề xuất gì.
+/// Kín hết thì trả rỗng — nơi gọi tự quyết là chen đại hay dời sang ngày
+/// khác, ở đây không nói dối là còn chỗ.
 Set<int> khungRanh(List<(int, int)> ban) {
   final ranh = <int>{};
   for (var k = 0; k < goiYSoKhung; k++) {
@@ -79,8 +79,18 @@ class GoiYGio {
   /// Giờ nên đặt (phút từ 0h) cho ngữ cảnh [x]. [ban] là các khoảng giờ đã
   /// kín trong ngày (phút từ 0h) — khung nào đụng vào thì loại khỏi danh sách
   /// chọn, bandit chỉ quyết trong những khung thật sự đặt được.
-  static Future<int> goiY(List<double> x, {List<(int, int)> ban = const []}) =>
-      _nap().then((m) => gioCuaKhung(m.chon(x, choPhep: khungRanh(ban))));
+  static Future<int> goiY(List<double> x, {List<(int, int)> ban = const []}) {
+    final ranh = khungRanh(ban);
+    // Kín sạch thì bỏ ràng buộc, trả về giờ quen thuộc nhất — nơi gọi biết
+    // rõ hơn là nên chen vào hay dời ngày, đừng tự ý quyết hộ ở đây.
+    return _nap().then(
+      (m) => gioCuaKhung(m.chon(x, choPhep: ranh.isEmpty ? null : ranh)),
+    );
+  }
+
+  /// Hôm đó còn chỗ nào đặt được không — nơi gọi muốn dời ngày thì hỏi cái
+  /// này trước, khỏi phải đoán qua giá trị [goiY] trả về.
+  static bool conCho(List<(int, int)> ban) => khungRanh(ban).isNotEmpty;
 
   /// Người dùng chốt giờ nào thì khung đó được thưởng; khung đã gợi ý mà bị
   /// bỏ qua thì ăn 0 — đúng một lượt học cho mỗi tay đã "chơi".

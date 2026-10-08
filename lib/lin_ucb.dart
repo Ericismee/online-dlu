@@ -68,13 +68,17 @@ class LinUCB {
   /// Tay đáng chọn nhất. Lúc chưa có dữ liệu thì mọi tay điểm bằng nhau —
   /// bốc ngẫu nhiên trong đám đồng điểm, chứ cứ lấy tay đầu thì bộ gợi ý mãi
   /// mãi nói đúng một giờ và không bao giờ học được gì khác.
-  /// [choPhep] rỗng là xét mọi tay; có thì chỉ xét những tay trong đó —
-  /// phần thưởng học được chẳng ích gì nếu giờ ấy đã kín lịch.
-  int chon(List<double> x, {Set<int> choPhep = const {}}) {
+  /// [choPhep] null là xét mọi tay; có thì chỉ xét những tay trong đó — phần
+  /// thưởng học được chẳng ích gì nếu giờ ấy đã kín lịch.
+  ///
+  /// Null chứ không phải tập rỗng: rỗng là "không tay nào đặt được", mà gộp
+  /// hai thứ đó làm một thì lúc kín lịch cả ngày ràng buộc bị bỏ qua lặng
+  /// lẽ và bộ gợi ý chỉ thẳng vào giữa giờ học.
+  int chon(List<double> x, {Set<int>? choPhep}) {
     var cao = double.negativeInfinity;
     final nhat = <int>[];
     for (var a = 0; a < soTay; a++) {
-      if (choPhep.isNotEmpty && !choPhep.contains(a)) continue;
+      if (choPhep != null && !choPhep.contains(a)) continue;
       final d = diem(a, x);
       if (d > cao + 1e-9) {
         cao = d;

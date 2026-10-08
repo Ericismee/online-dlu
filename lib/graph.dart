@@ -195,16 +195,30 @@ LessonNow? lessonNow(dynamic item, DateTime now) {
 
 /// Gộp lịch chính quy và lịch tự đặt của một ngày rồi sắp theo giờ vào —
 /// hiển thị đúng thứ tự thời gian thay vì luôn đẩy lịch tự đặt xuống cuối.
-List<Object> ganLichTrongNgay(List<dynamic> items, List<CustomLich> rieng) {
+List<Object> ganLichTrongNgay(List<dynamic> items, List<CustomLich> rieng) => [
+  for (final m in ganLichCoChiSo(items, rieng)) m.x,
+];
+
+/// Một dòng trên thẻ ngày: [x] là tiết chính quy hay [CustomLich], [rieng] là
+/// chỗ của nó trong danh sách lịch tự đặt (-1 nếu là tiết chính quy).
+typedef MucNgay = ({Object x, int rieng});
+
+/// Như [ganLichTrongNgay] nhưng giữ lại chỗ cũ của từng mục tự đặt. Nơi nào
+/// cần sửa/xoá đúng dòng trong sổ thì phải dùng bản này: sau khi sắp theo giờ
+/// thì thứ tự đã khác, mà đếm lại trên danh sách đã sắp là ra số khác hẳn.
+List<MucNgay> ganLichCoChiSo(List<dynamic> items, List<CustomLich> rieng) {
   int gioVao(Object o) => o is CustomLich
       ? o.batDau
       : (batDauPhut(tietNo((o as dynamic)['BeginTime'])) ?? 0);
   // Cùng giờ thì lịch chính quy đứng trước: `List.sort` không ổn định nên
   // không chốt thứ tự là hai thẻ đổi chỗ qua lại mỗi lượt vẽ lại.
   int hang(Object o) => o is CustomLich ? 1 : 0;
-  return [...items, ...rieng]..sort((a, b) {
-    final g = gioVao(a).compareTo(gioVao(b));
-    return g != 0 ? g : hang(a).compareTo(hang(b));
+  return <MucNgay>[
+    for (final i in items) (x: i as Object, rieng: -1),
+    for (final (n, c) in rieng.indexed) (x: c, rieng: n),
+  ]..sort((a, b) {
+    final g = gioVao(a.x).compareTo(gioVao(b.x));
+    return g != 0 ? g : hang(a.x).compareTo(hang(b.x));
   });
 }
 
@@ -212,7 +226,10 @@ List<Object> ganLichTrongNgay(List<dynamic> items, List<CustomLich> rieng) {
 /// không cầm token (vd thẻ "Sắp tới") vẫn biết hôm đó bận giờ nào. Chưa tải
 /// tháng ấy bao giờ thì trả rỗng, coi như ngày trống.
 List<dynamic> lichNgayTuCache(DateTime d) {
-  final (year, term) = yearTermFor(d);
+  // Theo học kỳ của tháng chứ không của ngày: [fetchMonth] ghi cache bằng
+  // học kỳ của tháng nó đang tải, nên sát ranh giới học kỳ mà tra theo ngày
+  // là trượt khoá và tưởng ngày đó trống trơn.
+  final (year, term) = yearTermFor(DateTime(d.year, d.month));
   final raw = Cache.read(
     '/api/student/DrawingSchedules_v2'
     '?namhoc=$year&hocky=$term&tuan=${isoWeek(d)}',
@@ -226,40 +243,73 @@ List<dynamic> lichNgayTuCache(DateTime d) {
 /// mục tự đặt bình thường (hồng).
 const mauViecLms = 0xFFA5DCFF;
 
+/// Dài một buổi làm bài.
+const _daiViec = 90;
+
 /// Giờ làm bài đề xuất cho một hạn LMS: một buổi 90 phút chen vào chỗ trống
-/// gần nhất của hôm nay, né tiết học, né lịch tự đặt đã có, né cả giờ đã trôi
-/// qua và phần sau hạn nộp.
+/// gần nhất, né tiết học, né lịch tự đặt đã có, né cả giờ đã trôi qua và phần
+/// sau hạn nộp. Hôm nay kín thì dò sang ngày mai, cho tới ngày hạn.
 ///
 /// Trả mục chưa lưu — nơi gọi hỏi người dùng rồi mới ghi vào sổ.
 Future<(DateTime, CustomLich)> deXuatViec(LmsEvent e, DateTime now) async {
-  final ngay = DateTime(now.year, now.month, now.day);
-  final buoi = lichNgayTuCache(ngay);
-  final sauNay = now.hour * 60 + now.minute + 30;
-  final ban = <(int, int)>[
-    ...khoangBan(buoi, await CustomLichStore.forDay(ngay)),
+  final homNay = DateTime(now.year, now.month, now.day);
+  final ngayHan = DateTime(e.start.year, e.start.month, e.start.day);
+  final somNhat = now.hour * 60 + now.minute + 30;
+
+  Future<List<(int, int)>> ban(DateTime d) async => [
+    ...khoangBan(lichNgayTuCache(d), await CustomLichStore.forDay(d)),
     // Giờ đã qua (và 30 phút tới) coi như kín: xếp vào quá khứ thì vô nghĩa.
-    (0, sauNay),
-    // Hạn ngay trong hôm nay thì phần sau hạn cũng bỏ.
-    if (DateTime(e.start.year, e.start.month, e.start.day) == ngay)
-      (e.start.hour * 60 + e.start.minute, 24 * 60),
+    if (d == homNay) (0, somNhat),
+    // Tới hạn là hết chuyện, phần sau hạn bỏ.
+    if (d == ngayHan) (e.start.hour * 60 + e.start.minute, 24 * 60),
   ];
-  final gio = await GoiYGio.goiY(dacTrungNgay(ngay, buoi), ban: ban);
-  // Kín sạch thì bandit đành trả khung đầu ngày; đẩy về sau giờ hiện tại chứ
-  // đừng đề xuất một giờ đã trôi qua.
-  final batDau = gio < sauNay ? sauNay : gio;
-  return (
-    ngay,
-    CustomLich(
-      tieuDe: 'Làm: ${clean(e.name)}',
-      batDau: batDau,
-      ketThuc: batDau + 90,
-      mau: mauViecLms,
-    ),
+
+  CustomLich lam(int batDau) => CustomLich(
+    tieuDe: 'Làm: ${clean(e.name)}',
+    batDau: batDau,
+    ketThuc: batDau + _daiViec,
+    mau: mauViecLms,
   );
+
+  // Hạn đã qua thì chẳng còn ngày nào để dò; vẫn trả một đề xuất cho hôm nay
+  // chứ không để nơi gọi cầm null. Hạn xa thì cũng chỉ dò một tuần: xếp giờ
+  // làm bài cho ba tuần nữa là xếp vào một cái lịch chưa tồn tại.
+  final xa = homNay.add(const Duration(days: 7));
+  final hetNgay = ngayHan.isBefore(homNay)
+      ? homNay
+      : (ngayHan.isAfter(xa) ? xa : ngayHan);
+  for (
+    var d = homNay;
+    !d.isAfter(hetNgay);
+    d = d.add(const Duration(days: 1))
+  ) {
+    final kin = await ban(d);
+    if (!GoiYGio.conCho(kin)) continue;
+    final gio = await GoiYGio.goiY(
+      dacTrungNgay(d, lichNgayTuCache(d)),
+      ban: kin,
+    );
+    // Khung được chọn bắt đầu lúc 6h/8h/… nên có thể sớm hơn giờ hiện tại một
+    // chút; đẩy về sau, miễn là vẫn nằm gọn trong ngày.
+    final batDau = d == homNay && gio < somNhat ? somNhat : gio;
+    if (batDau + _daiViec <= 24 * 60) return (d, lam(batDau));
+  }
+
+  // Không ngày nào còn chỗ: xếp vào cuối ngày hạn, sát nhất có thể. Thà một
+  // buổi chen chúc còn hơn trả về một giờ quá nửa đêm.
+  final cuoi = hetNgay == homNay ? somNhat : 0;
+  final batDau = (cuoi + _daiViec > 24 * 60 ? 24 * 60 - _daiViec : cuoi).clamp(
+    0,
+    24 * 60 - _daiViec,
+  );
+  return (hetNgay, lam(batDau));
 }
 
 /// Các khoảng giờ đã kín của một ngày (phút từ 0h) — tiết chính quy cộng lịch
 /// tự đặt đã có. Bộ gợi ý dựa vào đây để khỏi đề xuất giờ đang bận.
+/// Khác [trungGioChinhQuy] ở chỗ mục không khai giờ về chỉ tính một tiếng chứ
+/// không chiếm hết phần ngày còn lại: ở đây đang tìm chỗ đặt thêm, mà coi một
+/// mục bỏ ngỏ là kín tới nửa đêm thì ngày nào có nó cũng hết chỗ.
 List<(int, int)> khoangBan(
   Iterable<dynamic> items, [
   Iterable<CustomLich> rieng = const [],
@@ -350,13 +400,43 @@ String? demNguocRieng(CustomLich c, DateTime now) {
   };
 }
 
-/// Lịch tự đặt còn hiệu lực gần nhất trong ngày (chưa "xong"), theo giờ đi.
+/// Lịch tự đặt đáng nhắc nhất trong ngày: cái có mốc gần nhất trong số những
+/// cái chưa "xong".
+///
+/// Không sắp đơn thuần theo giờ đi: mục bỏ ngỏ giờ về (vd "Lên ATC 7h") thì
+/// không bao giờ tự xong, nên xếp theo giờ đi là nó chắn mọi mục sau nó suốt
+/// ngày — 15h đang trong ca 14h-16h mà thẻ vẫn chỉ vào buổi sáng. Mục bỏ ngỏ
+/// đã bắt đầu bị đẩy xuống cuối, chỉ lên khi không còn ai khác.
 CustomLich? ketiepRieng(List<CustomLich> rieng, DateTime now) {
-  final sorted = [...rieng]..sort((a, b) => a.batDau.compareTo(b.batDau));
-  for (final c in sorted) {
-    if (customLessonNow(c, now)?.pha != LessonPhase.xong) return c;
+  final i = ketiepRiengIdx(rieng, now);
+  return i < 0 ? null : rieng[i];
+}
+
+/// Như [ketiepRieng] nhưng trả chỉ số trong [rieng] (-1 là không có).
+///
+/// Nơi gọi cần chỉ số để sửa đúng dòng trong sổ. Tra ngược bằng `indexOf` thì
+/// phải dựa vào việc [CustomLich] so sánh theo danh tính — đúng hôm nay,
+/// nhưng ngày nào có người thêm `operator ==` vào nó là hai mục giống hệt
+/// nhau trong cùng ngày bị sửa nhầm chỗ mà chẳng ai hay.
+int ketiepRiengIdx(List<CustomLich> rieng, DateTime now) {
+  var tot = -1;
+  var mocTot = double.infinity;
+  for (final (i, c) in rieng.indexed) {
+    final n = customLessonNow(c, now);
+    if (n == null || n.pha == LessonPhase.xong) continue;
+    final moc = switch (n.pha) {
+      // Chưa tới giờ: mốc là lúc phải đi.
+      LessonPhase.chuaVao => c.batDau.toDouble(),
+      // Đang chạy: mốc là lúc xong. Bỏ ngỏ giờ về thì không có mốc nào cả.
+      LessonPhase.dangHoc => c.ketThuc?.toDouble() ?? double.maxFinite,
+      _ => double.maxFinite,
+    };
+    if (moc < mocTot) {
+      mocTot = moc;
+      tot = i;
+    }
   }
-  return null;
+  return tot;
 }
 
 /// Khoảng giờ (phút từ 0h) của một buổi học chính quy. Tiết lạ thì null.
@@ -545,7 +625,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
       ban: khoangBan(buoi, _rieng[ngay.day] ?? const []),
     );
     if (!mounted) return;
-    final item = await _hoiLichRieng(context, goiY: goi);
+    final item = await _hoiLichRieng(context, goiY: goi, ngay: ngay);
     if (item == null) return;
     await CustomLichStore.add(ngay, item);
     // Chốt giờ nào thì khung đó được thưởng — lần sau gợi ý sát hơn.
@@ -959,21 +1039,21 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
                 ),
               )
             else ...[
-              for (final (n, x) in ganLichTrongNgay(
-                widget.items,
-                rieng,
-              ).indexed)
-                if (x is CustomLich)
+              for (final (n, m) in ganLichCoChiSo(widget.items, rieng).indexed)
+                if (m.x case final CustomLich x)
                   _LessonRieng(
                     x,
                     delay: Duration(milliseconds: 70 * n),
                     now: widget.now,
-                    onXoa: () => _xoa(rieng.indexOf(x)),
+                    // Chỗ cũ trong sổ, không phải chỗ sau khi sắp theo giờ —
+                    // mà cũng không `indexOf`: hai mục giống hệt nhau trong
+                    // cùng ngày là xoá nhầm cái đầu.
+                    onXoa: () => _xoa(m.rieng),
                     trungGio: trungGioChinhQuy(x, widget.items),
                   )
                 else
                   _Lesson(
-                    x,
+                    m.x,
                     delay: Duration(milliseconds: 70 * n),
                     now: widget.now,
                   ),
@@ -995,9 +1075,6 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
   }
 }
 
-/// Hỏi tiêu đề, giờ đi (bắt buộc) và giờ về (tuỳ chọn) cho một mục lịch tự đặt.
-/// [goiY] là giờ đi bộ gợi ý đề xuất (phút từ 0h) — điền sẵn để người dùng
-/// chỉ việc bấm Thêm, nhưng vẫn sửa được như thường.
 /// Giờ về đặt trước giờ đi thì mục vừa thêm đã "xong" ngay, mà cảnh báo đụng
 /// giờ cũng tính sai vì khoảng giờ lật ngược. Chặn ngay từ ô nhập.
 bool _gioNguoc(TimeOfDay? di, TimeOfDay? ve) =>
@@ -1005,7 +1082,33 @@ bool _gioNguoc(TimeOfDay? di, TimeOfDay? ve) =>
     ve != null &&
     ve.hour * 60 + ve.minute <= di.hour * 60 + di.minute;
 
-Future<CustomLich?> _hoiLichRieng(BuildContext context, {int? goiY}) async {
+/// Buổi đầu tiên của một mục lặp [lap] đặt từ ngày [tu]. Chính ngày đó nếu
+/// thứ của nó nằm trong [lap], không thì ngày gần nhất phía sau.
+DateTime? buoiDau(DateTime tu, Set<int> lap) {
+  if (lap.isEmpty) return null;
+  for (var i = 0; i < 7; i++) {
+    final d = tu.add(Duration(days: i));
+    if (lap.contains(d.weekday)) return d;
+  }
+  return null;
+}
+
+/// Hỏi tiêu đề, giờ đi (bắt buộc) và giờ về (tuỳ chọn) cho một mục lịch tự đặt.
+/// [goiY] là giờ đi bộ gợi ý đề xuất (phút từ 0h) — điền sẵn để người dùng
+/// chỉ việc bấm Thêm, nhưng vẫn sửa được như thường. [ngay] là ngày đang xem,
+/// cũng là ngày mục này bắt đầu.
+/// Hoãn [viec] lại một nhịp gõ, bỏ hẹn cũ nếu còn. Trả hẹn mới để nơi gọi
+/// giữ mà bỏ khi đóng hộp thoại.
+Timer _chamLai(Timer? cu, void Function() viec) {
+  cu?.cancel();
+  return Timer(const Duration(milliseconds: 300), viec);
+}
+
+Future<CustomLich?> _hoiLichRieng(
+  BuildContext context, {
+  int? goiY,
+  required DateTime ngay,
+}) async {
   final ten = TextEditingController();
   final viTri = TextEditingController();
   TimeOfDay? di = goiY == null
@@ -1015,6 +1118,7 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context, {int? goiY}) async {
   TimeOfDay? ve;
   var mau = customLichMauMacDinh;
   final lap = <int>{};
+  Timer? traSo;
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -1056,7 +1160,10 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context, {int? goiY}) async {
                   autofocus: true,
                   // Mẫu nhanh: gõ lại đúng tên cũ thì giờ, màu và vị trí lần
                   // trước tự điền — việc lặp đi lặp lại thì khỏi gõ lại.
-                  onChanged: (v) async {
+                  // Chờ người ta gõ xong hẳn mới tra sổ: mỗi chữ một câu
+                  // truy vấn thì gõ 'Lên ATC' là bảy lượt, mà sáu lượt đầu
+                  // chắc chắn không khớp tên nào.
+                  onChanged: (v) => traSo = _chamLai(traSo, () async {
                     final cu = await CustomLichStore.mauGanNhat(v);
                     if (cu == null || !ctx.mounted) return;
                     if (ten.text.trim().toLowerCase() !=
@@ -1080,7 +1187,7 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context, {int? goiY}) async {
                       mau = cu.mau;
                       if (viTri.text.isEmpty) viTri.text = cu.viTri ?? '';
                     });
-                  },
+                  }),
                   style: TextStyle(
                     fontFamily: 'Display',
                     fontWeight: FontWeight.w700,
@@ -1185,6 +1292,16 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context, {int? goiY}) async {
                     ),
                 ],
               ),
+              if (buoiDau(ngay, lap) case final dau? when dau != ngay) ...[
+                const SizedBox(height: 8),
+                // Đặt lịch lặp T2 trong lúc đang xem thứ tư thì thẻ ngày đang
+                // mở sẽ trống trơn — nói trước buổi đầu rơi vào đâu, chứ để
+                // người dùng bấm Thêm rồi tưởng hỏng.
+                Text(
+                  'Buổi đầu: ${dayNames[dau.weekday]}, ${dau.day}/${dau.month}',
+                  style: TextStyle(fontSize: 13, color: Paper.ink2),
+                ),
+              ],
               if (_gioNguoc(di, ve)) ...[
                 const SizedBox(height: 10),
                 Text(
@@ -1224,6 +1341,9 @@ Future<CustomLich?> _hoiLichRieng(BuildContext context, {int? goiY}) async {
       ),
     ),
   );
+  // Hộp thoại đóng rồi thì đừng để hẹn tra sổ còn chạy: nó gọi `setState` của
+  // một cây đã dỡ, mà trong test thì thành "timer còn treo".
+  traSo?.cancel();
   if (ok != true || di == null || _gioNguoc(di, ve)) return null;
   return CustomLich(
     tieuDe: ten.text.trim(),
@@ -2104,8 +2224,8 @@ class _TodayLessonsState extends State<TodayLessons>
       final riengMai = _riengNgay == homNay ? _riengMai : const <CustomLich>[];
       // Cả hai đều đáng nhắc: lịch chính quy hiện trước, lịch tự đặt thêm
       // bên dưới chứ không bị lịch chính quy che mất.
-      final keRieng = ketiepRieng(riengHomNay, now);
-      final keRiengIdx = keRieng == null ? -1 : riengHomNay.indexOf(keRieng);
+      final keRiengIdx = ketiepRiengIdx(riengHomNay, now);
+      final keRieng = keRiengIdx < 0 ? null : riengHomNay[keRiengIdx];
       if (items.isEmpty &&
           maiItems.isEmpty &&
           riengHomNay.isEmpty &&
@@ -2125,7 +2245,8 @@ class _TodayLessonsState extends State<TodayLessons>
                 rieng: riengHomNay,
                 ke: ke,
                 keRieng: keRieng,
-                onXongRieng: keRiengIdx < 0
+                // Có giờ về rồi thì tự xong đúng lúc, khỏi cần nút.
+                onXongRieng: keRiengIdx < 0 || keRieng?.ketThuc != null
                     ? null
                     : () => _danhDauXongRieng(homNay, keRiengIdx),
                 now: now,

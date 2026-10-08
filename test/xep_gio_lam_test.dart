@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:dlu_tkb/cache.dart';
 import 'package:dlu_tkb/custom_lich.dart';
 import 'package:dlu_tkb/goi_y_gio.dart';
 import 'package:dlu_tkb/graph.dart';
@@ -57,16 +58,64 @@ void main() {
     expect(viec.batDau, lessThan(15 * 60));
   });
 
-  test(
-    'kín sạch thì vẫn đẩy về sau giờ hiện tại, không lùi vào quá khứ',
-    () async {
-      final now = DateTime(2026, 9, 29, 20, 0);
-      // Hạn 21h hôm nay: mọi khung đều bị loại (quá khứ hoặc sau hạn).
-      final (_, viec) = await deXuatViec(
-        han(DateTime(2026, 9, 29, 21, 0)),
-        now,
-      );
-      expect(viec.batDau, 20 * 60 + 30);
-    },
-  );
+  test('hôm nay hết chỗ thì dời sang ngày mai, không lố qua nửa đêm', () async {
+    // 23h50: hôm nay chỉ còn từ 0h20 hôm sau trở đi, tức là hết chỗ.
+    final now = DateTime(2026, 9, 29, 23, 50);
+    final (ngay, viec) = await deXuatViec(
+      han(DateTime(2026, 9, 30, 23, 59)),
+      now,
+    );
+    expect(ngay, DateTime(2026, 9, 30));
+    expect(viec.batDau + 90, lessThanOrEqualTo(24 * 60));
+  });
+
+  test('không ngày nào còn chỗ thì vẫn nằm gọn trong ngày', () async {
+    final now = DateTime(2026, 9, 29, 23, 50);
+    // Hạn ngay trong đêm nay: không còn ngày nào để dời.
+    final (ngay, viec) = await deXuatViec(
+      han(DateTime(2026, 9, 29, 23, 59)),
+      now,
+    );
+    expect(ngay, DateTime(2026, 9, 29));
+    expect(viec.batDau, greaterThanOrEqualTo(0));
+    expect(viec.ketThuc, lessThanOrEqualTo(24 * 60));
+  });
+
+  test('hạn đã qua thì vẫn đề xuất được, không kẹt vòng lặp', () async {
+    final now = DateTime(2026, 9, 29, 10, 0);
+    final (ngay, viec) = await deXuatViec(
+      han(DateTime(2026, 9, 28, 9, 0)),
+      now,
+    );
+    expect(ngay, DateTime(2026, 9, 29));
+    expect(viec.batDau, greaterThanOrEqualTo(10 * 60 + 30));
+  });
+
+  test('đọc lịch ngày từ cache đúng khoá mà fetchMonth đã ghi', () async {
+    // Tháng 1 thuộc HK01 của niên khoá trước, mà yearTermFor(ngày) cũng ra
+    // HK01 — chỗ dễ trượt là tháng 8: ngày 1/8 thuộc niên khoá mới.
+    final d = DateTime(2026, 8, 3); // thứ hai
+    final (nam, ky) = yearTermFor(DateTime(d.year, d.month));
+    await Cache.write(
+      '/api/student/DrawingSchedules_v2'
+      '?namhoc=$nam&hocky=$ky&tuan=${isoWeek(d)}',
+      {
+        'ResultDataSchedule': [
+          {
+            'StartDate': '03/08/2026',
+            'DayOfWeek': 1,
+            'NumberOfPeriods': 4,
+            'BeginTime': 'Tiết: 1',
+            'EndTime': 'Tiết: 4',
+            'PeriodID': 1,
+            'CurriculumName': 'Giải tích',
+            'RoomID': 'A1.203',
+          },
+        ],
+      },
+    );
+    expect(lichNgayTuCache(d), hasLength(1));
+    // Ngày không có gì trong cache thì coi như trống, không nổ.
+    expect(lichNgayTuCache(DateTime(2026, 8, 4)), isEmpty);
+  });
 }

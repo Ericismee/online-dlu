@@ -218,6 +218,14 @@ void main() {
       // Tháng 10/2026: thứ ba 6,13,20,27 và thứ năm 1,8,15,22,29.
       expect(thang.keys.toSet(), {1, 6, 8, 13, 15, 20, 22, 27, 29});
     });
+
+    test('đọc nhiều ngày một lượt, vắt qua đầu tháng vẫn đúng', () async {
+      await datLap();
+      final ds = await CustomLichStore.forRange(DateTime(2026, 9, 28), 7);
+      // 29/9 thứ ba, 1/10 thứ năm; ngày trống thì không có khoá.
+      expect(ds.keys.toList(), [DateTime(2026, 9, 29), DateTime(2026, 10, 1)]);
+      expect(ds[DateTime(2026, 10, 1)], hasLength(1));
+    });
   });
 
   test(
@@ -246,4 +254,43 @@ void main() {
       expect(await CustomLichStore.mauGanNhat('chưa từng đặt'), isNull);
     },
   );
+
+  test('mục bỏ ngỏ giờ về không chắn mục đang chạy', () {
+    const moNgo = CustomLich(tieuDe: 'Lên ATC', batDau: 7 * 60);
+    const ca = CustomLich(
+      tieuDe: 'Ca chiều',
+      batDau: 14 * 60,
+      ketThuc: 16 * 60,
+    );
+    final now = DateTime(2026, 9, 29, 15, 0);
+    // 15h đang trong ca 14h-16h: thẻ phải chỉ vào ca đó, chứ không phải buổi
+    // sáng chưa ai bấm xong.
+    expect(ketiepRieng(const [moNgo, ca], now)?.tieuDe, 'Ca chiều');
+    // Ca tan rồi thì mới tới lượt mục bỏ ngỏ.
+    expect(
+      ketiepRieng(const [moNgo, ca], DateTime(2026, 9, 29, 17, 0))?.tieuDe,
+      'Lên ATC',
+    );
+    // Chưa tới giờ nào thì lấy cái sớm nhất.
+    expect(
+      ketiepRieng(const [ca, moNgo], DateTime(2026, 9, 29, 6, 0))?.tieuDe,
+      'Lên ATC',
+    );
+    // Xong hết thì không còn gì để nhắc.
+    expect(ketiepRieng(const [ca], DateTime(2026, 9, 29, 18, 0)), isNull);
+  });
+
+  test('buổi đầu của mục lặp rơi đúng ngày gần nhất phía sau', () {
+    // 30/9/2026 là thứ tư; lặp T2 thì buổi đầu là 5/10.
+    expect(
+      buoiDau(DateTime(2026, 9, 30), const {DateTime.monday}),
+      DateTime(2026, 10, 5),
+    );
+    // Thứ của chính ngày đặt nằm trong danh sách thì buổi đầu là hôm đó.
+    expect(
+      buoiDau(DateTime(2026, 9, 30), const {DateTime.wednesday}),
+      DateTime(2026, 9, 30),
+    );
+    expect(buoiDau(DateTime(2026, 9, 30), const {}), isNull);
+  });
 }

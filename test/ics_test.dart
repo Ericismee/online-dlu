@@ -88,4 +88,31 @@ void main() {
     expect(s, contains('DTEND:20260903T210000'));
     expect(icsCount(const {}, rieng), 2);
   });
+
+  test('UID lịch tự đặt không đổi khi mục khác bị xoá', () {
+    const atc = CustomLich(tieuDe: 'Lên ATC', batDau: 7 * 60);
+    const on = CustomLich(tieuDe: 'Ôn thi', batDau: 19 * 60);
+    String uid(String s) =>
+        s.split('\r\n').firstWhere((l) => l.contains('rieng1140'));
+    expect(
+      uid(
+        icsMonth(
+          DateTime(2026, 9),
+          const {},
+          rieng: {
+            3: [atc, on],
+          },
+        ),
+      ),
+      uid(
+        icsMonth(
+          DateTime(2026, 9),
+          const {},
+          rieng: {
+            3: [on],
+          },
+        ),
+      ),
+    );
+  });
 }

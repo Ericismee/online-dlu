@@ -47,8 +47,13 @@ List<MocNhac> mocNhac(
   }
   for (final e in rieng.entries) {
     for (final c in e.value) {
+      // Giờ về bằng giờ đi là dấu của nút "Đã xong" bấm trước cả giờ đi —
+      // người ta đã bảo xong rồi thì đừng rung máy nhắc nữa.
+      if (c.ketThuc == c.batDau) continue;
       final vao = e.key.add(Duration(minutes: c.batDau));
-      final luc = vao.subtract(truoc + demDuong(c, ngay[e.key] ?? const []));
+      final luc = vao.subtract(
+        truoc + demDuong(c, ngay[e.key] ?? const [], e.value),
+      );
       if (!luc.isAfter(now)) continue;
       out.add((
         luc: luc,
@@ -64,30 +69,46 @@ List<MocNhac> mocNhac(
 }
 
 /// Thời gian đi đường cộng thêm vào lần nhắc. Chỉ cộng khi mục tự đặt có địa
-/// điểm khác phòng của tiết ngay trước nó: tan tiết ở giảng đường rồi phải
-/// chạy qua chỗ khác thì nhắc đúng giờ là trễ.
+/// điểm khác chỗ của việc ngay trước nó: tan tiết ở giảng đường rồi phải chạy
+/// qua chỗ khác thì nhắc đúng giờ là trễ. Việc trước đó có thể là tiết chính
+/// quy mà cũng có thể là một mục tự đặt khác — đi từ quán cà phê về trường
+/// cũng mất đúng chừng ấy đường.
 ///
 /// Không hỏi bản đồ, không đo quãng đường — trường nằm gọn một khuôn viên,
 /// một con số cố định là đủ dùng.
 // ponytail: một hằng số cho mọi chặng; đo thật khi nào app có toạ độ phòng.
 const demDuongPhut = 15;
 
-Duration demDuong(CustomLich c, List<dynamic> buoiTrongNgay) {
+Duration demDuong(
+  CustomLich c,
+  List<dynamic> buoiTrongNgay, [
+  Iterable<CustomLich> riengTrongNgay = const [],
+]) {
   final noi = c.viTri?.trim() ?? '';
   if (noi.isEmpty) return Duration.zero;
   String? phongTruoc;
   var ganNhat = -1;
+  void xet(int tan, String? phong) {
+    if (tan <= c.batDau && tan > ganNhat) {
+      ganNhat = tan;
+      phongTruoc = phong;
+    }
+  }
+
   for (final i in buoiTrongNgay) {
     final cuoi = batDauPhut(tietNo(i['EndTime']));
     if (cuoi == null) continue;
-    final tan = cuoi + tietPhut;
-    if (tan <= c.batDau && tan > ganNhat) {
-      ganNhat = tan;
-      phongTruoc = clean(i['RoomID']);
-    }
+    xet(cuoi + tietPhut, clean(i['RoomID']));
   }
-  if (phongTruoc == null || phongTruoc.isEmpty) return Duration.zero;
-  return phongTruoc.toLowerCase() == noi.toLowerCase()
+  for (final o in riengTrongNgay) {
+    // Chính nó thì bỏ: mục không khai giờ về tan ngay lúc đi, so với chỗ của
+    // bản thân là lúc nào cũng ra "khỏi phải đi đâu".
+    if (identical(o, c)) continue;
+    xet(o.ketThuc ?? o.batDau, o.viTri?.trim());
+  }
+  final truocDo = phongTruoc;
+  if (truocDo == null || truocDo.isEmpty) return Duration.zero;
+  return truocDo.toLowerCase() == noi.toLowerCase()
       ? Duration.zero
       : const Duration(minutes: demDuongPhut);
 }
@@ -183,20 +204,9 @@ class Nhac {
     }
   }
 
-  /// Lịch tự đặt của hai tuần tới. Mục lặp trải ra thành từng buổi nên cứ
-  /// hỏi theo ngày; xa hơn hai tuần thì tới lúc đó app đã đặt lại rồi.
-  static Future<Map<DateTime, List<CustomLich>>> _riengQuanh(
-    DateTime now,
-  ) async {
-    final hom = DateTime(now.year, now.month, now.day);
-    final out = <DateTime, List<CustomLich>>{};
-    for (var i = 0; i < 14; i++) {
-      final d = hom.add(Duration(days: i));
-      final ds = await CustomLichStore.forDay(d);
-      if (ds.isNotEmpty) out[d] = ds;
-    }
-    return out;
-  }
+  /// Lịch tự đặt của hai tuần tới; xa hơn thì tới lúc đó app đã đặt lại rồi.
+  static Future<Map<DateTime, List<CustomLich>>> _riengQuanh(DateTime now) =>
+      CustomLichStore.forRange(DateTime(now.year, now.month, now.day), 14);
 
   static Future<void> _dat(int id, MocNhac m) async {
     final tiet = m.tiet;

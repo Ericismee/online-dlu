@@ -16,6 +16,9 @@ const customLichMauMacDinh = 0xFFFFB9CC;
 /// [lap] rỗng là mục xảy ra đúng một ngày. Có thứ trong đó ([DateTime.weekday],
 /// 1 = thứ hai) thì mục lặp lại hàng tuần vào những thứ ấy, tính từ ngày đặt
 /// tới [denNgay].
+/// Số phút trong một ngày — giờ lịch tự đặt luôn nằm trong dải này.
+const phutMotNgay = 24 * 60;
+
 class CustomLich {
   const CustomLich({
     required this.tieuDe,
@@ -57,12 +60,18 @@ class CustomLich {
     denNgay: denNgay ?? this.denNgay,
   );
 
-  /// Bản đã chuẩn lại giờ: giờ về không được trước giờ đi. Khoảng giờ lật
-  /// ngược thì mục vừa thêm đã "xong" ngay, mà cảnh báo đụng giờ cũng tính
-  /// sai — chặn ở cửa vào SQLite thì mọi nơi gọi đều yên, khỏi phải nhớ
-  /// kiểm riêng từng chỗ.
-  CustomLich get chuan =>
-      ketThuc == null || ketThuc! >= batDau ? this : sao(ketThuc: batDau);
+  /// Bản đã chuẩn lại giờ: nằm trong một ngày, và giờ về không được trước giờ
+  /// đi. Khoảng giờ lật ngược thì mục vừa thêm đã "xong" ngay, mà cảnh báo
+  /// đụng giờ cũng tính sai; giờ ngoài dải 0–24h thì vào tới chỗ vẽ mới nổ
+  /// (bản JSON cũ hay bản chép tay đều có thể mang số lạ). Chặn ở cửa vào
+  /// SQLite thì mọi nơi gọi đều yên, khỏi phải nhớ kiểm riêng từng chỗ.
+  CustomLich get chuan {
+    final dau = batDau.clamp(0, phutMotNgay);
+    final ve = ketThuc?.clamp(dau, phutMotNgay);
+    return dau == batDau && ve == ketThuc
+        ? this
+        : sao(batDau: dau, ketThuc: ve, xoaKetThuc: ve == null);
+  }
 
   /// Bản sao đã chốt giờ về là [phut] — nút "Đã xong". Chỉ giờ về đổi, màu
   /// và vị trí người dùng chọn phải còn nguyên.
@@ -159,13 +168,29 @@ class CustomLichStore {
   /// của ngày đó; buổi nào có dòng ngoại lệ thì theo dòng ngoại lệ — tắt thì
   /// biến mất, còn bật thì lấy nội dung đã sửa riêng.
   static Future<List<Buoi>> buoiTrongNgay(DateTime d) async {
-    final key = khoaNgay(d);
-    final le = {
-      for (final r in await _ngoaiLe())
-        if (r.ngay == key) r.goc!: r,
-    };
+    final le = _leTheoNgay(await _ngoaiLe());
+    return _trai(await _goc(), le[khoaNgay(d)] ?? const {}, d);
+  }
+
+  /// Ngoại lệ gom theo ngày rồi theo mục gốc — đọc sổ một lượt là lọc được
+  /// mọi ngày, khỏi quét lại cả danh sách cho từng ngày.
+  static Map<String, Map<int, LichRieng>> _leTheoNgay(List<LichRieng> le) {
+    final out = <String, Map<int, LichRieng>>{};
+    for (final r in le) {
+      (out[r.ngay] ??= {})[r.goc!] = r;
+    }
+    return out;
+  }
+
+  /// Trải các mục [goc] thành buổi của ngày [d], [le] là ngoại lệ của đúng
+  /// ngày đó.
+  static List<Buoi> _trai(
+    List<LichRieng> goc,
+    Map<int, LichRieng> le,
+    DateTime d,
+  ) {
     final out = <Buoi>[];
-    for (final r in await _goc()) {
+    for (final r in goc) {
       if (!_roiVao(r, d)) continue;
       final rieng = le[r.id];
       if (rieng != null && !rieng.bat) continue;
@@ -185,23 +210,26 @@ class CustomLichStore {
 
   /// Toàn bộ lịch tự đặt trong một tháng, theo ngày — để tô màu lịch tháng.
   static Future<Map<int, List<CustomLich>>> forMonth(DateTime month) async {
-    final goc = await _goc();
-    final le = await _ngoaiLe();
     final soNgay = DateTime(month.year, month.month + 1, 0).day;
-    final out = <int, List<CustomLich>>{};
-    for (var ngay = 1; ngay <= soNgay; ngay++) {
-      final d = DateTime(month.year, month.month, ngay);
-      final key = khoaNgay(d);
-      final rieng = {
-        for (final r in le)
-          if (r.ngay == key) r.goc!: r,
-      };
-      for (final r in goc) {
-        if (!_roiVao(r, d)) continue;
-        final x = rieng[r.id];
-        if (x != null && !x.bat) continue;
-        out.putIfAbsent(ngay, () => []).add(_tu(x ?? r));
-      }
+    final theoNgay = await forRange(DateTime(month.year, month.month), soNgay);
+    return {for (final e in theoNgay.entries) e.key.day: e.value};
+  }
+
+  /// Lịch tự đặt của [soNgay] ngày liền từ [tu], theo ngày. Đọc sổ đúng hai
+  /// câu truy vấn rồi trải tại chỗ — gọi [forDay] từng ngày thì hai câu nhân
+  /// lên theo số ngày mà dữ liệu đọc ra vẫn y nguyên. Ngày trống thì không
+  /// có khoá.
+  static Future<Map<DateTime, List<CustomLich>>> forRange(
+    DateTime tu,
+    int soNgay,
+  ) async {
+    final goc = await _goc();
+    final le = _leTheoNgay(await _ngoaiLe());
+    final out = <DateTime, List<CustomLich>>{};
+    for (var i = 0; i < soNgay; i++) {
+      final d = DateTime(tu.year, tu.month, tu.day + i);
+      final ds = _trai(goc, le[khoaNgay(d)] ?? const {}, d);
+      if (ds.isNotEmpty) out[d] = [for (final b in ds) b.item];
     }
     return out;
   }
@@ -320,13 +348,16 @@ class CustomLichStore {
   /// Mục đã đặt gần đây nhất mang đúng tiêu đề này — để điền sẵn giờ, màu và
   /// vị trí cho lần sau. So tiêu đề đã chuẩn hoá nên 'lên atc' nhận ra 'Lên
   /// ATC'.
+  ///
+  /// Chỉ xét dòng gốc: dòng ngoại lệ là bản chụp của đúng một buổi (có khi
+  /// còn là buổi đã bỏ), lấy nó làm mẫu thì chép lại cả cái sửa tạm hôm ấy.
   static Future<CustomLich?> mauGanNhat(String tieuDe) async {
     final ten = tieuDe.trim().toLowerCase();
     if (ten.isEmpty) return null;
     final db = Db.i;
     final rows =
         await (db.select(db.lichRiengs)
-              ..where((t) => t.tieuDe.lower().equals(ten))
+              ..where((t) => t.tieuDe.lower().equals(ten) & t.goc.isNull())
               ..orderBy([
                 (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
               ])

@@ -61,7 +61,7 @@ String icsMonth(
   }
   for (final day in rieng.keys.toList()..sort()) {
     final d = DateTime(month.year, month.month, day);
-    for (final (n, c) in rieng[day]!.indexed) {
+    for (final c in rieng[day]!) {
       // Không biết giờ về thì cho một tiếng — app Lịch nào cũng cần DTEND,
       // mà để 0 phút thì nhiều app vẽ thành vạch mỏng không bấm trúng.
       final ket = c.ketThuc == null || c.ketThuc! <= c.batDau
@@ -70,7 +70,11 @@ String icsMonth(
       final noi = c.viTri?.trim() ?? '';
       out.writeAll([
         'BEGIN:VEVENT',
-        'UID:${d.year}${_pad(d.month)}${_pad(day)}-rieng$n@dlu-online',
+        // UID theo nội dung, không theo chỗ trong danh sách: xoá một mục là
+        // mọi mục sau nó tụt chỉ số, app Lịch coi đó là buổi khác và nhân
+        // bản ra một mớ sau mỗi lần xuất lại.
+        'UID:${d.year}${_pad(d.month)}${_pad(day)}'
+            '-rieng${c.batDau}-${_bam(c.tieuDe)}@dlu-online',
         'DTSTAMP:$stamp',
         'DTSTART:${_gioDia(d, c.batDau)}',
         'DTEND:${_gioDia(d, ket)}',
@@ -102,6 +106,16 @@ int icsCount(
     rieng.values.fold(0, (a, e) => a + e.length);
 
 String _pad(int n) => n.toString().padLeft(2, '0');
+
+/// FNV-1a 32 bit của tiêu đề, để nhét vào UID. Chỉ cần ổn định và không chứa
+/// ký tự lạ — không phải chữ ký, nên hàm băm nào gọn nhất thì dùng.
+String _bam(String s) {
+  var h = 0x811c9dc5;
+  for (final c in utf8.encode(s)) {
+    h = ((h ^ c) * 0x01000193) & 0xffffffff;
+  }
+  return h.toRadixString(16);
+}
 
 String _gioDia(DateTime d, int phut) =>
     '${d.year}${_pad(d.month)}${_pad(d.day)}T${_pad(phut ~/ 60)}${_pad(phut % 60)}00';

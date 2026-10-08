@@ -90,6 +90,24 @@ void main() {
       lich[DateTime(2026, 9, 28)]!,
     );
     expect(dem('C1.105'), const Duration(minutes: demDuongPhut));
+    // Chặng trước cũng có thể là một mục tự đặt khác, không chỉ tiết học.
+    const quan = CustomLich(
+      tieuDe: 'Cà phê',
+      batDau: 11 * 60 + 30,
+      ketThuc: 13 * 60,
+      viTri: 'Quán',
+    );
+    const hen = CustomLich(
+      tieuDe: 'Hẹn',
+      batDau: 13 * 60 + 10,
+      viTri: 'C1.105',
+    );
+    expect(
+      demDuong(hen, lich[DateTime(2026, 9, 28)]!, const [quan, hen]),
+      const Duration(minutes: demDuongPhut),
+    );
+    // Chính nó không tính là chặng trước dù không khai giờ về.
+    expect(demDuong(hen, const [], const [hen]), Duration.zero);
     // Vẫn ở đúng phòng vừa học xong thì khỏi cộng đường đi.
     expect(dem('a1.203'), Duration.zero);
     // Không ghi địa điểm thì không đoán bừa.

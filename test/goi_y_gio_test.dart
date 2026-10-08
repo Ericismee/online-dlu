@@ -105,6 +105,17 @@ void main() {
     expect(m.chon([1]), 0);
   });
 
+  test('kín cả ngày thì nói thẳng là hết chỗ, không giả vờ còn', () {
+    expect(GoiYGio.conCho(const []), isTrue);
+    expect(GoiYGio.conCho([(0, 24 * 60)]), isFalse);
+    // Tập rỗng không được hiểu thành "không ràng buộc": gộp hai thứ đó thì
+    // lúc kín lịch bộ gợi ý lại chỉ thẳng vào giữa giờ học.
+    final m = LinUCB(soTay: 3, soChieu: 1, ngau: Random(1));
+    m.hoc(2, [1], 1);
+    expect(m.chon([1]), 2);
+    expect(m.chon([1], choPhep: {0, 1}), isNot(2));
+  });
+
   test('khung đụng giờ bận thì loại khỏi danh sách gợi ý', () {
     // Bận 7h30–11h10 (tiết 1-4) thì khung 6–8h và 8–10h, 10–12h đều dính.
     expect(khungRanh([(7 * 60 + 30, 11 * 60 + 10)]), {3, 4, 5, 6, 7});
