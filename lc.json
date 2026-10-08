@@ -38,7 +38,7 @@
           "date": "2026-10-08",
           "localizedDescription": "• Thêm chế độ tối, công tắc nằm trong Cài đặt.\n• Lịch tự đặt lặp được hàng tuần: chọn thứ, xoá hay sửa thì hỏi rõ chỉ buổi này hay cả chuỗi.\n• Thẻ ngày có nút sửa mục lịch tự đặt, không chỉ xoá.\n• Đặt lịch tự đặt được gợi ý sẵn giờ, học dần theo giờ bạn thường chọn và né những khung đã kín lịch.\n• Gõ lại tên một việc đã đặt thì giờ, màu và vị trí lần trước tự điền.\n• Lịch tự đặt cũng được nhắc trước giờ và cũng đi theo khi xuất ra app Lịch của máy.\n• Hạn bài tập trên LMS có nút Xếp giờ làm: app tìm chỗ trống gần nhất trước hạn và đặt sẵn một buổi 90 phút.\n• Cài đặt chỉnh được báo trước bao nhiêu phút, và đệm thêm bao nhiêu phút khi phải đi chỗ khác.\n• Bài đã nộp thì thôi nhắc; lịch và phiên đăng nhập LMS lưu trong máy nên mở app vào nhanh hơn và đỡ gọi mạng.\n• App chỉ gọi tới trường khi đang ở trước mặt bạn; quay lại từ app khác là lấy số mới ngay.\n• Sai mật khẩu thì nói là sai mật khẩu, không hiện mã lỗi 400 nữa.\n• Sửa một loạt lỗi giờ giấc của lịch tự đặt: giờ về trước giờ đi, buổi làm lố qua nửa đêm, và xoá/sửa nhầm dòng khi trong ngày có hai mục giống hệt nhau.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 12644538,
+          "size": 12699528,
           "minOSVersion": "15.0"
         }
       ],
