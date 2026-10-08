@@ -33,16 +33,16 @@
       },
       "versions": [
         {
-          "version": "1.2.1",
-          "buildVersion": "13",
+          "version": "1.2.2",
+          "buildVersion": "14",
           "date": "2026-10-08",
-          "localizedDescription": "• Giao diện làm lại theo phong cách neubrutalism: viền đen dày, bóng cứng, màu tươi, góc bo nhẹ cho dễ nhìn trên điện thoại.\n• Chuông thông báo đứng cùng một vị trí ở mọi trang, không nhảy khi đổi tab.\n• Mục Điểm danh nổi lên đầu Trang chủ khi sắp tới giờ, khỏi lướt qua mà không thấy.\n• Trang Lịch sắp xếp lại các nút; chia sẻ ảnh giờ chụp đúng thẻ ngày đang xem.\n• Hộp thư vuốt để xoá; bỏ bấm giữ để thêm vào lịch.\n• Bật chế độ nhà phát triển thì menu có thêm mục Log: xem mọi lượt gọi mạng, nhịp làm mới và đếm ngược, chép được cả sổ. Log không bao giờ ghi mật khẩu hay token.\n• Sửa khoá ứng dụng không ăn khi tắt hẳn app rồi mở lại.\n• Màn khoá mở được bằng mật khẩu portal khi vân tay/khuôn mặt không dùng được.",
+          "localizedDescription": "• Thêm chế độ tối, công tắc nằm trong Cài đặt.\n• Lịch tự đặt lặp được hàng tuần: chọn thứ, xoá hay sửa thì hỏi rõ chỉ buổi này hay cả chuỗi.\n• Thẻ ngày có nút sửa mục lịch tự đặt, không chỉ xoá.\n• Đặt lịch tự đặt được gợi ý sẵn giờ, học dần theo giờ bạn thường chọn và né những khung đã kín lịch.\n• Gõ lại tên một việc đã đặt thì giờ, màu và vị trí lần trước tự điền.\n• Lịch tự đặt cũng được nhắc trước giờ và cũng đi theo khi xuất ra app Lịch của máy.\n• Hạn bài tập trên LMS có nút Xếp giờ làm: app tìm chỗ trống gần nhất trước hạn và đặt sẵn một buổi 90 phút.\n• Cài đặt chỉnh được báo trước bao nhiêu phút, và đệm thêm bao nhiêu phút khi phải đi chỗ khác.\n• Bài đã nộp thì thôi nhắc; lịch và phiên đăng nhập LMS lưu trong máy nên mở app vào nhanh hơn và đỡ gọi mạng.\n• App chỉ gọi tới trường khi đang ở trước mặt bạn; quay lại từ app khác là lấy số mới ngay.\n• Sai mật khẩu thì nói là sai mật khẩu, không hiện mã lỗi 400 nữa.\n• Sửa một loạt lỗi giờ giấc của lịch tự đặt: giờ về trước giờ đi, buổi làm lố qua nửa đêm, và xoá/sửa nhầm dòng khi trong ngày có hai mục giống hệt nhau.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
           "size": 12644538,
           "minOSVersion": "15.0"
         }
       ],
-      "version": "1.2.1"
+      "version": "1.2.2"
     }
   ],
   "news": []
