@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'db.dart';
+import 'goi_y_gio.dart';
 import 'nhat_ky.dart';
 import 'luong.dart';
 
@@ -68,6 +69,7 @@ class Cache {
   static Future<void> doiSo(String? taiKhoan) async {
     served.clear();
     refreshedAt = null;
+    GoiYGio.quen();
     await Db.moCho(taiKhoan);
     await open();
   }
