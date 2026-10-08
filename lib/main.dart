@@ -14,7 +14,9 @@ import 'exams.dart';
 import 'graph.dart';
 import 'info.dart';
 import 'lms.dart';
+import 'log_screen.dart';
 import 'login.dart';
+import 'nhat_ky.dart';
 import 'marks.dart';
 import 'news.dart';
 import 'paper.dart';
@@ -42,6 +44,10 @@ Future<void> main() async {
   await Db.moCho((await Vault.read())?.$1);
   await Db.i.nhapTuPrefs();
   await Cache.init();
+  // Cờ chế độ nhà phát triển phải có trước khung hình đầu: bật thì mọi lượt
+  // gọi mạng ngay từ lúc mở app đã vào sổ.
+  await NhatKy.dongBo();
+  NhatKy.ghi('app', 'mở app');
   runApp(const App());
 }
 
@@ -129,6 +135,10 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     final saved = await Vault.read();
     if (saved == null) return setState(() => _checking = false);
 
+    // Mở app lạnh cũng phải qua màn khoá: trước đây chỉ khoá lúc xuống nền,
+    // nên tắt hẳn app rồi mở lại là vào thẳng, khoá coi như không có.
+    if (await Settings.khoaBat() && mounted) setState(() => _locked = true);
+
     // Có phiên cũ thì vào app ngay, đăng nhập lại chạy ngầm.
     final cached = Cache.read('session')?.$1;
     if (cached != null) {
@@ -175,6 +185,11 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // Khoá chặn trước cả khung xương: đang đăng nhập lại ngầm thì vẫn phải
+    // thấy màn khoá chứ không phải dữ liệu.
+    if (_locked) {
+      return AppLockScreen(onUnlocked: () => setState(() => _locked = false));
+    }
     if (_checking) {
       return Scaffold(
         body: Center(
@@ -208,9 +223,6 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
           }
         },
       );
-    }
-    if (_locked) {
-      return AppLockScreen(onUnlocked: () => setState(() => _locked = false));
     }
     return Shell(
       session: _session!,
@@ -510,6 +522,8 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                   ),
                 ),
                 const SizedBox(height: 20),
+                // Sổ verbose: chỉ hiện khi bật chế độ nhà phát triển, và nằm
+                // cuối cùng — ngay trên chữ "Menu".
                 PopIn(
                   delay: const Duration(milliseconds: 220),
                   child: MenuCard(onGo: widget.onGo, session: widget.session),
@@ -914,6 +928,7 @@ class MenuCard extends StatelessWidget {
         (4, Icons.badge_rounded, 'Hồ sơ', Paper.sky),
         (-5, Icons.settings_rounded, 'Cài đặt', Paper.card),
         (-7, Icons.system_update_rounded, 'Cập nhật', Paper.sky),
+        (-8, Icons.terminal_rounded, 'Log', Paper.mint),
       ],
     ),
   ];
@@ -930,6 +945,7 @@ class MenuCard extends StatelessWidget {
           -5 => SettingsScreen(session: session),
           -6 => ImprovementScreen(session: session),
           -7 => const ChangelogScreen(),
+          -8 => const LogScreen(),
           _ => CurriculumScreen(session: session),
         },
       ),
@@ -937,7 +953,13 @@ class MenuCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => Column(
+  // Bật/tắt chế độ nhà phát triển là mục Log hiện/biến ngay, khỏi mở lại app.
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+    valueListenable: NhatKy.batN,
+    builder: (context, _, _) => _than(context),
+  );
+
+  Widget _than(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const Text(
@@ -987,16 +1009,18 @@ class MenuCard extends StatelessWidget {
               spacing: khe,
               runSpacing: khe,
               children: [
+                // Mục Log chỉ có khi bật chế độ nhà phát triển.
                 for (final (tab, icon, label, color) in d.$4)
-                  SizedBox(
-                    width: rong,
-                    child: _MenuO(
-                      icon: icon,
-                      label: label,
-                      color: color,
-                      onTap: () => _mo(context, tab),
+                  if (tab != -8 || NhatKy.bat)
+                    SizedBox(
+                      width: rong,
+                      child: _MenuO(
+                        icon: icon,
+                        label: label,
+                        color: color,
+                        onTap: () => _mo(context, tab),
+                      ),
                     ),
-                  ),
               ],
             );
           },

@@ -1,4 +1,6 @@
 import 'package:dlu_tkb/main.dart';
+import 'package:dlu_tkb/log_screen.dart';
+import 'package:dlu_tkb/nhat_ky.dart';
 import 'package:dlu_tkb/portal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -39,6 +41,34 @@ void main() {
     await t.tap(find.text('Thời khoá biểu'));
     await t.pumpAndSettle();
     expect(toi, 0);
+  });
+
+  testWidgets('mục Log chỉ hiện khi bật chế độ nhà phát triển', (t) async {
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: MenuCard(onGo: (_) {}, session: phien),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Log'), findsNothing);
+
+    NhatKy.bat = true;
+    await t.pumpAndSettle();
+    expect(find.text('Log'), findsOneWidget);
+
+    // Bấm vô phải ra sổ verbose, chứ nhánh thiếu trong switch là nó lặng lẽ
+    // mở Chương trình đào tạo.
+    await t.tap(find.text('Log'));
+    await t.pumpAndSettle();
+    expect(find.byType(LogScreen), findsOneWidget);
+    Navigator.of(t.element(find.byType(LogScreen))).pop();
+    await t.pumpAndSettle();
+    NhatKy.bat = false;
+    await t.pumpAndSettle();
+    expect(find.text('Log'), findsNothing);
   });
 
   test('mỗi mục chỉ nằm trong một danh mục', () {

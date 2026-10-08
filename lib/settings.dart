@@ -6,6 +6,7 @@ import 'db.dart';
 import 'graph.dart';
 import 'lms.dart';
 import 'nhac.dart';
+import 'nhat_ky.dart';
 import 'paper.dart';
 import 'portal.dart';
 
@@ -233,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: 'Chế độ nhà phát triển',
               value: _dev,
               onChanged: (v) async {
-                await Settings.datDevMode(v);
+                await datDevMode(v);
                 if (mounted) setState(() => _dev = v);
               },
             ),
@@ -477,7 +478,9 @@ class _CongTac extends StatelessWidget {
   }
 }
 
-/// Màn khoá app: chặn hết nội dung tới khi xác thực sinh trắc học xong.
+/// Màn khoá app: chặn hết nội dung tới khi mở khoá. Sinh trắc học là đường
+/// chính, còn mật khẩu portal đã lưu là đường lui cho máy không có vân tay,
+/// cảm biến hỏng, hoặc xác thực hỏng quá nhiều lần.
 class AppLockScreen extends StatefulWidget {
   const AppLockScreen({super.key, required this.onUnlocked});
   final VoidCallback onUnlocked;
@@ -487,12 +490,21 @@ class AppLockScreen extends StatefulWidget {
 }
 
 class _AppLockScreenState extends State<AppLockScreen> {
+  final _mk = TextEditingController();
   bool _dang = false;
+  bool _an = true;
+  String? _loi;
 
   @override
   void initState() {
     super.initState();
     _thu();
+  }
+
+  @override
+  void dispose() {
+    _mk.dispose();
+    super.dispose();
   }
 
   Future<void> _thu() async {
@@ -504,9 +516,22 @@ class _AppLockScreenState extends State<AppLockScreen> {
       if (ok) widget.onUnlocked();
     } catch (_) {
       // Xác thực hỏng (huỷ, khoá quá nhiều lần...) thì cứ đứng ở màn khoá,
-      // người dùng bấm nút để thử lại.
+      // người dùng bấm nút hoặc gõ mật khẩu để vào.
     } finally {
       if (mounted) setState(() => _dang = false);
+    }
+  }
+
+  /// So với mật khẩu portal đang nằm trong Keychain — khỏi đặt thêm mã PIN
+  /// riêng để rồi quên, và cũng không lưu thêm bí mật nào mới.
+  Future<void> _thuMatKhau() async {
+    final luu = await Vault.read();
+    if (luu != null && _mk.text == luu.$2) return widget.onUnlocked();
+    if (mounted) {
+      setState(() {
+        _loi = 'Mật khẩu không đúng';
+        _mk.clear();
+      });
     }
   }
 
@@ -515,28 +540,76 @@ class _AppLockScreenState extends State<AppLockScreen> {
     backgroundColor: Paper.paper,
     body: DotBackground(
       child: Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.lock_rounded, size: 56, color: Paper.ink),
-              const SizedBox(height: 16),
-              const Text(
-                'Ứng dụng đang khoá',
-                style: TextStyle(
-                  fontFamily: 'Display',
-                  fontWeight: FontWeight.w800,
-                  fontSize: 22,
-                  color: Paper.ink,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Icon(Icons.lock_rounded, size: 56, color: Paper.ink),
+                const SizedBox(height: 16),
+                const Text(
+                  'Ứng dụng đang khoá',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Display',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 22,
+                    color: Paper.ink,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              PaperButton(
-                label: _dang ? 'Đang xác thực…' : 'Mở khoá',
-                onPressed: _dang ? () {} : _thu,
-              ),
-            ],
+                const SizedBox(height: 20),
+                PaperButton(
+                  label: _dang ? 'Đang xác thực…' : 'Mở khoá',
+                  onPressed: _dang ? () {} : _thu,
+                ),
+                const SizedBox(height: 20),
+                PaperBox(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      PaperLabel('Mật khẩu portal'),
+                      PaperField(
+                        nhan: 'Mật khẩu portal',
+                        controller: _mk,
+                        obscure: _an,
+                        onSubmit: _thuMatKhau,
+                        suffix: IconButton(
+                          icon: Icon(
+                            _an
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: Paper.ink2,
+                            size: 20,
+                          ),
+                          onPressed: () => setState(() => _an = !_an),
+                        ),
+                      ),
+                      if (_loi != null) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          _loi!,
+                          style: const TextStyle(
+                            color: Paper.rose,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      PaperButton(
+                        label: 'Mở bằng mật khẩu',
+                        color: Paper.card,
+                        onColor: Paper.ink,
+                        onPressed: _thuMatKhau,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

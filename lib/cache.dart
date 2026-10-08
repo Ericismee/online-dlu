@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'db.dart';
+import 'nhat_ky.dart';
 import 'luong.dart';
 
 /// Cache JSON của portal trong SQLite ([Db]): mở app là có dữ liệu ngay, hết
@@ -170,14 +171,29 @@ class PortalNhip {
   /// hàng gọi portal.
   static bool _dangChay = false;
 
+  /// Mốc của lượt kế, để sổ verbose đếm ngược được còn bao lâu.
+  static DateTime? ke;
+
   static void chay() {
     if (_hen != null) return;
+    ke = DateTime.now().add(khoang);
+    NhatKy.ghi('nhip', 'portal: chạy, mỗi ${khoang.inSeconds}s');
     _hen = Timer.periodic(khoang, (_) async {
-      if (_dangChay || Cache.refreshers.isEmpty) return;
+      ke = DateTime.now().add(khoang);
+      if (_dangChay || Cache.refreshers.isEmpty) {
+        NhatKy.ghi(
+          'nhip',
+          'portal: bỏ lượt (${_dangChay ? 'lượt trước chưa về' : 'không màn nào mở'})',
+        );
+        return;
+      }
       _dangChay = true;
+      NhatKy.ghi('nhip', 'portal: làm mới ${Cache.refreshers.length} màn');
       try {
         await Cache.refreshAll();
-      } catch (_) {
+        NhatKy.ghi('nhip', 'portal: xong');
+      } catch (e) {
+        NhatKy.ghi('nhip', 'portal: hỏng — $e');
         // Một màn hỏng không được làm đứng nhịp.
       } finally {
         _dangChay = false;
@@ -190,5 +206,7 @@ class PortalNhip {
   static void dung() {
     _hen?.cancel();
     _hen = null;
+    ke = null;
+    NhatKy.ghi('nhip', 'portal: dừng');
   }
 }

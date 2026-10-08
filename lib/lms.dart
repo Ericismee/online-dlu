@@ -10,6 +10,7 @@ import 'package:http/io_client.dart' show IOClient;
 
 import 'cache.dart';
 import 'db.dart';
+import 'nhat_ky.dart';
 import 'luong.dart';
 import 'portal.dart' show PortalError;
 import 'settings.dart' show Settings;
@@ -109,11 +110,19 @@ class LmsNhip {
     }
   }
 
+  /// Mốc của lượt kế, để sổ verbose đếm ngược được còn bao lâu.
+  static DateTime? ke;
+
   static void _lap() {
-    _hen = Timer(khoang(), () async {
+    final cho = khoang();
+    ke = DateTime.now().add(cho);
+    _hen = Timer(cho, () async {
+      NhatKy.ghi('nhip', 'lms: ${_nghe.length} nơi nghe, bắt đầu lượt');
       await ngay();
+      NhatKy.ghi('nhip', 'lms: xong lượt');
       if (_nghe.isEmpty) {
         _hen = null;
+        ke = null;
       } else {
         _lap();
       }
@@ -548,6 +557,20 @@ class Lms {
   PortalError _sai() =>
       PortalError('Sai tài khoản hoặc mật khẩu LMS', saiMatKhau: true);
 
+  /// HTML một trang Moodle bằng phiên [s], chỉ để **đọc** (vd. bảng điểm danh
+  /// của chính mình trong `mod/attendance/view.php`). Chỉ nhận đường trong
+  /// [_base]: cookie phiên không bao giờ đi tới host khác.
+  Future<String> trang(LmsSession s, String url) async {
+    final u = Uri.parse(url);
+    if (u.origin != Uri.parse(_base).origin) {
+      throw PortalError('Không phải trang của LMS');
+    }
+    final res = await _send(
+      http.Request('GET', u)..headers['cookie'] = s.cookie,
+    );
+    return _text(res);
+  }
+
   /// Moodle trả utf-8; `res.body` lại đoán latin1 khi header thiếu charset,
   /// làm chữ Việt (và cả dấu hiệu lỗi đăng nhập) sai hết.
   String _text(http.Response res) =>
@@ -561,14 +584,26 @@ class Lms {
           ?.group(0);
 
   Future<http.Response> _send(http.Request req) async {
+    // Chỉ ghi phương thức với host+path: query của Moodle mang token phiên,
+    // còn thân của lượt đăng nhập mang mật khẩu.
+    final nhan = '${req.method} ${NhatKy.diaChi(req.url)}';
+    final batDau = DateTime.now();
+    NhatKy.ghi('lms', '→ $nhan');
     try {
-      return await http.Response.fromStream(
+      final res = await http.Response.fromStream(
         await _client.send(req).timeout(const Duration(seconds: 20)),
       );
+      final ms = DateTime.now().difference(batDau).inMilliseconds;
+      NhatKy.ghi(
+        'lms',
+        '← $nhan ${res.statusCode} (${ms}ms, ${res.bodyBytes.length} B)',
+      );
+      return res;
     } on PortalError {
       rethrow;
     } catch (_) {
       // Không log url/body: POST đăng nhập mang theo mật khẩu.
+      NhatKy.ghi('lms', '✗ $nhan: mất kết nối');
       throw PortalError(
         'Không kết nối được LMS. Kiểm tra mạng.',
         offline: true,

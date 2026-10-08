@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import 'cache.dart';
 import 'luong.dart';
+import 'nhat_ky.dart';
 
 /// A logged-in student session. The portal's token lives ~2h, so it is kept in
 /// memory only — on a cold start we log in again from the saved credentials.
@@ -209,6 +210,7 @@ class Portal {
         Uri.parse('$_base$path'),
         headers: {..._keys, 'authorization': 'Bearer $token'},
       ),
+      nhan: 'GET $path',
     );
     // Danh sách thì vào sổ mục trước: mục mới thêm dòng, mục portal không còn
     // trả về thì ẩn dòng. Cache cục JSON vẫn giữ để khung hình đầu có số ngay,
@@ -224,20 +226,37 @@ class Portal {
       headers: {..._keys, 'content-type': 'application/json'},
       body: jsonEncode(body),
     ),
+    nhan: 'POST $path',
   );
 
   Future<Map<String, dynamic>> _send(
-    Future<http.Response> Function() request,
-  ) async => (await _raw(request)) as Map<String, dynamic>;
+    Future<http.Response> Function() request, {
+    String? nhan,
+  }) async => (await _raw(request, nhan: nhan)) as Map<String, dynamic>;
 
-  Future<dynamic> _raw(Future<http.Response> Function() request) async {
+  /// [nhan] chỉ có phương thức và path — thân request mang mật khẩu, query
+  /// mang token, nên hai thứ đó không bao giờ vào sổ.
+  Future<dynamic> _raw(
+    Future<http.Response> Function() request, {
+    String? nhan,
+  }) async {
     final http.Response res;
+    final batDau = DateTime.now();
+    if (nhan != null) NhatKy.ghi('portal', '→ $nhan');
     try {
       res = await request().timeout(const Duration(seconds: 20));
     } catch (e) {
+      if (nhan != null) NhatKy.ghi('portal', '✗ $nhan: mất kết nối');
       throw PortalError(
         'Không kết nối được portal. Kiểm tra mạng.',
         offline: true,
+      );
+    }
+    if (nhan != null) {
+      final ms = DateTime.now().difference(batDau).inMilliseconds;
+      NhatKy.ghi(
+        'portal',
+        '← $nhan ${res.statusCode} (${ms}ms, ${res.bodyBytes.length} B)',
       );
     }
     if (res.statusCode != 200) {
