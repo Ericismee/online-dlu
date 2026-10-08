@@ -195,30 +195,16 @@ LessonNow? lessonNow(dynamic item, DateTime now) {
 
 /// Gộp lịch chính quy và lịch tự đặt của một ngày rồi sắp theo giờ vào —
 /// hiển thị đúng thứ tự thời gian thay vì luôn đẩy lịch tự đặt xuống cuối.
-List<Object> ganLichTrongNgay(List<dynamic> items, List<CustomLich> rieng) => [
-  for (final m in ganLichCoChiSo(items, rieng)) m.x,
-];
-
-/// Một dòng trên thẻ ngày: [x] là tiết chính quy hay [CustomLich], [rieng] là
-/// chỗ của nó trong danh sách lịch tự đặt (-1 nếu là tiết chính quy).
-typedef MucNgay = ({Object x, int rieng});
-
-/// Như [ganLichTrongNgay] nhưng giữ lại chỗ cũ của từng mục tự đặt. Nơi nào
-/// cần sửa/xoá đúng dòng trong sổ thì phải dùng bản này: sau khi sắp theo giờ
-/// thì thứ tự đã khác, mà đếm lại trên danh sách đã sắp là ra số khác hẳn.
-List<MucNgay> ganLichCoChiSo(List<dynamic> items, List<CustomLich> rieng) {
+List<Object> ganLichTrongNgay(List<dynamic> items, List<CustomLich> rieng) {
   int gioVao(Object o) => o is CustomLich
       ? o.batDau
       : (batDauPhut(tietNo((o as dynamic)['BeginTime'])) ?? 0);
   // Cùng giờ thì lịch chính quy đứng trước: `List.sort` không ổn định nên
   // không chốt thứ tự là hai thẻ đổi chỗ qua lại mỗi lượt vẽ lại.
   int hang(Object o) => o is CustomLich ? 1 : 0;
-  return <MucNgay>[
-    for (final i in items) (x: i as Object, rieng: -1),
-    for (final (n, c) in rieng.indexed) (x: c, rieng: n),
-  ]..sort((a, b) {
-    final g = gioVao(a.x).compareTo(gioVao(b.x));
-    return g != 0 ? g : hang(a.x).compareTo(hang(b.x));
+  return [...items, ...rieng]..sort((a, b) {
+    final g = gioVao(a).compareTo(gioVao(b));
+    return g != 0 ? g : hang(a).compareTo(hang(b));
   });
 }
 
@@ -408,20 +394,9 @@ String? demNguocRieng(CustomLich c, DateTime now) {
 /// ngày — 15h đang trong ca 14h-16h mà thẻ vẫn chỉ vào buổi sáng. Mục bỏ ngỏ
 /// đã bắt đầu bị đẩy xuống cuối, chỉ lên khi không còn ai khác.
 CustomLich? ketiepRieng(List<CustomLich> rieng, DateTime now) {
-  final i = ketiepRiengIdx(rieng, now);
-  return i < 0 ? null : rieng[i];
-}
-
-/// Như [ketiepRieng] nhưng trả chỉ số trong [rieng] (-1 là không có).
-///
-/// Nơi gọi cần chỉ số để sửa đúng dòng trong sổ. Tra ngược bằng `indexOf` thì
-/// phải dựa vào việc [CustomLich] so sánh theo danh tính — đúng hôm nay,
-/// nhưng ngày nào có người thêm `operator ==` vào nó là hai mục giống hệt
-/// nhau trong cùng ngày bị sửa nhầm chỗ mà chẳng ai hay.
-int ketiepRiengIdx(List<CustomLich> rieng, DateTime now) {
-  var tot = -1;
+  CustomLich? tot;
   var mocTot = double.infinity;
-  for (final (i, c) in rieng.indexed) {
+  for (final c in rieng) {
     final n = customLessonNow(c, now);
     if (n == null || n.pha == LessonPhase.xong) continue;
     final moc = switch (n.pha) {
@@ -433,7 +408,7 @@ int ketiepRiengIdx(List<CustomLich> rieng, DateTime now) {
     };
     if (moc < mocTot) {
       mocTot = moc;
-      tot = i;
+      tot = c;
     }
   }
   return tot;
@@ -921,28 +896,27 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
     if (mounted && d == widget.day) setState(() => _rieng = r);
   }
 
-  Future<void> _xoa(int i) async {
-    final ds = await CustomLichStore.buoiTrongNgay(widget.day);
-    if (i < 0 || i >= ds.length) return;
+  Future<void> _xoa(CustomLich x) async {
+    final id = x.id;
+    if (id == null) return;
     // Mục lặp thì phải hỏi: bỏ đúng buổi này hay dẹp cả chuỗi. Đoán hộ là
     // kiểu gì cũng có lúc xoá mất cả học kỳ của người ta.
-    if (ds[i].lapLai) {
-      if (!mounted) return;
+    if (x.lapLai) {
       final chon = await chonDialog(
         context,
-        title: 'Xoá "${ds[i].item.tieuDe}"',
+        title: 'Xoá "${x.tieuDe}"',
         body: 'Mục này lặp hàng tuần.',
         lua: const ['Chỉ buổi này', 'Cả chuỗi lặp'],
         icon: Icons.delete_outline_rounded,
       );
       if (chon == null) return;
       if (chon == 1) {
-        await CustomLichStore.xoaChuoi(widget.day, i);
+        await CustomLichStore.xoaChuoi(widget.day, id);
       } else {
-        await CustomLichStore.remove(widget.day, i);
+        await CustomLichStore.remove(widget.day, id);
       }
     } else {
-      await CustomLichStore.remove(widget.day, i);
+      await CustomLichStore.remove(widget.day, id);
     }
     await _load();
     Cache.reloadAll();
@@ -1039,21 +1013,24 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
                 ),
               )
             else ...[
-              for (final (n, m) in ganLichCoChiSo(widget.items, rieng).indexed)
-                if (m.x case final CustomLich x)
+              for (final (n, x) in ganLichTrongNgay(
+                widget.items,
+                rieng,
+              ).indexed)
+                if (x is CustomLich)
                   _LessonRieng(
                     x,
                     delay: Duration(milliseconds: 70 * n),
                     now: widget.now,
-                    // Chỗ cũ trong sổ, không phải chỗ sau khi sắp theo giờ —
-                    // mà cũng không `indexOf`: hai mục giống hệt nhau trong
-                    // cùng ngày là xoá nhầm cái đầu.
-                    onXoa: () => _xoa(m.rieng),
+                    // Xoá theo id dòng trong sổ: danh sách đã sắp lại theo
+                    // giờ nên chỗ ở đây không còn là chỗ trong sổ, mà hai mục
+                    // giống hệt nhau thì đếm kiểu gì cũng ra cái đầu.
+                    onXoa: () => _xoa(x),
                     trungGio: trungGioChinhQuy(x, widget.items),
                   )
                 else
                   _Lesson(
-                    m.x,
+                    x,
                     delay: Duration(milliseconds: 70 * n),
                     now: widget.now,
                   ),
@@ -2179,14 +2156,13 @@ class _TodayLessonsState extends State<TodayLessons>
 
   /// Đánh dấu một mục tự đặt chưa có giờ về là xong ngay bây giờ, thay vì
   /// chờ tự "xong" lúc 0h — gán luôn giờ về là giờ hiện tại.
-  Future<void> _danhDauXongRieng(DateTime homNay, int index) async {
-    final list = await CustomLichStore.forDay(homNay);
-    if (index >= list.length) return;
-    final c = list[index];
+  Future<void> _danhDauXongRieng(DateTime homNay, CustomLich c) async {
+    final id = c.id;
+    if (id == null) return;
     final gio = DateTime.now();
     await CustomLichStore.update(
       homNay,
-      index,
+      id,
       c.xongLuc(gio.hour * 60 + gio.minute),
     );
     await _loadRieng(homNay);
@@ -2224,8 +2200,7 @@ class _TodayLessonsState extends State<TodayLessons>
       final riengMai = _riengNgay == homNay ? _riengMai : const <CustomLich>[];
       // Cả hai đều đáng nhắc: lịch chính quy hiện trước, lịch tự đặt thêm
       // bên dưới chứ không bị lịch chính quy che mất.
-      final keRiengIdx = ketiepRiengIdx(riengHomNay, now);
-      final keRieng = keRiengIdx < 0 ? null : riengHomNay[keRiengIdx];
+      final keRieng = ketiepRieng(riengHomNay, now);
       if (items.isEmpty &&
           maiItems.isEmpty &&
           riengHomNay.isEmpty &&
@@ -2246,9 +2221,9 @@ class _TodayLessonsState extends State<TodayLessons>
                 ke: ke,
                 keRieng: keRieng,
                 // Có giờ về rồi thì tự xong đúng lúc, khỏi cần nút.
-                onXongRieng: keRiengIdx < 0 || keRieng?.ketThuc != null
+                onXongRieng: keRieng == null || keRieng.ketThuc != null
                     ? null
-                    : () => _danhDauXongRieng(homNay, keRiengIdx),
+                    : () => _danhDauXongRieng(homNay, keRieng),
                 now: now,
               ),
             if (maiItems.isNotEmpty || riengMai.isNotEmpty) ...[

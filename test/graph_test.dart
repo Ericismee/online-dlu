@@ -240,22 +240,12 @@ void main() {
     ]);
   });
 
-  test('gộp theo giờ nhưng vẫn chỉ đúng dòng trong sổ', () {
-    final tiet1 = {'BeginTime': 'Tiết: 1', 'EndTime': 'Tiết: 2'}; // 7h30
-    // Hai mục trùng hệt nhau: `indexOf` là ra cùng một chỗ, mà xoá/sửa thì
-    // phải đúng dòng người dùng bấm.
-    const chieu = CustomLich(tieuDe: 'Ôn', batDau: 840, ketThuc: 900);
-    const som = CustomLich(tieuDe: 'Ôn', batDau: 420, ketThuc: 480);
-    final gop = ganLichCoChiSo([tiet1], [chieu, som]);
-    expect([for (final m in gop) m.rieng], [1, -1, 0]);
-    expect(gop[0].x, same(som));
-  });
-
-  test('ketiepRiengIdx chỉ đúng chỗ khi có mục trùng tên trùng giờ', () {
+  test('ketiepRieng mang theo id nên sửa được đúng dòng', () {
     final now = DateTime(2026, 9, 21, 9, 0);
-    const a = CustomLich(tieuDe: 'Ôn', batDau: 600, ketThuc: 660);
-    expect(ketiepRiengIdx([a, a], now), 0);
-    expect(ketiepRiengIdx(const [], now), -1);
+    // Hai mục trùng hệt nhau, chỉ khác dòng trong sổ.
+    const a = CustomLich(id: 7, tieuDe: 'Ôn', batDau: 600, ketThuc: 660);
+    const b = CustomLich(id: 8, tieuDe: 'Ôn', batDau: 600, ketThuc: 660);
+    expect(ketiepRieng([a, b], now)?.id, 7);
   });
 
   test('ketiepRieng chọn mục sớm nhất chưa xong, bỏ mục đã xong', () {

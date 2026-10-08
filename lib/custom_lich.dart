@@ -8,6 +8,9 @@ import 'db.dart';
 /// (Paper.sun) của lịch chính quy nên không lẫn hai loại.
 const customLichMauMacDinh = 0xFFFFB9CC;
 
+/// Số phút trong một ngày — giờ lịch tự đặt luôn nằm trong dải này.
+const phutMotNgay = 24 * 60;
+
 /// Một mục lịch tự đặt (vd: "Lên ATC") cho ngày còn trống. [batDau] và
 /// [ketThuc] là phút từ 0h; [ketThuc] không bắt buộc — có buổi chỉ biết giờ đi.
 /// [mau] là ARGB người dùng chọn để phân biệt với lịch chính quy và các mục
@@ -16,12 +19,15 @@ const customLichMauMacDinh = 0xFFFFB9CC;
 /// [lap] rỗng là mục xảy ra đúng một ngày. Có thứ trong đó ([DateTime.weekday],
 /// 1 = thứ hai) thì mục lặp lại hàng tuần vào những thứ ấy, tính từ ngày đặt
 /// tới [denNgay].
-/// Số phút trong một ngày — giờ lịch tự đặt luôn nằm trong dải này.
-const phutMotNgay = 24 * 60;
-
+///
+/// [id] là dòng gốc trong SQLite — đọc sổ ra thì có, mục vừa dựng trong hộp
+/// thoại thì chưa. Mang theo id nên sửa/xoá chỉ đúng dòng được, khỏi đếm chỗ
+/// trong danh sách: danh sách còn sắp lại theo giờ, mà hai mục giống hệt nhau
+/// thì đếm kiểu gì cũng ra cái đầu.
 class CustomLich {
   const CustomLich({
     required this.tieuDe,
+    this.id,
     required this.batDau,
     this.ketThuc,
     this.mau = customLichMauMacDinh,
@@ -30,6 +36,7 @@ class CustomLich {
     this.denNgay,
   });
   final String tieuDe;
+  final int? id;
   final int batDau;
   final int? ketThuc;
   final int mau;
@@ -43,6 +50,7 @@ class CustomLich {
 
   CustomLich sao({
     String? tieuDe,
+    int? id,
     int? batDau,
     int? ketThuc,
     bool xoaKetThuc = false,
@@ -52,6 +60,7 @@ class CustomLich {
     DateTime? denNgay,
   }) => CustomLich(
     tieuDe: tieuDe ?? this.tieuDe,
+    id: id ?? this.id,
     batDau: batDau ?? this.batDau,
     ketThuc: xoaKetThuc ? null : (ketThuc ?? this.ketThuc),
     mau: mau ?? this.mau,
@@ -129,7 +138,10 @@ class CustomLichStore {
       '${d.year}-${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
-  static CustomLich _tu(LichRieng r) => CustomLich(
+  /// [id] là dòng gốc, không phải dòng đang đọc: nội dung có thể lấy từ dòng
+  /// ngoại lệ của hôm đó, mà sửa/xoá thì vẫn phải nhắm vào mục gốc.
+  static CustomLich _tu(LichRieng r, int? id) => CustomLich(
+    id: id,
     tieuDe: r.tieuDe,
     batDau: r.batDau,
     ketThuc: r.ketThuc,
@@ -197,7 +209,7 @@ class CustomLichStore {
       out.add((
         id: r.id,
         ngay: d,
-        item: _tu(rieng ?? r),
+        item: _tu(rieng ?? r, r.id),
         lapLai: r.lap != null && r.lap!.isNotEmpty,
       ));
     }
@@ -236,6 +248,12 @@ class CustomLichStore {
 
   static Future<void> add(DateTime d, CustomLich moi) async {
     final item = moi.chuan;
+    // Ngày dừng trước cả ngày đặt (chỉ bản JSON nhập vào mới có) thì chuỗi
+    // không sinh buổi nào mà chẳng báo gì — kéo nó về đúng ngày đặt, thành
+    // mục của một hôm, thấy được trên lịch rồi sửa tiếp.
+    final den = item.denNgay != null && item.denNgay!.isBefore(d)
+        ? d
+        : item.denNgay;
     final db = Db.i;
     await db
         .into(db.lichRiengs)
@@ -247,26 +265,30 @@ class CustomLichStore {
             ketThuc: Value(item.ketThuc),
             mau: Value(item.mau),
             viTri: Value(item.viTri),
-            lap: Value(
-              item.lapLai ? (item.lap.toList()..sort()).join(',') : null,
-            ),
-            denNgay: Value(
-              item.denNgay == null ? null : khoaNgay(item.denNgay!),
-            ),
+            lap: Value(_ghiThu(item.lap)),
+            denNgay: Value(den == null ? null : khoaNgay(den)),
             luc: DateTime.now(),
           ),
         );
   }
 
+  /// Buổi mang [id] của ngày [d], null là không còn (vừa bị thẻ khác xoá, hay
+  /// hôm đó mục lặp đã bị bỏ). Mọi hàm sửa đều đi qua đây: nhận id chứ không
+  /// nhận chỗ trong danh sách thì bấm xong mới đọc sổ cũng không sửa nhầm
+  /// dòng.
+  static Future<Buoi?> _buoi(DateTime d, int id) async {
+    for (final b in await buoiTrongNgay(d)) {
+      if (b.id == id) return b;
+    }
+    return null;
+  }
+
   /// Ẩn một buổi đi, không xoá khỏi máy. Buổi của mục lặp thì không tắt cả
   /// mục — chỉ ghi một dòng ngoại lệ tắt cho đúng ngày đó, những tuần sau
   /// vẫn còn.
-  static Future<void> remove(DateTime d, int index) async {
-    final ds = await buoiTrongNgay(d);
-    // `indexOf` trả -1 khi mục vừa bị thẻ khác sửa mất; đừng để nó thành
-    // `ds[-1]` rồi nổ giữa lúc người dùng bấm xoá.
-    if (index < 0 || index >= ds.length) return;
-    final b = ds[index];
+  static Future<void> remove(DateTime d, int id) async {
+    final b = await _buoi(d, id);
+    if (b == null) return;
     final db = Db.i;
     if (!b.lapLai) {
       await (db.update(db.lichRiengs)..where((t) => t.id.equals(b.id))).write(
@@ -277,24 +299,24 @@ class CustomLichStore {
     await _ghiNgoaiLe(d, b, b.item, bat: false);
   }
 
-  /// Tắt cả chuỗi lặp mà buổi [index] thuộc về. Dòng vẫn nằm trong máy, chỉ
-  /// là `bat = false` nên không còn sinh buổi nào nữa.
-  static Future<void> xoaChuoi(DateTime d, int index) async {
-    final ds = await buoiTrongNgay(d);
-    if (index < 0 || index >= ds.length) return;
+  /// Tắt cả chuỗi lặp mang [id]. Dòng vẫn nằm trong máy, chỉ là `bat = false`
+  /// nên không còn sinh buổi nào nữa.
+  static Future<void> xoaChuoi(DateTime d, int id) async {
+    final b = await _buoi(d, id);
+    if (b == null) return;
     final db = Db.i;
-    await (db.update(db.lichRiengs)..where((t) => t.id.equals(ds[index].id)))
-        .write(const LichRiengsCompanion(bat: Value(false)));
+    await (db.update(db.lichRiengs)..where((t) => t.id.equals(b.id))).write(
+      const LichRiengsCompanion(bat: Value(false)),
+    );
   }
 
-  /// Sửa một buổi. Buổi của mục lặp chỉ sửa riêng hôm đó; muốn đổi cả chuỗi
-  /// thì xoá rồi đặt lại — người dùng ít khi đổi cả chuỗi, mà hỏi "sửa buổi
-  /// này hay cả chuỗi?" thì thêm một hộp thoại nữa cho một việc hiếm.
-  static Future<void> update(DateTime d, int index, CustomLich moi) async {
+  /// Sửa buổi mang [id]. Buổi của mục lặp chỉ sửa riêng hôm đó — app chỉ sửa
+  /// được một thứ trên mục đã đặt (nút "Đã xong" chốt giờ về), mà "xong" thì
+  /// đúng là chuyện của riêng hôm nay.
+  static Future<void> update(DateTime d, int id, CustomLich moi) async {
     final item = moi.chuan;
-    final ds = await buoiTrongNgay(d);
-    if (index < 0 || index >= ds.length) return;
-    final b = ds[index];
+    final b = await _buoi(d, id);
+    if (b == null) return;
     if (b.lapLai) return _ghiNgoaiLe(d, b, item, bat: true);
     final db = Db.i;
     await (db.update(
@@ -336,6 +358,9 @@ class CustomLichStore {
         );
   }
 
+  static String? _ghiThu(Set<int> lap) =>
+      lap.isEmpty ? null : (lap.toList()..sort()).join(',');
+
   static LichRiengsCompanion _cot(CustomLich item) => LichRiengsCompanion(
     tieuDe: Value(item.tieuDe),
     batDau: Value(item.batDau),
@@ -363,6 +388,8 @@ class CustomLichStore {
               ])
               ..limit(1))
             .get();
-    return rows.isEmpty ? null : _tu(rows.first);
+    // Mẫu để điền sẵn, không phải dòng đang sửa: id null thì không ai lỡ
+    // tay ghi đè lần đặt cũ.
+    return rows.isEmpty ? null : _tu(rows.first, null);
   }
 }

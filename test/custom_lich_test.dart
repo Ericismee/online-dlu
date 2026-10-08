@@ -27,11 +27,14 @@ void main() {
     expect((await CustomLichStore.forDay(d)).first.ketThuc, isNull);
   });
 
-  test('xoá đúng mục theo chỉ số, không đụng mục khác', () async {
+  test('xoá đúng dòng theo id, không đụng mục khác', () async {
     final d = DateTime(2026, 9, 29);
     await CustomLichStore.add(d, const CustomLich(tieuDe: 'A', batDau: 420));
     await CustomLichStore.add(d, const CustomLich(tieuDe: 'B', batDau: 480));
-    await CustomLichStore.remove(d, 0);
+    await CustomLichStore.remove(
+      d,
+      (await CustomLichStore.forDay(d)).first.id!,
+    );
     final list = await CustomLichStore.forDay(d);
     expect(list, hasLength(1));
     expect(list.first.tieuDe, 'B');
@@ -83,15 +86,23 @@ void main() {
   });
 
   test(
-    'chỉ số lạc (-1, quá tầm) thì bỏ qua, không nổ cũng không sửa nhầm',
+    'id không có trong ngày thì bỏ qua, không nổ cũng không sửa nhầm',
     () async {
       final d = DateTime(2026, 9, 29);
       await CustomLichStore.add(d, const CustomLich(tieuDe: 'A', batDau: 420));
-      await CustomLichStore.remove(d, -1);
-      await CustomLichStore.remove(d, 9);
+      // Dòng của ngày khác cũng là id lạc với ngày này.
+      await CustomLichStore.add(
+        DateTime(2026, 9, 30),
+        const CustomLich(tieuDe: 'Khác', batDau: 420),
+      );
+      final idNgayKhac = (await CustomLichStore.forDay(DateTime(2026, 9, 30)))
+          .first
+          .id!;
+      await CustomLichStore.remove(d, idNgayKhac);
+      await CustomLichStore.remove(d, 9999);
       await CustomLichStore.update(
         d,
-        -1,
+        idNgayKhac,
         const CustomLich(tieuDe: 'X', batDau: 0),
       );
       final list = await CustomLichStore.forDay(d);
@@ -120,18 +131,46 @@ void main() {
     expect(ganLichTrongNgay([tiet], [rieng]).first, same(tiet));
   });
 
-  test('update ghi đè đúng mục theo chỉ số, không đụng mục khác', () async {
+  test('update ghi đè đúng dòng theo id, không đụng mục khác', () async {
     final d = DateTime(2026, 9, 29);
     await CustomLichStore.add(d, const CustomLich(tieuDe: 'A', batDau: 420));
     await CustomLichStore.add(d, const CustomLich(tieuDe: 'B', batDau: 480));
     await CustomLichStore.update(
       d,
-      0,
+      (await CustomLichStore.forDay(d)).first.id!,
       const CustomLich(tieuDe: 'A', batDau: 420, ketThuc: 500),
     );
     final list = await CustomLichStore.forDay(d);
     expect(list[0].ketThuc, 500);
     expect(list[1].tieuDe, 'B');
+  });
+
+  test('hai mục giống hệt nhau thì vẫn xoá đúng dòng người bấm', () async {
+    final d = DateTime(2026, 9, 29);
+    const c = CustomLich(tieuDe: 'Ôn', batDau: 420, ketThuc: 480);
+    await CustomLichStore.add(d, c);
+    await CustomLichStore.add(d, c);
+    final ds = await CustomLichStore.forDay(d);
+    await CustomLichStore.remove(d, ds.last.id!);
+    final con = await CustomLichStore.forDay(d);
+    expect(con, hasLength(1));
+    expect(con.first.id, ds.first.id);
+  });
+
+  test('ngày dừng lặp trước cả ngày đặt thì kéo về ngày đặt', () async {
+    final d = DateTime(2026, 9, 29);
+    await CustomLichStore.add(
+      d,
+      CustomLich(
+        tieuDe: 'Ôn thi',
+        batDau: 19 * 60,
+        lap: const {DateTime.tuesday},
+        denNgay: DateTime(2026, 9, 1),
+      ),
+    );
+    // Không im lặng mất tích: buổi đầu vẫn thấy, tuần sau thì hết.
+    expect(await CustomLichStore.forDay(d), hasLength(1));
+    expect(await CustomLichStore.forDay(DateTime(2026, 10, 6)), isEmpty);
   });
 
   group('lặp hàng tuần', () {
@@ -176,7 +215,11 @@ void main() {
 
     test('xoá một buổi chỉ mất buổi đó, tuần sau vẫn còn', () async {
       await datLap();
-      await CustomLichStore.remove(DateTime(2026, 10, 1), 0);
+      final ngay = DateTime(2026, 10, 1);
+      await CustomLichStore.remove(
+        ngay,
+        (await CustomLichStore.forDay(ngay)).first.id!,
+      );
       expect(await CustomLichStore.forDay(DateTime(2026, 10, 1)), isEmpty);
       expect(await CustomLichStore.forDay(DateTime(2026, 10, 6)), hasLength(1));
       expect(await CustomLichStore.forDay(batDau), hasLength(1));
@@ -184,9 +227,10 @@ void main() {
 
     test('sửa một buổi chỉ đổi buổi đó', () async {
       await datLap();
+      final ngay = DateTime(2026, 10, 1);
       await CustomLichStore.update(
-        DateTime(2026, 10, 1),
-        0,
+        ngay,
+        (await CustomLichStore.forDay(ngay)).first.id!,
         const CustomLich(tieuDe: 'Lên ATC', batDau: 13 * 60),
       );
       expect(
@@ -203,7 +247,10 @@ void main() {
       'xoá cả chuỗi thì không còn buổi nào, mà dòng vẫn nằm trong máy',
       () async {
         await datLap();
-        await CustomLichStore.xoaChuoi(batDau, 0);
+        await CustomLichStore.xoaChuoi(
+          batDau,
+          (await CustomLichStore.forDay(batDau)).first.id!,
+        );
         expect(await CustomLichStore.forDay(batDau), isEmpty);
         expect(await CustomLichStore.forDay(DateTime(2026, 10, 6)), isEmpty);
         final con = await Db.i.select(Db.i.lichRiengs).get();
