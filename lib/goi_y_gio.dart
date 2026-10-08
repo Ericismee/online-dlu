@@ -93,7 +93,8 @@ class GoiYGio {
   static bool conCho(List<(int, int)> ban) => khungRanh(ban).isNotEmpty;
 
   /// Người dùng chốt giờ nào thì khung đó được thưởng; khung đã gợi ý mà bị
-  /// bỏ qua thì ăn 0 — đúng một lượt học cho mỗi tay đã "chơi".
+  /// bỏ qua thì ăn 0 — một lượt học cho cả hai tay, vì mô hình quên dần theo
+  /// lượt: tách thành hai lượt là tự tay hạ giá cái vừa học xong.
   static Future<void> ghiNhan({
     required List<double> x,
     required int goiYPhut,
@@ -102,8 +103,7 @@ class GoiYGio {
     final m = await _nap();
     final goi = khungCuaGio(goiYPhut);
     final chon = khungCuaGio(chonPhut);
-    m.hoc(chon, x, 1);
-    if (goi != chon) m.hoc(goi, x, 0);
+    m.hoc(x, {chon: 1, if (goi != chon) goi: 0});
     await Db.i.ghi(nhomGoiY, _khoa, giaTri: jsonEncode(m.toJson()));
   }
 }

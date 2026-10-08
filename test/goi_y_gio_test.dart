@@ -86,7 +86,7 @@ void main() {
 
   test('bản lưu lệch số khung thì bỏ, không ghép bừa vào mô hình mới', () {
     final m = LinUCB(soTay: 3, soChieu: 2);
-    m.hoc(1, [1, 0], 1);
+    m.hoc([1, 0], {1: 1});
     expect(LinUCB.fromJson(m.toJson(), soTay: 3, soChieu: 2), isA<LinUCB>());
     expect(LinUCB.fromJson(m.toJson(), soTay: 4, soChieu: 2), isNull);
     expect(LinUCB.fromJson(m.toJson(), soTay: 3, soChieu: 3), isNull);
@@ -96,11 +96,11 @@ void main() {
     final m = LinUCB(soTay: 2, soChieu: 1, ngau: Random(1));
     // Tay 0 ăn một phần thưởng nhỏ; tay 1 chưa có gì nhưng khoảng tin cậy
     // còn rộng nên điểm vẫn phải nhỉnh hơn.
-    m.hoc(0, [1], 0.0);
+    m.hoc([1], {0: 0.0});
     expect(m.diem(1, [1]), greaterThan(m.diem(0, [1])));
     // Ăn đủ nhiều lần thì mới vượt được phần thăm dò.
     for (var i = 0; i < 20; i++) {
-      m.hoc(0, [1], 1);
+      m.hoc([1], {0: 1});
     }
     expect(m.chon([1]), 0);
   });
@@ -111,7 +111,7 @@ void main() {
     // Tập rỗng không được hiểu thành "không ràng buộc": gộp hai thứ đó thì
     // lúc kín lịch bộ gợi ý lại chỉ thẳng vào giữa giờ học.
     final m = LinUCB(soTay: 3, soChieu: 1, ngau: Random(1));
-    m.hoc(2, [1], 1);
+    m.hoc([1], {2: 1});
     expect(m.chon([1]), 2);
     expect(m.chon([1], choPhep: {0, 1}), isNot(2));
   });
@@ -137,5 +137,44 @@ void main() {
     final khac = await GoiYGio.goiY(x, ban: [(13 * 60, 17 * 60)]);
     expect(khac, isNot(14 * 60));
     expect(khungRanh([(13 * 60, 17 * 60)]), contains(khungCuaGio(khac)));
+  });
+
+  test('thói quen cũ bị quên dần khi người dùng đổi giờ', () async {
+    // Cả tháng đặt lịch lúc 8h...
+    for (var i = 0; i < 20; i++) {
+      await GoiYGio.ghiNhan(x: ranhCaNgay, goiYPhut: 8 * 60, chonPhut: 8 * 60);
+    }
+    expect(await GoiYGio.goiY(ranhCaNgay), 8 * 60);
+    // ...rồi đổi sang 18h. LinUCB thường cộng dồn mãi nên 20 mẫu cũ còn đè
+    // được chục mẫu mới; bản chiết khấu phải chuyển theo trong vòng đó.
+    for (var i = 0; i < 12; i++) {
+      final goi = await GoiYGio.goiY(ranhCaNgay);
+      await GoiYGio.ghiNhan(
+        x: ranhCaNgay,
+        goiYPhut: goi,
+        chonPhut: 18 * 60 + 30,
+      );
+    }
+    expect(await GoiYGio.goiY(ranhCaNgay), 18 * 60);
+  });
+
+  test('bản lưu kiểu cũ (A nghịch đảo) vẫn đọc được, không mất cái đã học', () {
+    final cu = LinUCB(soTay: 2, soChieu: 1, gamma: 1);
+    for (var i = 0; i < 5; i++) {
+      cu.hoc([1], {1: 1});
+    }
+    // Giả lập sổ của bản trước: chỉ có 'ainv' và 'b'.
+    final sotay = {
+      'chieu': 1,
+      'alpha': LinUCB.alphaMacDinh,
+      'ainv': [
+        [1.0],
+        [1 / 6],
+      ],
+      'b': cu.toJson()['b'],
+    };
+    final m = LinUCB.fromJson(sotay, soTay: 2, soChieu: 1, ngau: Random(1));
+    expect(m, isA<LinUCB>());
+    expect(m!.diem(1, [1]), closeTo(cu.diem(1, [1]), 1e-9));
   });
 }
