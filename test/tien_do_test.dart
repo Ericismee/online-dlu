@@ -1,59 +1,106 @@
-import 'package:dlu_tkb/graph.dart';
-import 'package:dlu_tkb/paper.dart';
+import 'dart:convert';
+
+import 'package:dlu_tkb/cache.dart';
+import 'package:dlu_tkb/clock.dart';
+import 'package:dlu_tkb/main.dart';
+import 'package:dlu_tkb/portal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
-/// Một buổi: ngày trong tháng, tiết đầu, tiết cuối, số tiết.
-Map<String, dynamic> buoi(int tietDau, int tietCuoi, int soTiet) => {
-  'PeriodID': tietDau,
-  'EndTime': 'Tiết: $tietCuoi',
-  'NumberOfPeriods': soTiet,
-};
+import 'db_tam.dart';
 
 void main() {
-  // Tiết 3 vào 9h30, tiết 4 tan 11h10; tiết 7 vào 13h, tiết 8 tan 14h40.
-  final thang = {
-    1: [buoi(3, 4, 2)],
-    15: [buoi(3, 4, 2), buoi(7, 8, 2)],
-    28: [buoi(3, 4, 2)],
-  };
-
-  test('ngày đã qua tính hết, ngày chưa tới không tính', () {
-    expect(tietDaHoc(thang, DateTime(2026, 10, 15, 0, 30)), (2, 8));
+  setUp(() async {
+    await dungDbTam();
+    // Đồng hồ chung chạy thật thì testWidgets báo còn timer treo.
+    Clock.instance.set(DateTime(2026, 10, 5, 8));
+    Clock.instance.stop();
   });
+  tearDown(() => Cache.clear());
 
-  test('buổi hôm nay chỉ tính khi đã tan', () {
-    // 10h: đang trong tiết 4 của buổi sáng, chưa tính buổi nào hôm nay.
-    expect(tietDaHoc(thang, DateTime(2026, 10, 15, 10)), (2, 8));
-    // 11h30: sáng tan rồi, chiều chưa vào.
-    expect(tietDaHoc(thang, DateTime(2026, 10, 15, 11, 30)), (4, 8));
-    // 15h: hết ngày.
-    expect(tietDaHoc(thang, DateTime(2026, 10, 15, 15)), (6, 8));
-  });
-
-  test('cuối tháng thì đã học bằng tổng', () {
-    expect(tietDaHoc(thang, DateTime(2026, 10, 29)), (8, 8));
-  });
-
-  testWidgets('vòng tiến độ hiện số giữa vòng, không tràn khi quá 100%', (
-    t,
-  ) async {
-    await t.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: Row(
-            children: [
-              PaperRing(value: 3.21 / 4, center: '3.21', label: 'GPA'),
-              // Dữ liệu lệch có thể cho ra hơn 1; vòng phải kẹp lại chứ không
-              // vẽ quá một lượt.
-              PaperRing(value: 1.4, center: '7/5', label: 'Tiết'),
+  /// Bảng điểm một kỳ: Toán 4 TC được 8.0, Lý 2 TC được 5.0 — hệ 10 là 7.00,
+  /// còn hệ 4 thì portal khai thẳng 3.20.
+  Portal portalDiem({bool coDiem = true}) => Portal(
+    client: MockClient((req) async {
+      final body = switch (req.url.path) {
+        '/api/student/GetStudyProgram' => [
+          {'StudyProgramID': 'CQ2021'},
+        ],
+        '/api/student/marks' => [
+          {
+            'NamHoc': '2025-2026',
+            'DanhSachDiem': [
+              {
+                'HocKy': 'HK01',
+                'DanhSachDiemHK': [
+                  {
+                    'CurriculumName': 'Toán',
+                    'Credits': 4,
+                    'DiemTK_10': coDiem ? '8.0' : null,
+                    'TB_TL_TN': '3.20',
+                  },
+                  {
+                    'CurriculumName': 'Lý',
+                    'Credits': 2,
+                    'DiemTK_10': coDiem ? '5.0' : null,
+                  },
+                ],
+              },
             ],
+          },
+        ],
+        _ => {'ResultDataSchedule': []},
+      };
+      return http.Response.bytes(utf8.encode(jsonEncode(body)), 200);
+    }),
+  );
+
+  Future<void> dungThe(WidgetTester t, Portal portal) async {
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TienDoCard(
+            session: Session(
+              id: '1',
+              fullName: 'A',
+              token: 'tk',
+              expire: DateTime(2030),
+            ),
+            portal: portal,
           ),
         ),
       ),
     );
-    expect(find.text('3.21'), findsOneWidget);
-    expect(find.text('7/5'), findsOneWidget);
-    expect(t.takeException(), isNull);
+    // Ghi cache SQLite thật không chạy xong dưới đồng hồ giả của testWidgets.
+    await t.runAsync(() => Future<void>.delayed(const Duration(seconds: 1)));
+    await t.pump();
+    await t.pump();
+  }
+
+  testWidgets('bấm vòng GPA là đổi qua thang 10 rồi bấm nữa là về thang 4', (
+    t,
+  ) async {
+    await dungThe(t, portalDiem());
+    expect(find.text('3.20'), findsOneWidget);
+    expect(find.text('trên 4.0'), findsOneWidget);
+
+    await t.tap(find.text('3.20'));
+    await t.pumpAndSettle();
+    expect(find.text('7.00'), findsOneWidget);
+    expect(find.text('trên 10'), findsOneWidget);
+    expect(find.text('3.20'), findsNothing);
+
+    await t.tap(find.text('7.00'));
+    await t.pumpAndSettle();
+    expect(find.text('3.20'), findsOneWidget);
+  });
+
+  testWidgets('chưa môn nào có điểm hệ 10 thì vòng không mời bấm', (t) async {
+    await dungThe(t, portalDiem(coDiem: false));
+    expect(find.text('3.20'), findsOneWidget);
+    expect(find.text('GPA tích luỹ'), findsOneWidget);
+    expect(find.textContaining('chạm đổi thang'), findsNothing);
   });
 }

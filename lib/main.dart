@@ -630,6 +630,12 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
   Future<void> reload() => _load();
 
   double? _gpa;
+
+  /// GPA hệ 10, app tự tính từ bảng điểm — portal không khai số này.
+  double? _gpa10;
+
+  /// Vòng GPA đang hiện thang nào. Bấm vào vòng là đổi.
+  bool _he10 = false;
   (int, int)? _tiet;
   bool _xong = false;
 
@@ -644,8 +650,10 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
     final token = widget.session.token;
     final now = Clock.instance.value;
     double? gpa;
+    double? gpa10Tl;
     try {
       final years = await p.marks(token, await p.studyProgram(token));
+      gpa10Tl = gpa10(years);
       final keys = termKeys(years);
       final rec = keys.isEmpty
           ? null
@@ -667,6 +675,7 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
     if (mounted) {
       setState(() {
         _gpa = gpa;
+        _gpa10 = gpa10Tl;
         _tiet = tiet;
         _xong = true;
       });
@@ -706,12 +715,11 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
             children: [
               if (gpa != null)
                 Expanded(
-                  child: PaperRing(
-                    value: gpa / 4,
-                    center: gpa.toStringAsFixed(2),
-                    duoi: 'trên 4.0',
-                    label: 'GPA tích luỹ',
-                    color: Paper.accent,
+                  child: _VongGpa(
+                    gpa: gpa,
+                    gpa10: _gpa10,
+                    he10: _he10,
+                    doi: () => setState(() => _he10 = !_he10),
                   ),
                 ),
               // Vạch ngăn mảnh giữa hai vòng, chỉ khi có cả hai.
@@ -736,6 +744,42 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
         ],
       ),
     );
+  }
+}
+
+/// Vòng GPA: bấm vào là đổi qua lại giữa thang 4 và thang 10. Dải giấy bò
+/// sang mức mới và số giữa vòng nảy một cái, vì cùng một GPA mà 3.2/4 với
+/// 7.8/10 nhìn vòng khác hẳn nhau — không nảy thì tưởng mình bấm nhầm.
+class _VongGpa extends StatelessWidget {
+  const _VongGpa({
+    required this.gpa,
+    required this.gpa10,
+    required this.he10,
+    required this.doi,
+  });
+  final double gpa;
+
+  /// Null khi chưa môn nào có điểm hệ 10 — lúc đó vòng không bấm được.
+  final double? gpa10;
+  final bool he10;
+  final VoidCallback doi;
+
+  @override
+  Widget build(BuildContext context) {
+    final muoi = gpa10;
+    final hien = he10 && muoi != null;
+    final vong = PaperRing(
+      value: hien ? muoi / 10 : gpa / 4,
+      center: (hien ? muoi : gpa).toStringAsFixed(2),
+      duoi: hien ? 'trên 10' : 'trên 4.0',
+      label: muoi == null ? 'GPA tích luỹ' : 'GPA tích luỹ · chạm đổi thang',
+      color: Paper.accent,
+      // Đổi thang là một cú bấm, dải giấy phải bò theo kịp ngón tay chứ
+      // không lề mề như lúc thẻ mới hiện ra.
+      duration: const Duration(milliseconds: 520),
+    );
+    if (muoi == null) return vong;
+    return Pressable(onTap: doi, builder: (_) => vong);
   }
 }
 

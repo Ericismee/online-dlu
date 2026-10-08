@@ -251,37 +251,48 @@ class PaperRing extends StatelessWidget {
           curve: Paper.popCurve,
           builder: (_, v, con) =>
               CustomPaint(painter: _RingPainter(v, _color), child: con),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                center,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                style: TextStyle(
-                  fontFamily: 'Display',
-                  fontWeight: FontWeight.w800,
-                  height: 1,
-                  // Nhãn giữa vòng dài ngắn khác nhau ('3.21' với '18/42'), cỡ
-                  // chữ theo đường kính để cái dài không chạm vào vòng.
-                  fontSize: size * (center.length > 4 ? 0.2 : 0.25),
-                  color: Paper.ink,
-                ),
-              ),
-              if (duoi != null) ...[
-                const SizedBox(height: 3),
+          // Đổi số giữa vòng (vd đổi thang điểm) thì nảy một cái cho biết là
+          // vừa đổi, chứ chữ lặng lẽ thay thì tưởng mình bấm hụt.
+          child: AnimatedSwitcher(
+            duration: Paper.popDur,
+            switchInCurve: Paper.popCurve,
+            transitionBuilder: (w, a) => FadeTransition(
+              opacity: a,
+              child: ScaleTransition(scale: a, child: w),
+            ),
+            child: Column(
+              key: ValueKey('$center|$duoi'),
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                 Text(
-                  duoi!,
+                  center,
+                  textAlign: TextAlign.center,
                   maxLines: 1,
                   style: TextStyle(
-                    fontSize: size * 0.1,
-                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Display',
+                    fontWeight: FontWeight.w800,
                     height: 1,
-                    color: Paper.ink3,
+                    // Nhãn giữa vòng dài ngắn khác nhau ('3.21' với '18/42'), cỡ
+                    // chữ theo đường kính để cái dài không chạm vào vòng.
+                    fontSize: size * (center.length > 4 ? 0.2 : 0.25),
+                    color: Paper.ink,
                   ),
                 ),
+                if (duoi != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    duoi!,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: size * 0.1,
+                      fontWeight: FontWeight.w700,
+                      height: 1,
+                      color: Paper.ink3,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

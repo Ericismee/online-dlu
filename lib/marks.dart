@@ -86,6 +86,37 @@ double? he4Cua(dynamic m) {
   return null;
 }
 
+/// Điểm trung bình tích luỹ hệ 10, tự tính từ bảng điểm: portal chỉ khai GPA
+/// hệ 4 (`TB_TL_TN`) chứ không khai hệ 10 toàn khoá. Trung bình có trọng số
+/// tín chỉ, bỏ học phần điều kiện vì chúng không tính vào điểm trung bình.
+///
+/// Học lại thì chỉ lượt điểm cao nhất được tính, không cộng dồn hai lượt —
+/// gom theo tên học phần rồi lấy điểm cao nhất, y như cách tích luỹ hệ 4.
+/// Null khi chưa môn nào có điểm.
+double? gpa10(List<dynamic> years) {
+  final tot = <String, (double, int)>{};
+  for (final k in termKeys(years)) {
+    for (final m in subjectsOf(years, k)) {
+      if (isCondition(m['CurriculumName'])) continue;
+      final d = m['DiemTK_10'];
+      if (d == null || d == '') continue;
+      final tc = toNum(m['Credits']).toInt();
+      if (tc <= 0) continue;
+      final diem = toNum(d).toDouble();
+      final ten = subjectName(m['CurriculumName']);
+      final cu = tot[ten];
+      if (cu == null || diem > cu.$1) tot[ten] = (diem, tc);
+    }
+  }
+  var tong = 0.0;
+  var tc = 0;
+  for (final e in tot.values) {
+    tong += e.$1 * e.$2;
+    tc += e.$2;
+  }
+  return tc == 0 ? null : tong / tc;
+}
+
 /// Môn đã có điểm nhưng còn thấp (dưới B, hệ 4 < 3.0) — ứng viên học cải
 /// thiện để nâng GPA. Bỏ học phần điều kiện vì không tính vào điểm TB.
 List<dynamic> canCaiThien(List<dynamic> subjects) => [

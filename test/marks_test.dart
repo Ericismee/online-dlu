@@ -164,4 +164,63 @@ void main() {
     expect(find.textContaining('2.58'), findsOneWidget);
     expect(find.textContaining('null'), findsNothing);
   });
+
+  test(
+    'GPA hệ 10 là trung bình có trọng số tín chỉ, bỏ học phần điều kiện',
+    () {
+      final years = [
+        {
+          'NamHoc': '2025-2026',
+          'DanhSachDiem': [
+            {
+              'HocKy': 'HK01',
+              'DanhSachDiemHK': [
+                {'CurriculumName': 'Toán', 'Credits': 4, 'DiemTK_10': '8.0'},
+                {'CurriculumName': 'Lý', 'Credits': 2, 'DiemTK_10': '5.0'},
+                // Học phần điều kiện (dấu *) không tính vào điểm trung bình.
+                {
+                  'CurriculumName': 'Giáo dục thể chất *',
+                  'Credits': 3,
+                  'DiemTK_10': '10.0',
+                },
+                // Chưa có điểm thì chưa tính.
+                {'CurriculumName': 'Hoá', 'Credits': 3, 'DiemTK_10': null},
+              ],
+            },
+          ],
+        },
+      ];
+      expect(gpa10(years), closeTo((8 * 4 + 5 * 2) / 6, 1e-9));
+    },
+  );
+
+  test('học lại thì chỉ lượt điểm cao nhất được tính, không cộng dồn', () {
+    final years = [
+      {
+        'NamHoc': '2024-2025',
+        'DanhSachDiem': [
+          {
+            'HocKy': 'HK01',
+            'DanhSachDiemHK': [
+              {'CurriculumName': 'Toán', 'Credits': 4, 'DiemTK_10': '4.0'},
+            ],
+          },
+        ],
+      },
+      {
+        'NamHoc': '2025-2026',
+        'DanhSachDiem': [
+          {
+            'HocKy': 'HK01',
+            'DanhSachDiemHK': [
+              {'CurriculumName': 'Toán', 'Credits': 4, 'DiemTK_10': '9.0'},
+            ],
+          },
+        ],
+      },
+    ];
+    expect(gpa10(years), closeTo(9, 1e-9));
+    // Chưa có điểm nào thì không bịa ra số 0.
+    expect(gpa10(_blank), isNull);
+  });
 }
