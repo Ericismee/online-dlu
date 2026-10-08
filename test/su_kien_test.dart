@@ -91,9 +91,12 @@ void main() {
     expect(gioPhut(DateTime(2026, 10, 8, 7, 5)), '7h05');
   });
 
-  test('đếm ngược làm tròn lên phút, quá giờ thì ghi theo giờ', () {
-    expect(conLai(const Duration(seconds: 30)), '1 phút');
-    expect(conLai(const Duration(minutes: 4, seconds: 10)), '5 phút');
+  test('đếm ngược có giây khi dưới một tiếng, quá giờ thì ghi theo giờ', () {
+    expect(conLai(const Duration(seconds: 30)), '0:30');
+    expect(conLai(const Duration(minutes: 4, seconds: 10)), '4:10');
+    expect(conLai(const Duration(minutes: 59, seconds: 59)), '59:59');
+    // Quá mốc rồi thì về 0, không hiện số âm.
+    expect(conLai(const Duration(seconds: -5)), '0:00');
     expect(conLai(const Duration(hours: 1, minutes: 20)), '1h20');
     expect(conLai(const Duration(hours: 2, minutes: 5)), '2h05');
   });

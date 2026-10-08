@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dlu_tkb/cache.dart';
 import 'package:dlu_tkb/clock.dart';
+import 'package:dlu_tkb/custom_lich.dart';
 import 'package:dlu_tkb/graph.dart';
 import 'package:dlu_tkb/lms.dart';
 import 'package:dlu_tkb/portal.dart';
@@ -93,6 +94,29 @@ void main() {
     await t.pump();
     await t.pump();
   }
+
+  testWidgets('thêm lịch tự đặt ở nơi khác thì mục Hôm nay hiện ngay', (
+    t,
+  ) async {
+    await dungHomNay(t, DateTime(2026, 9, 28, 6), (_) async => const []);
+    expect(find.text('Lên ATC'), findsNothing);
+    // Ghi thẳng vào sổ như màn Lịch vẫn làm, không gọi `reload` hộ ai: thẻ
+    // phải tự thấy, chứ không đợi kéo làm mới hay đợi lượt gọi portal.
+    await t.runAsync(() async {
+      await CustomLichStore.add(
+        DateTime(2026, 9, 28),
+        const CustomLich(tieuDe: 'Lên ATC', batDau: 13 * 60, ketThuc: 15 * 60),
+      );
+      // Chừa một nhịp thật cho lượt đọc sổ mà notifier vừa kích chạy xong:
+      // SQLite thật không chạy dưới đồng hồ giả của testWidgets.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    await t.pump();
+    await t.pump();
+    // Hiện cả ở dòng trong ngày và ở dòng "sắp tới" — cái nào cũng được,
+    // miễn là có mà không phải bấm làm mới.
+    expect(find.text('Lên ATC'), findsWidgets);
+  });
 
   testWidgets('buổi điểm danh gắn ngay vào dòng tiết của nó', (t) async {
     final buoi = dd(DateTime(2026, 9, 28, 7, 45));

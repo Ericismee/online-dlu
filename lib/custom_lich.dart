@@ -1,6 +1,7 @@
 import 'dart:ui' show Color;
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 
 import 'db.dart';
 
@@ -134,6 +135,12 @@ typedef Buoi = ({int id, DateTime ngay, CustomLich item, bool lapLai});
 /// mà "xoá" ở đây là tắt cờ `bat`, dòng vẫn nằm nguyên trong máy.
 /// Không đụng tới lịch chính quy của portal — chỉ chen thêm vào lúc hiển thị.
 class CustomLichStore {
+  /// Đổi mỗi lần sổ có thay đổi. Mọi nơi đang hiện lịch tự đặt nghe cái này
+  /// rồi tự nạp lại phần của mình: sửa ở thẻ ngày thì Trang chủ và lịch tháng
+  /// đổi theo ngay trong cùng khung hình, không phải chờ lượt kéo làm mới mà
+  /// cũng không gọi portal thêm lần nào — lịch tự đặt nằm hẳn trong máy.
+  static final doi = ValueNotifier<int>(0);
+
   static String khoaNgay(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
@@ -270,6 +277,7 @@ class CustomLichStore {
             luc: DateTime.now(),
           ),
         );
+    doi.value++;
   }
 
   /// Buổi mang [id] của ngày [d], null là không còn (vừa bị thẻ khác xoá, hay
@@ -294,9 +302,10 @@ class CustomLichStore {
       await (db.update(db.lichRiengs)..where((t) => t.id.equals(b.id))).write(
         const LichRiengsCompanion(bat: Value(false)),
       );
-      return;
+    } else {
+      await _ghiNgoaiLe(d, b, b.item, bat: false);
     }
-    await _ghiNgoaiLe(d, b, b.item, bat: false);
+    doi.value++;
   }
 
   /// Tắt cả chuỗi lặp mang [id]. Dòng vẫn nằm trong máy, chỉ là `bat = false`
@@ -308,6 +317,7 @@ class CustomLichStore {
     await (db.update(db.lichRiengs)..where((t) => t.id.equals(b.id))).write(
       const LichRiengsCompanion(bat: Value(false)),
     );
+    doi.value++;
   }
 
   /// Sửa buổi mang [id]. Buổi của mục lặp mặc định chỉ sửa riêng hôm đó (ghi
@@ -327,7 +337,11 @@ class CustomLichStore {
     final item = moi.chuan;
     final b = await _buoi(d, id);
     if (b == null) return;
-    if (b.lapLai && !caChuoi) return _ghiNgoaiLe(d, b, item, bat: true);
+    if (b.lapLai && !caChuoi) {
+      await _ghiNgoaiLe(d, b, item, bat: true);
+      doi.value++;
+      return;
+    }
     final db = Db.i;
     await (db.update(db.lichRiengs)..where((t) => t.id.equals(b.id))).write(
       // Sửa cả chuỗi thì tập thứ cũng là thứ người dùng vừa chọn — bỏ hết
@@ -336,6 +350,7 @@ class CustomLichStore {
           ? _cot(item).copyWith(lap: Value(_ghiThu(item.lap)))
           : _cot(item),
     );
+    doi.value++;
   }
 
   static Future<void> _ghiNgoaiLe(

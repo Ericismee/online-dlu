@@ -19,6 +19,7 @@ import 'log_screen.dart';
 import 'login.dart';
 import 'nhat_ky.dart';
 import 'marks.dart';
+import 'nhac.dart';
 import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
@@ -119,11 +120,17 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Sổ lịch tự đặt đổi là hẹn lại nhắc ngay, khỏi đợi lượt nạp sẵn kế tiếp:
+    // thêm một mục rồi mà tối nay không rung thì nhắc coi như không có.
+    CustomLichStore.doi.addListener(_henLaiNhac);
     _resume();
   }
 
+  void _henLaiNhac() => unawaited(Nhac.datLaiTuCache());
+
   @override
   void dispose() {
+    CustomLichStore.doi.removeListener(_henLaiNhac);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -528,7 +535,6 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
     );
     if (!ok) return;
     await CustomLichStore.add(ngay, viec);
-    await Cache.reloadAll();
   }
 
   @override

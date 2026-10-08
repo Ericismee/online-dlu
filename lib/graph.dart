@@ -503,6 +503,22 @@ class MonthGraph extends StatefulWidget {
 }
 
 class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
+  /// Nạp lại riêng phần lịch tự đặt của những tháng đã nạp. Không gọi portal:
+  /// lịch chính quy chưa đổi, chỉ sổ trong máy vừa đổi.
+  Future<void> _lamMoiRieng() async {
+    final moi = <String, Map<int, List<CustomLich>>>{};
+    for (final m in [
+      _month,
+      DateTime(_month.year, _month.month + 1),
+      DateTime(_month.year, _month.month - 1),
+    ]) {
+      if (_cache.containsKey(_key(m))) {
+        moi[_key(m)] = await CustomLichStore.forMonth(m);
+      }
+    }
+    if (mounted) setState(() => _riengCache.addAll(moi));
+  }
+
   /// Nạp lại tháng đang xem, ghi đè cache trong bộ nhớ.
   @override
   Future<void> reload() async {
@@ -539,6 +555,13 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
   void initState() {
     super.initState();
     _show(_month);
+    CustomLichStore.doi.addListener(_lamMoiRieng);
+  }
+
+  @override
+  void dispose() {
+    CustomLichStore.doi.removeListener(_lamMoiRieng);
+    super.dispose();
   }
 
   void _goto(DateTime m) {
@@ -588,8 +611,8 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
 
   /// Chụp tấm lịch thành ảnh rồi đưa vào bảng chia sẻ — gửi cho bạn cùng lớp
   /// nhanh hơn là tả bằng lời.
-  /// Đặt lịch riêng cho ngày đang chọn. Thẻ ngày tự nạp lại nhờ
-  /// [Cache.reloadAll] nên khỏi cầm tay nhau qua lại.
+  /// Đặt lịch riêng cho ngày đang chọn. Mọi nơi đang hiện lịch tự đặt tự nạp
+  /// lại nhờ [CustomLichStore.doi] nên khỏi cầm tay nhau qua lại.
   Future<void> _datLichRieng(DateTime ngay) async {
     final buoi = _days?[ngay.day] ?? const [];
     final x = dacTrungNgay(ngay, buoi);
@@ -605,7 +628,6 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
     await CustomLichStore.add(ngay, item);
     // Chốt giờ nào thì khung đó được thưởng — lần sau gợi ý sát hơn.
     await GoiYGio.ghiNhan(x: x, goiYPhut: goi, chonPhut: item.batDau);
-    Cache.reloadAll();
   }
 
   Future<void> _xuatLich(DateTime month) async {
@@ -870,8 +892,8 @@ class _DayCard extends StatefulWidget {
 
 /// Màn Lịch nằm trong IndexedStack nên không bị huỷ khi qua tab khác: sửa
 /// lịch tự đặt ở Trang chủ (vd bấm "Đã xong") mà thẻ này không nạp lại thì
-/// nó còn giữ bản cũ và vẫn báo "Đang diễn ra". Reloadable để lượt
-/// `Cache.reloadAll()` sau mỗi lần sửa chạm tới nó.
+/// nó còn giữ bản cũ và vẫn báo "Đang diễn ra" — nên nó nghe
+/// [CustomLichStore.doi]; còn Reloadable là để lượt kéo làm mới cũng chạm tới.
 class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
   List<CustomLich>? _rieng;
 
@@ -882,6 +904,13 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
   void initState() {
     super.initState();
     _load();
+    CustomLichStore.doi.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    CustomLichStore.doi.removeListener(_load);
+    super.dispose();
   }
 
   @override
@@ -921,8 +950,6 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
     );
     if (moi == null) return;
     await CustomLichStore.update(widget.day, id, moi, caChuoi: caChuoi);
-    await _load();
-    Cache.reloadAll();
   }
 
   Future<void> _xoa(CustomLich x) async {
@@ -947,8 +974,6 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
     } else {
       await CustomLichStore.remove(widget.day, id);
     }
-    await _load();
-    Cache.reloadAll();
   }
 
   /// Khung để chụp đúng thẻ ngày này — bấm chia sẻ là ra ảnh ngày đang xem,
@@ -2160,12 +2185,20 @@ class _TodayLessonsState extends State<TodayLessons>
     _load(Clock.instance.value);
     LmsNhip.them(_loadDiemDanh);
     _loadDiemDanh();
+    CustomLichStore.doi.addListener(_riengMoi);
   }
 
   @override
   void dispose() {
     LmsNhip.bo(_loadDiemDanh);
+    CustomLichStore.doi.removeListener(_riengMoi);
     super.dispose();
+  }
+
+  /// Sổ vừa đổi ở màn khác: nạp lại đúng hai ngày đang hiện.
+  void _riengMoi() {
+    final now = Clock.instance.value;
+    _loadRieng(DateTime(now.year, now.month, now.day));
   }
 
   Future<void> _loadDiemDanh() async {
@@ -2220,16 +2253,13 @@ class _TodayLessonsState extends State<TodayLessons>
 
   Future<void> _loadRieng(DateTime homNay) async {
     _riengDangTai = true;
-    final homNayList = await CustomLichStore.forDay(homNay);
-    final maiList = await CustomLichStore.forDay(
-      homNay.add(const Duration(days: 1)),
-    );
+    final ds = await CustomLichStore.forRange(homNay, 2);
     _riengDangTai = false;
     if (mounted) {
       setState(() {
         _riengNgay = homNay;
-        _riengHomNay = homNayList;
-        _riengMai = maiList;
+        _riengHomNay = ds[homNay] ?? const [];
+        _riengMai = ds[homNay.add(const Duration(days: 1))] ?? const [];
       });
     }
   }
@@ -2245,8 +2275,6 @@ class _TodayLessonsState extends State<TodayLessons>
       id,
       c.xongLuc(gio.hour * 60 + gio.minute),
     );
-    await _loadRieng(homNay);
-    await Cache.reloadAll();
   }
 
   @override

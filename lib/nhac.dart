@@ -238,6 +238,21 @@ class Nhac {
     }
   }
 
+  /// Hẹn lại theo lịch đang có trong máy, không gọi portal. Dùng sau mỗi lần
+  /// sổ lịch tự đặt đổi: mục vừa thêm phải được nhắc ngay, chứ không đợi lượt
+  /// nạp sẵn kế tiếp — mà lịch chính quy thì đã nằm trong cache rồi.
+  static Future<void> datLaiTuCache([DateTime? luc]) {
+    final now = luc ?? DateTime.now();
+    final hom = DateTime(now.year, now.month, now.day);
+    final ngay = <DateTime, List<dynamic>>{};
+    for (var i = 0; i < 14; i++) {
+      final d = hom.add(Duration(days: i));
+      final ds = lichNgayTuCache(d);
+      if (ds.isNotEmpty) ngay[d] = ds;
+    }
+    return datLai(ngay);
+  }
+
   /// Lịch tự đặt của hai tuần tới; xa hơn thì tới lúc đó app đã đặt lại rồi.
   static Future<Map<DateTime, List<CustomLich>>> _riengQuanh(DateTime now) =>
       CustomLichStore.forRange(DateTime(now.year, now.month, now.day), 14);

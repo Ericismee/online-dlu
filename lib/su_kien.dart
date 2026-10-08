@@ -28,12 +28,18 @@ String nhanNgay(DateTime ngay, DateTime now) {
 String gioPhut(DateTime t) =>
     '${t.hour}h${t.minute.toString().padLeft(2, '0')}';
 
-/// Đếm ngược ngắn gọn, làm tròn lên phút: "4 phút", "1h20", "3 ngày 4h".
-/// Quá một ngày thì đếm theo ngày: hạn nộp bài tuần sau mà ghi "168h00" thì
-/// phải ngồi chia mới biết là bao lâu.
+/// Đếm ngược ngắn gọn: "4:12", "1h20", "3 ngày 4h". Quá một ngày thì đếm theo
+/// ngày — hạn nộp bài tuần sau mà ghi "168h00" thì phải ngồi chia mới biết là
+/// bao lâu.
+///
+/// Dưới một tiếng thì có cả giây: số này nằm cạnh một hạn thật, mà đứng im cả
+/// phút thì trông như app treo chứ không như đang đếm.
 String conLai(Duration d) {
-  final phut = (d.inSeconds / 60).ceil();
-  if (phut < 60) return '$phut phút';
+  final giay = d.inSeconds < 0 ? 0 : d.inSeconds;
+  if (giay < 3600) {
+    return '${giay ~/ 60}:${(giay % 60).toString().padLeft(2, '0')}';
+  }
+  final phut = (giay / 60).ceil();
   final gio = phut ~/ 60;
   if (gio < 24) return '${gio}h${(phut % 60).toString().padLeft(2, '0')}';
   final ngay = gio ~/ 24;
@@ -135,10 +141,16 @@ class ChipDiemDanh extends StatelessWidget {
 class BuoiDiemDanh extends StatelessWidget {
   const BuoiDiemDanh(this.e, this.now, {super.key});
   final LmsEvent e;
+
+  /// Giờ của khung hình gọi tới. Cửa sổ điểm danh đóng trong vài phút nên thẻ
+  /// này tự bắt nhịp giây, khỏi phụ thuộc nơi gọi dựng lại mỗi phút.
   final DateTime now;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      Ticker(giay: true, builder: (context, luc) => _than(luc));
+
+  Widget _than(DateTime now) {
     final mo = !e.start.isAfter(now);
     final dong = _dong(e);
     return Padding(
@@ -270,6 +282,9 @@ class _SuKienCardState extends State<SuKienCard> with Reloadable<SuKienCard> {
 
   @override
   Widget build(BuildContext context) => Ticker(
+    // Nhịp giây: thẻ này chỉ là một hạn và một số đếm ngược, dựng lại mỗi
+    // giây cũng chẳng tốn gì, mà số thì phải chạy.
+    giay: true,
     builder: (_, now) {
       // Lọc lại theo giờ hiện tại chứ không theo lúc tải: việc qua mốc là tự
       // rụng, khỏi chờ lượt sau.
