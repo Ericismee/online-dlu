@@ -38,7 +38,7 @@
           "date": "2026-10-08",
           "localizedDescription": "• Giao diện làm lại theo phong cách neubrutalism: viền đen dày, bóng cứng, màu tươi, góc bo nhẹ cho dễ nhìn trên điện thoại.\n• Chuông thông báo đứng cùng một vị trí ở mọi trang, không nhảy khi đổi tab.\n• Mục Điểm danh nổi lên đầu Trang chủ khi sắp tới giờ, khỏi lướt qua mà không thấy.\n• Trang Lịch sắp xếp lại các nút; chia sẻ ảnh giờ chụp đúng thẻ ngày đang xem.\n• Hộp thư vuốt để xoá; bỏ bấm giữ để thêm vào lịch.\n• Bật chế độ nhà phát triển thì menu có thêm mục Log: xem mọi lượt gọi mạng, nhịp làm mới và đếm ngược, chép được cả sổ. Log không bao giờ ghi mật khẩu hay token.\n• Sửa khoá ứng dụng không ăn khi tắt hẳn app rồi mở lại.\n• Màn khoá mở được bằng mật khẩu portal khi vân tay/khuôn mặt không dùng được.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 12631601,
+          "size": 12644538,
           "minOSVersion": "15.0"
         }
       ],
