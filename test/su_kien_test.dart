@@ -23,6 +23,7 @@ LmsEvent sk(
   loai: loai,
   url: null,
   instance: 0,
+  xong: false,
 );
 
 /// Buổi điểm danh thật của trường: cửa sổ 5 phút, modulename 'attendance'.

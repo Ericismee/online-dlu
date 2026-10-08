@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'cache.dart';
 import 'db.dart';
 import 'paper.dart';
 
@@ -19,6 +20,10 @@ typedef BanGhi = ({String version, String date, String text});
 /// qua nếu mạng hỏng hay GitHub chặn (rate-limit).
 class UpdateCheck {
   static const repo = 'dopaemon/online-dlu';
+
+  /// version.json lấy về lần gần nhất. Lưu lại vì bản đóng gói trong app chỉ
+  /// cũ dần: mất mạng mà vẫn xem được lịch sử tới lượt lấy gần nhất.
+  static const khoaLichSu = 'github:version_json';
   static const releasesUrl = 'https://github.com/$repo/releases/latest';
 
   /// Tag bản mới nhất (vd '1.0.2') nếu mới hơn bản đang chạy, null nếu đã
@@ -90,15 +95,24 @@ class UpdateCheck {
           )
           .timeout(const Duration(seconds: 8));
       if (res.statusCode == 200) {
-        // Rỗng thì coi như chưa đọc được, rơi xuống bản đóng gói chứ đừng
-        // hiện màn trống.
-        final m = _doc(utf8.decode(res.bodyBytes));
-        if (m.isNotEmpty) return m;
+        // Rỗng thì coi như chưa đọc được, rơi xuống bản đã lưu chứ đừng hiện
+        // màn trống.
+        final raw = utf8.decode(res.bodyBytes);
+        final m = _doc(raw);
+        if (m.isNotEmpty) {
+          await Cache.write(khoaLichSu, raw);
+          return m;
+        }
       }
     } catch (_) {
-      // mạng hỏng, rơi xuống bản đóng gói
+      // mạng hỏng, rơi xuống bản đã lưu rồi mới tới bản đóng gói
     } finally {
       if (client == null) c.close();
+    }
+    final luu = Cache.read(khoaLichSu)?.$1;
+    if (luu is String) {
+      final m = _doc(luu);
+      if (m.isNotEmpty) return m;
     }
     try {
       return _doc(await rootBundle.loadString('version.json'));

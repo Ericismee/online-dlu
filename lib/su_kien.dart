@@ -79,7 +79,13 @@ DateTime _dong(LmsEvent e) =>
 Future<List<LmsEvent>> diemDanhHomNay(DateTime now, {Lms? lms}) async {
   final s = await Lms.phien(lms: lms);
   if (s == null) return const [];
-  return diemDanh(await (lms ?? Lms()).calendar(s, now.year, now.month), now);
+  // Lượt gọi hỏng thì lấy lịch tháng trong sổ: thà buổi điểm danh cũ còn hơn
+  // mục trống trơn đúng lúc sắp tới giờ.
+  try {
+    return diemDanh(await (lms ?? Lms()).calendar(s, now.year, now.month), now);
+  } on PortalError {
+    return diemDanh(await lichDaLuu(now.year, now.month), now);
+  }
 }
 
 /// Vào buổi điểm danh. Hiện tại là mở Moodle; sau này điểm thẳng trong app

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dlu_tkb/lms.dart';
 import 'package:dlu_tkb/settings.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -81,6 +82,9 @@ Future<void> go(WidgetTester t, String user, String pass) async {
 }
 
 void main() {
+  // login() cất phiên vào Keychain; không có kho giả là nó ném ngay.
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
   testWidgets('bỏ trống thì nhắc ngay, không gọi mạng', (t) async {
     await moHop(t);
     await t.tap(find.text('Đăng nhập'));

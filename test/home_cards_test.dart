@@ -22,6 +22,7 @@ LmsEvent dd(DateTime start) => (
   loai: 'attendance',
   url: null,
   instance: 1,
+  xong: false,
 );
 
 void main() {

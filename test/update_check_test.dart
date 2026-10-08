@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show SocketException;
 
 import 'package:dlu_tkb/update_check.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,8 +7,11 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'db_tam.dart';
+
 void main() {
-  setUp(() {
+  setUp(() async {
+    await dungDbTam();
     PackageInfo.setMockInitialValues(
       appName: 'Online DLU',
       packageName: 'com.dopaemon.dluonline',
@@ -72,5 +76,23 @@ void main() {
       client: MockClient((req) async => http.Response('', 500)),
     );
     expect(v, isNull);
+  });
+
+  // Lịch sử lấy về rồi thì nằm lại trong sổ: mất mạng vẫn xem được, không rơi
+  // về bản đóng gói cũ hơn.
+  test('version.json lấy về nằm lại trong sổ, mất mạng vẫn đọc', () async {
+    const raw = '''
+{"versions":[{"version":"9.9.9","date":"2026-10-08","changes":["Thử"]}]}''';
+    final online = await UpdateCheck.lichSu(
+      client: MockClient(
+        (_) async => http.Response.bytes(utf8.encode(raw), 200),
+      ),
+    );
+    expect(online.first.version, '9.9.9');
+
+    final offline = await UpdateCheck.lichSu(
+      client: MockClient((_) async => throw const SocketException('tắt mạng')),
+    );
+    expect(offline.first.version, '9.9.9');
   });
 }

@@ -50,6 +50,31 @@ class LmsVault {
     Lms.boPhien();
     await _storage.delete(key: 'lms_username');
     await _storage.delete(key: 'lms_password');
+    await xoaPhien();
+  }
+
+  /// Phiên Moodle nằm trong Keychain chứ không phải SQLite: cookie phiên mở
+  /// được tài khoản y như mật khẩu, mà sổ SQLite thì nằm trần trong thư mục
+  /// dữ liệu của app.
+  static Future<void> luuPhien(LmsSession s) async {
+    await _storage.write(key: 'lms_cookie', value: s.cookie);
+    await _storage.write(key: 'lms_sesskey', value: s.sesskey);
+    await _storage.write(key: 'lms_userid', value: '${s.userId}');
+  }
+
+  static Future<LmsSession?> docPhien() async {
+    final cookie = await _storage.read(key: 'lms_cookie');
+    final sesskey = await _storage.read(key: 'lms_sesskey');
+    final uid = int.tryParse(await _storage.read(key: 'lms_userid') ?? '');
+    return cookie == null || sesskey == null || uid == null
+        ? null
+        : (cookie: cookie, sesskey: sesskey, userId: uid);
+  }
+
+  static Future<void> xoaPhien() async {
+    await _storage.delete(key: 'lms_cookie');
+    await _storage.delete(key: 'lms_sesskey');
+    await _storage.delete(key: 'lms_userid');
   }
 }
 
@@ -259,6 +284,11 @@ typedef LmsEvent = ({
   String loai,
   String? url,
   int instance,
+
+  /// Moodle gắn một "action" vào việc còn phải làm (nộp bài, điểm danh). Nộp
+  /// xong là nó hết actionable hoặc còn 0 mục — tức việc đã xong, đừng nhắc
+  /// nữa. Việc không có action (mốc đóng quiz, lịch khoá học) thì luôn false.
+  bool xong,
 });
 
 /// Mốc kết thúc cửa sổ của một việc.
@@ -352,7 +382,7 @@ class Lms {
     final tk = await LmsVault.read();
     if (tk == null) return null;
     try {
-      return await (_phien ??= (lms ?? Lms()).login(tk.$1, tk.$2));
+      return await (_phien ??= _mo(lms ?? Lms(), tk));
     } on PortalError catch (e) {
       _phien = null;
       // Mật khẩu LMS không còn đúng thì tắt LMS ngay và báo vào chuông, chứ
@@ -370,7 +400,41 @@ class Lms {
     }
   }
 
-  static void boPhien() => _phien = null;
+  /// Phiên cũ còn sống thì dùng tiếp, chết mới đăng nhập lại. Mỗi lượt đăng
+  /// nhập là một lần gửi mật khẩu đi, mà phiên Moodle sống được nhiều ngày.
+  static Future<LmsSession> _mo(Lms l, (String, String) tk) async {
+    final cu = await LmsVault.docPhien();
+    if (cu != null && await l.conSong(cu)) return cu;
+    final s = await l.login(tk.$1, tk.$2);
+    await LmsVault.luuPhien(s);
+    return s;
+  }
+
+  /// Phiên còn sống không. Trang `/my/` chỉ in đúng `sesskey` của phiên khi
+  /// cookie còn hiệu lực; hết hạn thì Moodle đẩy về form đăng nhập.
+  Future<bool> conSong(LmsSession s) async {
+    try {
+      final res = await _send(
+        http.Request('GET', Uri.parse('$_base/my/'))
+          ..headers['cookie'] = s.cookie,
+      );
+      return _text(res).contains('"sesskey":"${s.sesskey}"');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Bỏ phiên đang giữ. Phiên đã chết thì bỏ khỏi Keychain luôn, không thì
+  /// lượt mở app sau lại thử đúng cái phiên đó.
+  static void boPhien() {
+    boPhienTrongRam();
+    unawaited(LmsVault.xoaPhien());
+  }
+
+  /// Chỉ quên phiên đang giữ trong RAM, phiên trong Keychain vẫn còn — y như
+  /// lúc mở lại app.
+  @visibleForTesting
+  static void boPhienTrongRam() => _phien = null;
 
   Future<LmsSession> login(String username, String password) async {
     final url = Uri.parse('$_base/login/index.php');
@@ -426,7 +490,9 @@ class Lms {
           '',
     );
     if (sesskey == null || userId == null) throw _sai();
-    return (cookie: cookie, sesskey: sesskey, userId: userId);
+    final s = (cookie: cookie, sesskey: sesskey, userId: userId);
+    await LmsVault.luuPhien(s);
+    return s;
   }
 
   /// Lịch một tháng ([month] đếm từ 1). `courseid: 1` là khoá học gốc của site,
@@ -444,7 +510,7 @@ class Lms {
         'day': 1,
       },
     ) as Map<String, dynamic>;
-    return [
+    final viec = [
       for (final w in (data['weeks'] as List? ?? const []))
         for (final d in (w['days'] as List? ?? const []))
           for (final e in (d['events'] as List? ?? const []))
@@ -465,8 +531,37 @@ class Lms {
               loai: e['modulename'] as String? ?? '',
               url: e['url'] as String?,
               instance: (e['instance'] as num?)?.toInt() ?? 0,
+              xong: _xong(e['action']),
             ),
     ];
+    await luuLich(year, month, viec);
+    if (NhatKy.bat) {
+      NhatKy.ghi('lms', 'lịch $year-$month: ${viec.length} việc');
+      for (final w in (data['weeks'] as List? ?? const [])) {
+        for (final d in (w['days'] as List? ?? const [])) {
+          for (final e in (d['events'] as List? ?? const [])) {
+            NhatKy.ghi(
+              'lms',
+              '  ${e['name']} · ${e['modulename']} · ${_goiAction(e['action'])}',
+            );
+          }
+        }
+      }
+    }
+    return viec;
+  }
+
+  /// Gói `action` lại thành một dòng ngắn để soi trong sổ verbose: đây là thứ
+  /// quyết định việc đã xong hay chưa, nên phải nhìn được bằng mắt.
+  static String _goiAction(Object? action) => action is! Map
+      ? 'không có action'
+      : 'itemcount=${action['itemcount']} actionable=${action['actionable']}';
+
+  /// Việc đã xong chưa, theo khối `action` của Moodle.
+  static bool _xong(Object? action) {
+    if (action is! Map) return false;
+    final con = (action['itemcount'] as num?)?.toInt() ?? 1;
+    return con <= 0 || (action['actionable'] as bool? ?? true) == false;
   }
 
   Future<List<LmsNotification>> notifications(LmsSession session) async {
@@ -630,12 +725,33 @@ Future<List<LmsEvent>> suKienSapToi(
   final out = <LmsEvent>[];
   // Khoảng 21 ngày vắt qua nhiều nhất hai tháng; cùng tháng thì Set gộp lại.
   for (final m in {(now.year, now.month), (den.year, den.month)}) {
-    out.addAll(await l.calendar(s, m.$1, m.$2));
+    // Lượt gọi hỏng thì lấy tháng đó trong sổ ra, chứ đừng để trống cả khối.
+    try {
+      out.addAll(await l.calendar(s, m.$1, m.$2));
+    } on PortalError {
+      out.addAll(await lichDaLuu(m.$1, m.$2));
+    }
   }
   final ds = locSuKien(out, now, truoc: truoc, toiDa: toiDa);
   await luuSuKien(ds);
   return ds;
 }
+
+/// Khoá sổ mục của lịch một tháng. Mỗi việc là một dòng [Kho] riêng, nên
+/// Moodle bỏ một việc khỏi lịch thì dòng chỉ bị ẩn chứ không mất.
+String khoaLich(int year, int month) =>
+    'lms:lich:$year-${month.toString().padLeft(2, '0')}';
+
+/// Cất nguyên mẻ lịch tháng, không lọc gì: chỗ hiển thị mới là chỗ lọc, còn
+/// sổ thì giữ đủ để mất mạng vẫn có cái mà xem.
+Future<void> luuLich(int year, int month, List<LmsEvent> ds) =>
+    DsKho.nhap(khoaLich(year, month), [for (final e in ds) _raJson(e)]);
+
+/// Lịch tháng đã lưu, không gọi mạng.
+Future<List<LmsEvent>> lichDaLuu(int year, int month) async => [
+  for (final m in await DsKho.doc(khoaLich(year, month)))
+    _tuJson(Map<String, dynamic>.from(m as Map)),
+];
 
 /// Khoá cache của mẻ sự kiện lần trước.
 const khoaSuKien = 'lms:su_kien';
@@ -666,6 +782,7 @@ Map<String, dynamic> _raJson(LmsEvent e) => {
   'loai': e.loai,
   'url': e.url,
   'instance': e.instance,
+  'xong': e.xong,
 };
 
 LmsEvent _tuJson(Map<String, dynamic> m) => (
@@ -676,6 +793,7 @@ LmsEvent _tuJson(Map<String, dynamic> m) => (
   loai: m['loai'] as String? ?? '',
   url: m['url'] as String?,
   instance: m['instance'] as int? ?? 0,
+  xong: m['xong'] as bool? ?? false,
 );
 
 /// Bỏ mốc đã qua và mốc quá xa, sắp theo thời gian rồi cắt còn [toiDa]. Lịch
@@ -688,7 +806,9 @@ List<LmsEvent> locSuKien(
 }) {
   final den = now.add(truoc);
   final out = [...suKien]
-    ..retainWhere((e) => e.start.isAfter(now) && e.start.isBefore(den))
+    ..retainWhere(
+      (e) => !e.xong && e.start.isAfter(now) && e.start.isBefore(den),
+    )
     ..sort((a, b) => a.start.compareTo(b.start));
   return out.take(toiDa).toList();
 }

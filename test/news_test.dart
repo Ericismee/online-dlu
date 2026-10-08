@@ -105,6 +105,7 @@ void main() {
             loai: 'assign',
             url: null,
             instance: i,
+            xong: false,
           ),
       ],
     );
