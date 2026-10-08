@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "1.2.1",
+      "build": 13,
+      "date": "2026-10-08",
+      "changes": [
+        "Giao diện làm lại theo phong cách neubrutalism: viền đen dày, bóng cứng, màu tươi, góc bo nhẹ cho dễ nhìn trên điện thoại.",
+        "Chuông thông báo đứng cùng một vị trí ở mọi trang, không nhảy khi đổi tab.",
+        "Mục Điểm danh nổi lên đầu Trang chủ khi sắp tới giờ, khỏi lướt qua mà không thấy.",
+        "Trang Lịch sắp xếp lại các nút; chia sẻ ảnh giờ chụp đúng thẻ ngày đang xem.",
+        "Hộp thư vuốt để xoá; bỏ bấm giữ để thêm vào lịch.",
+        "Bật chế độ nhà phát triển thì menu có thêm mục Log: xem mọi lượt gọi mạng, nhịp làm mới và đếm ngược, chép được cả sổ. Log không bao giờ ghi mật khẩu hay token.",
+        "Sửa khoá ứng dụng không ăn khi tắt hẳn app rồi mở lại.",
+        "Màn khoá mở được bằng mật khẩu portal khi vân tay/khuôn mặt không dùng được."
+      ]
+    },
+    {
       "version": "1.2.0",
       "build": 12,
       "date": "2026-10-03",
