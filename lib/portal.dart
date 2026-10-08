@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -93,7 +94,7 @@ class Portal {
       'username': username,
       'password': password,
       'type': 0,
-    });
+    }, dangNhap: true);
     return Session.fromJson(res);
   }
 
@@ -220,25 +221,34 @@ class Portal {
     return luu;
   }
 
-  Future<Map<String, dynamic>> _post(String path, Object body) => _send(
+  Future<Map<String, dynamic>> _post(
+    String path,
+    Object body, {
+    bool dangNhap = false,
+  }) => _send(
     () => _client.post(
       Uri.parse('$_base$path'),
       headers: {..._keys, 'content-type': 'application/json'},
       body: jsonEncode(body),
     ),
     nhan: 'POST $path',
+    dangNhap: dangNhap,
   );
 
   Future<Map<String, dynamic>> _send(
     Future<http.Response> Function() request, {
     String? nhan,
-  }) async => (await _raw(request, nhan: nhan)) as Map<String, dynamic>;
+    bool dangNhap = false,
+  }) async =>
+      (await _raw(request, nhan: nhan, dangNhap: dangNhap))
+          as Map<String, dynamic>;
 
   /// [nhan] chỉ có phương thức và path — thân request mang mật khẩu, query
   /// mang token, nên hai thứ đó không bao giờ vào sổ.
   Future<dynamic> _raw(
     Future<http.Response> Function() request, {
     String? nhan,
+    bool dangNhap = false,
   }) async {
     final http.Response res;
     final batDau = DateTime.now();
@@ -259,6 +269,20 @@ class Portal {
         '← $nhan ${res.statusCode} (${ms}ms, ${res.bodyBytes.length} B)',
       );
     }
+    // Sai mật khẩu thì portal trả 400 kèm lời nhắn, chứ không phải 200 với
+    // `IsLogin: false`. Đưa nguyên mã số ra màn đăng nhập thì người dùng chỉ
+    // thấy "Portal trả về lỗi 400" và không biết phải sửa gì.
+    //
+    // Chỉ coi là sai mật khẩu khi portal tự nói ra bằng JSON của nó: 400 trơn
+    // có thể là proxy chen vào hay mạng bắt đăng nhập wifi, mà cờ này thì
+    // xoá mật khẩu đã lưu và đá về màn đăng nhập.
+    if (dangNhap && (res.statusCode == 400 || res.statusCode == 401)) {
+      final msg = await _loiDangNhap(res.bodyBytes);
+      throw PortalError(
+        msg ?? 'Sai tài khoản hoặc mật khẩu',
+        saiMatKhau: msg != null,
+      );
+    }
     if (res.statusCode != 200) {
       throw PortalError(
         'Portal trả về lỗi ${res.statusCode}',
@@ -266,6 +290,18 @@ class Portal {
       );
     }
     return giaiMa(res.bodyBytes);
+  }
+
+  /// Lời nhắn portal gửi kèm lúc từ chối đăng nhập, null là thân lỗi không
+  /// phải JSON của portal.
+  static Future<String?> _loiDangNhap(Uint8List than) async {
+    try {
+      final j = await giaiMa(than);
+      final msg = j is Map ? (j['Message'] as String?)?.trim() : null;
+      return msg == null || msg.isEmpty ? null : msg;
+    } catch (_) {
+      return null;
+    }
   }
 }
 

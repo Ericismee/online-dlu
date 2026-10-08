@@ -243,6 +243,62 @@ void main() {
       );
     });
 
+    test('sửa cả chuỗi thì mọi tuần đổi theo', () async {
+      await datLap();
+      final ngay = DateTime(2026, 10, 1);
+      await CustomLichStore.update(
+        ngay,
+        (await CustomLichStore.forDay(ngay)).first.id!,
+        const CustomLich(
+          tieuDe: 'Lên ATC',
+          batDau: 13 * 60,
+          ketThuc: 15 * 60,
+          lap: {DateTime.tuesday, DateTime.thursday},
+        ),
+        caChuoi: true,
+      );
+      for (final d in [batDau, ngay, DateTime(2026, 10, 6)]) {
+        expect((await CustomLichStore.forDay(d)).first.batDau, 13 * 60);
+      }
+    });
+
+    test('sửa cả chuỗi mà bỏ hết thứ thì còn đúng ngày đã đặt', () async {
+      await datLap();
+      await CustomLichStore.update(
+        batDau,
+        (await CustomLichStore.forDay(batDau)).first.id!,
+        const CustomLich(tieuDe: 'Lên ATC', batDau: 7 * 60),
+        caChuoi: true,
+      );
+      expect(await CustomLichStore.forDay(batDau), hasLength(1));
+      expect(await CustomLichStore.forDay(DateTime(2026, 10, 6)), isEmpty);
+    });
+
+    test('buổi đã sửa riêng thì sửa cả chuỗi không đè lên', () async {
+      await datLap();
+      final rieng = DateTime(2026, 10, 1);
+      await CustomLichStore.update(
+        rieng,
+        (await CustomLichStore.forDay(rieng)).first.id!,
+        const CustomLich(tieuDe: 'Lên ATC', batDau: 20 * 60),
+      );
+      await CustomLichStore.update(
+        batDau,
+        (await CustomLichStore.forDay(batDau)).first.id!,
+        const CustomLich(
+          tieuDe: 'Lên ATC',
+          batDau: 13 * 60,
+          lap: {DateTime.tuesday, DateTime.thursday},
+        ),
+        caChuoi: true,
+      );
+      expect((await CustomLichStore.forDay(rieng)).first.batDau, 20 * 60);
+      expect(
+        (await CustomLichStore.forDay(DateTime(2026, 10, 8))).first.batDau,
+        13 * 60,
+      );
+    });
+
     test(
       'xoá cả chuỗi thì không còn buổi nào, mà dòng vẫn nằm trong máy',
       () async {

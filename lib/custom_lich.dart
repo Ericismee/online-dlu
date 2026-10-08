@@ -310,18 +310,32 @@ class CustomLichStore {
     );
   }
 
-  /// Sửa buổi mang [id]. Buổi của mục lặp chỉ sửa riêng hôm đó — app chỉ sửa
-  /// được một thứ trên mục đã đặt (nút "Đã xong" chốt giờ về), mà "xong" thì
-  /// đúng là chuyện của riêng hôm nay.
-  static Future<void> update(DateTime d, int id, CustomLich moi) async {
+  /// Sửa buổi mang [id]. Buổi của mục lặp mặc định chỉ sửa riêng hôm đó (ghi
+  /// một dòng ngoại lệ); [caChuoi] thì ghi thẳng vào mục gốc nên mọi tuần đổi
+  /// theo. Nơi gọi phải hỏi người dùng trước — đoán hộ là có lúc đổi mất cả
+  /// học kỳ.
+  ///
+  /// Những buổi đã sửa riêng trước đó vẫn giữ bản riêng của chúng: dòng ngoại
+  /// lệ nằm trong sổ và không xoá bất cứ thứ gì, nên [caChuoi] chỉ đổi những
+  /// buổi chưa ai chạm tới.
+  static Future<void> update(
+    DateTime d,
+    int id,
+    CustomLich moi, {
+    bool caChuoi = false,
+  }) async {
     final item = moi.chuan;
     final b = await _buoi(d, id);
     if (b == null) return;
-    if (b.lapLai) return _ghiNgoaiLe(d, b, item, bat: true);
+    if (b.lapLai && !caChuoi) return _ghiNgoaiLe(d, b, item, bat: true);
     final db = Db.i;
-    await (db.update(
-      db.lichRiengs,
-    )..where((t) => t.id.equals(b.id))).write(_cot(item));
+    await (db.update(db.lichRiengs)..where((t) => t.id.equals(b.id))).write(
+      // Sửa cả chuỗi thì tập thứ cũng là thứ người dùng vừa chọn — bỏ hết
+      // thứ đi là mục chỉ còn đúng ngày đã đặt.
+      b.lapLai
+          ? _cot(item).copyWith(lap: Value(_ghiThu(item.lap)))
+          : _cot(item),
+    );
   }
 
   static Future<void> _ghiNgoaiLe(

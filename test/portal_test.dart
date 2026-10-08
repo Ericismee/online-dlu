@@ -70,6 +70,50 @@ void main() {
     );
   });
 
+  test('sai mật khẩu (400) thì nói là sai mật khẩu, không đọc mã lỗi', () {
+    expect(
+      Portal(
+        client: stub(400, {'Message': 'Tài khoản hoặc mật khẩu không đúng'}),
+      ).login('2312577', 'sai'),
+      throwsA(
+        isA<PortalError>()
+            .having(
+              (e) => e.message,
+              'message',
+              'Tài khoản hoặc mật khẩu không đúng',
+            )
+            // Loại này mới được xoá mật khẩu đã lưu và đá về màn đăng nhập.
+            .having((e) => e.saiMatKhau, 'saiMatKhau', isTrue),
+      ),
+    );
+  });
+
+  test('400 trơn thì vẫn nói tiếng Việt, mà không xoá mật khẩu đã lưu', () {
+    expect(
+      Portal(
+        client: MockClient(
+          (_) async => http.Response.bytes(utf8.encode('Bad Request'), 400),
+        ),
+      ).login('a', 'b'),
+      throwsA(
+        isA<PortalError>()
+            .having((e) => e.message, 'message', contains('Sai tài khoản'))
+            // Proxy chen vào hay mạng bắt đăng nhập wifi cũng ra 400 trơn:
+            // mật khẩu trong Keychain phải còn nguyên.
+            .having((e) => e.saiMatKhau, 'saiMatKhau', isFalse),
+      ),
+    );
+  });
+
+  test('lỗi phía server thì vẫn là lỗi server, không vu cho mật khẩu', () {
+    expect(
+      Portal(client: stub(500, {})).login('a', 'b'),
+      throwsA(
+        isA<PortalError>().having((e) => e.saiMatKhau, 'saiMatKhau', isFalse),
+      ),
+    );
+  });
+
   test('reports HTTP failures instead of crashing', () {
     expect(
       Portal(client: stub(500, {})).login('a', 'b'),

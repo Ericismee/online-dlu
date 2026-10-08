@@ -1,8 +1,13 @@
 import 'package:dlu_tkb/custom_lich.dart';
+import 'package:dlu_tkb/db.dart';
 import 'package:dlu_tkb/nhac.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'db_tam.dart';
+
 void main() {
+  setUp(dungDbTam);
+
   // 28/9 học tiết 1-4 (vào 7h30), 29/9 học tiết 7-10 (vào 13h00).
   final lich = {
     DateTime(2026, 9, 28): [
@@ -108,6 +113,11 @@ void main() {
     );
     // Chính nó không tính là chặng trước dù không khai giờ về.
     expect(demDuong(hen, const [], const [hen]), Duration.zero);
+    // Đặt 0 phút trong Cài đặt là tắt hẳn phần đệm.
+    expect(
+      demDuong(hen, lich[DateTime(2026, 9, 28)]!, const [quan, hen], 0),
+      Duration.zero,
+    );
     // Vẫn ở đúng phòng vừa học xong thì khỏi cộng đường đi.
     expect(dem('a1.203'), Duration.zero);
     // Không ghi địa điểm thì không đoán bừa.
@@ -120,5 +130,17 @@ void main() {
       ),
       Duration.zero,
     );
+  });
+
+  test('số phút trong Cài đặt lưu lại và đọc về đúng', () async {
+    expect(await Nhac.truocPhut(), Nhac.truoc.inMinutes);
+    expect(await Nhac.demPhut(), demDuongPhut);
+    await Nhac.datTruocPhut(30);
+    await Nhac.datDemPhut(0);
+    expect(await Nhac.truocPhut(), 30);
+    expect(await Nhac.demPhut(), 0);
+    // Số lạ trong sổ thì về mặc định chứ không hẹn nhắc âm phút.
+    await Db.i.ghi(nhomCaiDat, 'nhac_truoc_phut', giaTri: 'x');
+    expect(await Nhac.truocPhut(), Nhac.truoc.inMinutes);
   });
 }

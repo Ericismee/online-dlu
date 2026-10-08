@@ -896,6 +896,35 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
     if (mounted && d == widget.day) setState(() => _rieng = r);
   }
 
+  Future<void> _sua(CustomLich x) async {
+    final id = x.id;
+    if (id == null) return;
+    var caChuoi = false;
+    // Mục lặp thì hỏi trước, y như lúc xoá.
+    if (x.lapLai) {
+      final chon = await chonDialog(
+        context,
+        title: 'Sửa "${x.tieuDe}"',
+        body: 'Mục này lặp hàng tuần. Buổi đã sửa riêng vẫn giữ nguyên.',
+        lua: const ['Chỉ buổi này', 'Cả chuỗi lặp'],
+        icon: Icons.edit_outlined,
+      );
+      if (chon == null) return;
+      caChuoi = chon == 1;
+    }
+    if (!mounted) return;
+    final moi = await _hoiLichRieng(
+      context,
+      ngay: widget.day,
+      cu: x,
+      chuoi: caChuoi,
+    );
+    if (moi == null) return;
+    await CustomLichStore.update(widget.day, id, moi, caChuoi: caChuoi);
+    await _load();
+    Cache.reloadAll();
+  }
+
   Future<void> _xoa(CustomLich x) async {
     final id = x.id;
     if (id == null) return;
@@ -1026,6 +1055,7 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
                     // giờ nên chỗ ở đây không còn là chỗ trong sổ, mà hai mục
                     // giống hệt nhau thì đếm kiểu gì cũng ra cái đầu.
                     onXoa: () => _xoa(x),
+                    onSua: () => _sua(x),
                     trungGio: trungGioChinhQuy(x, widget.items),
                   )
                 else
@@ -1081,20 +1111,30 @@ Timer _chamLai(Timer? cu, void Function() viec) {
   return Timer(const Duration(milliseconds: 300), viec);
 }
 
+/// Hộp thoại thêm (hay sửa, khi có [cu]) một mục lịch tự đặt. [chuoi] chỉ
+/// đổi lời trong hộp thoại: người dùng đã chọn sửa cả chuỗi thì nói rõ, chứ
+/// ghi vào sổ là việc của nơi gọi.
 Future<CustomLich?> _hoiLichRieng(
   BuildContext context, {
   int? goiY,
   required DateTime ngay,
+  CustomLich? cu,
+  bool chuoi = false,
 }) async {
-  final ten = TextEditingController();
-  final viTri = TextEditingController();
-  TimeOfDay? di = goiY == null
+  final sua = cu != null;
+  final ten = TextEditingController(text: cu?.tieuDe ?? '');
+  final viTri = TextEditingController(text: cu?.viTri ?? '');
+  TimeOfDay? di = cu != null
+      ? TimeOfDay(hour: cu.batDau ~/ 60, minute: cu.batDau % 60)
+      : goiY == null
       ? null
       : TimeOfDay(hour: goiY ~/ 60, minute: goiY % 60);
-  var theoGoiY = goiY != null;
-  TimeOfDay? ve;
-  var mau = customLichMauMacDinh;
-  final lap = <int>{};
+  var theoGoiY = goiY != null && !sua;
+  TimeOfDay? ve = cu?.ketThuc == null
+      ? null
+      : TimeOfDay(hour: cu!.ketThuc! ~/ 60, minute: cu.ketThuc! % 60);
+  var mau = cu?.mau ?? customLichMauMacDinh;
+  final lap = {...?cu?.lap};
   Timer? traSo;
   final ok = await showDialog<bool>(
     context: context,
@@ -1115,7 +1155,9 @@ Future<CustomLich?> _hoiLichRieng(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Đặt lịch riêng',
+                sua
+                    ? (chuoi ? 'Sửa cả chuỗi' : 'Sửa buổi này')
+                    : 'Đặt lịch riêng',
                 style: TextStyle(
                   fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
@@ -1134,37 +1176,43 @@ Future<CustomLich?> _hoiLichRieng(
                 ),
                 child: TextField(
                   controller: ten,
-                  autofocus: true,
+                  autofocus: !sua,
                   // Mẫu nhanh: gõ lại đúng tên cũ thì giờ, màu và vị trí lần
                   // trước tự điền — việc lặp đi lặp lại thì khỏi gõ lại.
                   // Chờ người ta gõ xong hẳn mới tra sổ: mỗi chữ một câu
                   // truy vấn thì gõ 'Lên ATC' là bảy lượt, mà sáu lượt đầu
                   // chắc chắn không khớp tên nào.
-                  onChanged: (v) => traSo = _chamLai(traSo, () async {
-                    final cu = await CustomLichStore.mauGanNhat(v);
-                    if (cu == null || !ctx.mounted) return;
-                    if (ten.text.trim().toLowerCase() !=
-                        cu.tieuDe.trim().toLowerCase()) {
-                      return;
-                    }
-                    setState(() {
-                      if (theoGoiY) {
-                        di = TimeOfDay(
-                          hour: cu.batDau ~/ 60,
-                          minute: cu.batDau % 60,
-                        );
-                        theoGoiY = false;
-                      }
-                      ve ??= cu.ketThuc == null
-                          ? null
-                          : TimeOfDay(
-                              hour: cu.ketThuc! ~/ 60,
-                              minute: cu.ketThuc! % 60,
-                            );
-                      mau = cu.mau;
-                      if (viTri.text.isEmpty) viTri.text = cu.viTri ?? '';
-                    });
-                  }),
+                  // Lúc sửa thì không tự điền: người ta đang sửa chính mục
+                  // này, kéo giờ của lần đặt cũ vào là phá mất cái vừa gõ.
+                  onChanged: sua
+                      ? null
+                      : (v) => traSo = _chamLai(traSo, () async {
+                          final lanTruoc = await CustomLichStore.mauGanNhat(v);
+                          if (lanTruoc == null || !ctx.mounted) return;
+                          if (ten.text.trim().toLowerCase() !=
+                              lanTruoc.tieuDe.trim().toLowerCase()) {
+                            return;
+                          }
+                          setState(() {
+                            if (theoGoiY) {
+                              di = TimeOfDay(
+                                hour: lanTruoc.batDau ~/ 60,
+                                minute: lanTruoc.batDau % 60,
+                              );
+                              theoGoiY = false;
+                            }
+                            ve ??= lanTruoc.ketThuc == null
+                                ? null
+                                : TimeOfDay(
+                                    hour: lanTruoc.ketThuc! ~/ 60,
+                                    minute: lanTruoc.ketThuc! % 60,
+                                  );
+                            mau = lanTruoc.mau;
+                            if (viTri.text.isEmpty) {
+                              viTri.text = lanTruoc.viTri ?? '';
+                            }
+                          });
+                        }),
                   style: TextStyle(
                     fontFamily: 'Display',
                     fontWeight: FontWeight.w700,
@@ -1243,42 +1291,54 @@ Future<CustomLich?> _hoiLichRieng(
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Lặp hàng tuần',
-                style: TextStyle(
-                  fontFamily: 'Display',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                  color: Paper.ink2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (var t = DateTime.monday; t <= DateTime.sunday; t++)
-                    Choice(
-                      label: _tenThu(t),
-                      chon: lap.contains(t),
-                      color: Paper.sky,
-                      onTap: () => setState(
-                        () => lap.contains(t) ? lap.remove(t) : lap.add(t),
-                      ),
-                    ),
-                ],
-              ),
-              if (buoiDau(ngay, lap) case final dau? when dau != ngay) ...[
-                const SizedBox(height: 8),
-                // Đặt lịch lặp T2 trong lúc đang xem thứ tư thì thẻ ngày đang
-                // mở sẽ trống trơn — nói trước buổi đầu rơi vào đâu, chứ để
-                // người dùng bấm Thêm rồi tưởng hỏng.
+              if (!sua || chuoi) ...[
+                const SizedBox(height: 12),
                 Text(
-                  'Buổi đầu: ${dayNames[dau.weekday]}, ${dau.day}/${dau.month}',
+                  'Lặp hàng tuần',
+                  style: TextStyle(
+                    fontFamily: 'Display',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: Paper.ink2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (var t = DateTime.monday; t <= DateTime.sunday; t++)
+                      Choice(
+                        label: _tenThu(t),
+                        chon: lap.contains(t),
+                        color: Paper.sky,
+                        onTap: () => setState(
+                          () => lap.contains(t) ? lap.remove(t) : lap.add(t),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+              if (sua && !chuoi && cu.lapLai) ...[
+                const SizedBox(height: 8),
+                // Sửa riêng một buổi thì chuỗi không đổi; nói ra khỏi tưởng
+                // vừa đổi cả học kỳ.
+                Text(
+                  'Chỉ đổi buổi ${ngay.day}/${ngay.month}, các tuần khác giữ nguyên.',
                   style: TextStyle(fontSize: 13, color: Paper.ink2),
                 ),
               ],
+              if (!sua)
+                if (buoiDau(ngay, lap) case final dau? when dau != ngay) ...[
+                  const SizedBox(height: 8),
+                  // Đặt lịch lặp T2 trong lúc đang xem thứ tư thì thẻ ngày đang
+                  // mở sẽ trống trơn — nói trước buổi đầu rơi vào đâu, chứ để
+                  // người dùng bấm Thêm rồi tưởng hỏng.
+                  Text(
+                    'Buổi đầu: ${dayNames[dau.weekday]}, ${dau.day}/${dau.month}',
+                    style: TextStyle(fontSize: 13, color: Paper.ink2),
+                  ),
+                ],
               if (_gioNguoc(di, ve)) ...[
                 const SizedBox(height: 10),
                 Text(
@@ -1298,7 +1358,7 @@ Future<CustomLich?> _hoiLichRieng(
                   ),
                   const SizedBox(width: 8),
                   PaperButton(
-                    label: 'Thêm',
+                    label: sua ? 'Lưu' : 'Thêm',
                     color: Paper.sun,
                     onColor: Paper.ink,
                     onPressed: () {
@@ -1592,20 +1652,23 @@ class _Lesson extends StatelessWidget {
 }
 
 /// Một lịch tự đặt — cùng khung timeline và nhãn trạng thái/đếm ngược như
-/// [_Lesson], không có tiết/phòng/GV. Có [onXoa] thì hiện nút xoá (thẻ ngày
-/// trong Lịch), không thì thôi (danh sách hôm nay/mai ở Trang chủ).
+/// [_Lesson], không có tiết/phòng/GV. Có [onXoa]/[onSua] thì hiện nút xoá và
+/// nút sửa (thẻ ngày trong Lịch), không thì thôi (danh sách hôm nay/mai ở
+/// Trang chủ).
 class _LessonRieng extends StatelessWidget {
   const _LessonRieng(
     this.c, {
     this.delay = Duration.zero,
     this.now,
     this.onXoa,
+    this.onSua,
     this.trungGio = false,
   });
   final CustomLich c;
   final Duration delay;
   final DateTime? now;
   final VoidCallback? onXoa;
+  final VoidCallback? onSua;
 
   /// Đụng giờ với một buổi học chính quy cùng ngày.
   final bool trungGio;
@@ -1683,6 +1746,23 @@ class _LessonRieng extends StatelessWidget {
                   ],
                 ),
               ),
+              if (onSua != null)
+                Semantics(
+                  button: true,
+                  label: 'Sửa lịch riêng',
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onSua,
+                    child: Padding(
+                      padding: EdgeInsets.all(13),
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 18,
+                        color: Paper.ink3,
+                      ),
+                    ),
+                  ),
+                ),
               if (onXoa != null)
                 Semantics(
                   button: true,

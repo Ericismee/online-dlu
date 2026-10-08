@@ -639,6 +639,60 @@ class _AppLockScreenState extends State<AppLockScreen> {
   );
 }
 
+/// Một dòng cài đặt mở bảng chọn số phút: nhãn bên trái, số đang dùng bên
+/// phải.
+class _OPhut extends StatelessWidget {
+  const _OPhut({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.phu,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? phu;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => PaperBox(
+    onTap: onTap,
+    child: Row(
+      children: [
+        Icon(icon, color: Paper.ink),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  color: Paper.ink,
+                ),
+              ),
+              if (phu case final p?)
+                Text(p, style: TextStyle(fontSize: 13, color: Paper.ink2)),
+            ],
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            color: Paper.ink,
+          ),
+        ),
+        Icon(Icons.chevron_right_rounded, color: Paper.ink2),
+      ],
+    ),
+  );
+}
+
 /// Công tắc nhắc trước giờ vào lớp. Mặc định tắt, tự bật mới có. Tắt ở đây
 /// thì xoá hết lịch hẹn đang chờ, bật thì hẹn lại ngay từ lịch trong cache.
 class NhacToggle extends StatefulWidget {
@@ -652,6 +706,8 @@ class NhacToggle extends StatefulWidget {
 
 class _NhacToggleState extends State<NhacToggle> {
   bool? _bat;
+  int _truoc = Nhac.truoc.inMinutes;
+  int _dem = demDuongPhut;
 
   /// Máy có cho hẹn đúng phút không — không thì nhắc vẫn chạy nhưng được
   /// phép trễ, nên phải nói thẳng ra chứ đừng hứa suông 15 phút.
@@ -666,10 +722,14 @@ class _NhacToggleState extends State<NhacToggle> {
   Future<void> _doc() async {
     final bat = await Nhac.bat();
     final chinhXac = await Nhac.chinhXacDuoc();
+    final truoc = await Nhac.truocPhut();
+    final dem = await Nhac.demPhut();
     if (mounted) {
       setState(() {
         _bat = bat;
         _chinhXac = chinhXac;
+        _truoc = truoc;
+        _dem = dem;
       });
     }
   }
@@ -678,9 +738,35 @@ class _NhacToggleState extends State<NhacToggle> {
     setState(() => _bat = v);
     await Nhac.datBat(v);
     if (!v) return;
-    // Hẹn ngay chứ không đợi lượt mở app sau: bật xong mà tối nay chưa nhắc
-    // thì người dùng tưởng công tắc hỏng. Lịch đã có trong cache nên thường
-    // không đụng portal.
+    await _henLai();
+  }
+
+  /// Chọn một trong [lua] (phút). Đổi xong là hẹn lại ngay, chứ không đợi
+  /// lượt mở app sau — đổi số mà tối nay vẫn nhắc theo số cũ thì người dùng
+  /// tưởng nút hỏng.
+  Future<void> _chonPhut({
+    required String title,
+    required List<int> lua,
+    required int dangDung,
+    required String Function(int) nhan,
+    required Future<void> Function(int) luu,
+  }) async {
+    final i = await chonDialog(
+      context,
+      title: title,
+      body: 'Đang dùng: ${nhan(dangDung)}',
+      lua: [for (final v in lua) nhan(v)],
+      icon: Icons.schedule_rounded,
+    );
+    if (i == null) return;
+    await luu(lua[i]);
+    await _doc();
+    if (_bat == true) await _henLai();
+  }
+
+  Future<void> _henLai() async {
+    // Hẹn ngay chứ không đợi lượt mở app sau. Lịch đã có trong cache nên
+    // thường không đụng portal.
     final now = DateTime.now();
     final p = widget.portal ?? Portal();
     final ngay = <DateTime, List<dynamic>>{};
@@ -730,7 +816,7 @@ class _NhacToggleState extends State<NhacToggle> {
                       ),
                     ),
                     Text(
-                      bat ? 'Báo trước 15 phút' : 'Đang tắt',
+                      bat ? 'Báo trước $_truoc phút' : 'Đang tắt',
                       style: TextStyle(fontSize: 13, color: Paper.ink2),
                     ),
                   ],
@@ -745,6 +831,37 @@ class _NhacToggleState extends State<NhacToggle> {
             ],
           ),
         ),
+        if (bat) ...[
+          const SizedBox(height: 10),
+          _OPhut(
+            icon: Icons.alarm_rounded,
+            label: 'Báo trước',
+            value: '$_truoc phút',
+            onTap: () => _chonPhut(
+              title: 'Báo trước bao lâu?',
+              lua: nhacTruocLua,
+              dangDung: _truoc,
+              nhan: (v) => '$v phút',
+              luu: Nhac.datTruocPhut,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _OPhut(
+            icon: Icons.directions_walk_rounded,
+            label: 'Đệm đường đi',
+            value: _dem == 0 ? 'Không' : '$_dem phút',
+            // Chỉ cộng cho lịch tự đặt có địa điểm khác chỗ việc liền trước,
+            // nên nói rõ ở đây khỏi tưởng mọi buổi đều bị nhắc sớm thêm.
+            phu: 'Cộng thêm khi phải đi chỗ khác',
+            onTap: () => _chonPhut(
+              title: 'Đệm đường đi bao lâu?',
+              lua: demDuongLua,
+              dangDung: _dem,
+              nhan: (v) => v == 0 ? 'Không đệm' : '$v phút',
+              luu: Nhac.datDemPhut,
+            ),
+          ),
+        ],
         if (bat && !_chinhXac) ...[
           const SizedBox(height: 10),
           PaperBox(

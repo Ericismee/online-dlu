@@ -26,6 +26,7 @@ List<MocNhac> mocNhac(
   Duration truoc = Nhac.truoc,
   int toiDa = 30,
   Map<DateTime, List<CustomLich>> rieng = const {},
+  int demPhut = demDuongPhut,
 }) {
   final out = <MocNhac>[];
   for (final e in ngay.entries) {
@@ -52,7 +53,7 @@ List<MocNhac> mocNhac(
       if (c.ketThuc == c.batDau) continue;
       final vao = e.key.add(Duration(minutes: c.batDau));
       final luc = vao.subtract(
-        truoc + demDuong(c, ngay[e.key] ?? const [], e.value),
+        truoc + demDuong(c, ngay[e.key] ?? const [], e.value, demPhut),
       );
       if (!luc.isAfter(now)) continue;
       out.add((
@@ -75,17 +76,24 @@ List<MocNhac> mocNhac(
 /// cũng mất đúng chừng ấy đường.
 ///
 /// Không hỏi bản đồ, không đo quãng đường — trường nằm gọn một khuôn viên,
-/// một con số cố định là đủ dùng.
+/// nên chỉ cần một con số, và người dùng tự chỉnh được trong Cài đặt.
 // ponytail: một hằng số cho mọi chặng; đo thật khi nào app có toạ độ phòng.
 const demDuongPhut = 15;
+
+/// Các mức đệm đường cho người dùng chọn, 0 là tắt.
+const demDuongLua = [0, 5, 10, 15, 20, 30];
+
+/// Các mức nhắc trước giờ vào lớp cho người dùng chọn.
+const nhacTruocLua = [5, 10, 15, 30, 60];
 
 Duration demDuong(
   CustomLich c,
   List<dynamic> buoiTrongNgay, [
   Iterable<CustomLich> riengTrongNgay = const [],
+  int phut = demDuongPhut,
 ]) {
   final noi = c.viTri?.trim() ?? '';
-  if (noi.isEmpty) return Duration.zero;
+  if (noi.isEmpty || phut <= 0) return Duration.zero;
   String? phongTruoc;
   var ganNhat = -1;
   void xet(int tan, String? phong) {
@@ -110,7 +118,7 @@ Duration demDuong(
   if (truocDo == null || truocDo.isEmpty) return Duration.zero;
   return truocDo.toLowerCase() == noi.toLowerCase()
       ? Duration.zero
-      : const Duration(minutes: demDuongPhut);
+      : Duration(minutes: phut);
 }
 
 /// Nhắc trước giờ vào lớp bằng thông báo hệ thống. Không đụng tới portal:
@@ -118,6 +126,8 @@ Duration demDuong(
 class Nhac {
   static const truoc = Duration(minutes: 15);
   static const _khoa = 'nhac_truoc_gio';
+  static const _khoaTruoc = 'nhac_truoc_phut';
+  static const _khoaDem = 'nhac_dem_duong_phut';
   // Đổi id kênh vì Android khoá cấu hình kênh ngay lần tạo đầu: kênh cũ đã
   // đăng ký có tiếng thì sửa code cũng vô ích, phải là kênh mới.
   static const _kenh = 'sap_vao_lop_im';
@@ -133,6 +143,24 @@ class Nhac {
   static Future<void> datBat(bool v) async {
     await Db.i.ghi(nhomCaiDat, _khoa, bat: v);
     if (!v) await _plugin.cancelAll();
+  }
+
+  /// Nhắc trước bao nhiêu phút, và đệm thêm bao nhiêu phút khi phải đi chỗ
+  /// khác. Hai số này người dùng chỉnh trong Cài đặt; chưa chỉnh thì lấy mặc
+  /// định. Số lạ trong sổ (bản cũ, nhập tay) thì cũng về mặc định.
+  static Future<int> truocPhut() => _soPhut(_khoaTruoc, truoc.inMinutes);
+
+  static Future<int> demPhut() => _soPhut(_khoaDem, demDuongPhut);
+
+  static Future<void> datTruocPhut(int v) =>
+      Db.i.ghi(nhomCaiDat, _khoaTruoc, giaTri: '$v');
+
+  static Future<void> datDemPhut(int v) =>
+      Db.i.ghi(nhomCaiDat, _khoaDem, giaTri: '$v');
+
+  static Future<int> _soPhut(String khoa, int macDinh) async {
+    final v = int.tryParse((await Db.i.doc(nhomCaiDat, khoa))?.giaTri ?? '');
+    return v == null || v < 0 ? macDinh : v;
   }
 
   static AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
@@ -196,7 +224,13 @@ class Nhac {
       await _plugin.cancelAll();
       var id = 0;
       final now = DateTime.now();
-      for (final m in mocNhac(ngay, now, rieng: await _riengQuanh(now))) {
+      for (final m in mocNhac(
+        ngay,
+        now,
+        truoc: Duration(minutes: await truocPhut()),
+        demPhut: await demPhut(),
+        rieng: await _riengQuanh(now),
+      )) {
         await _dat(id++, m);
       }
     } catch (_) {
