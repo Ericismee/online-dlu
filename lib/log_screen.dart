@@ -44,7 +44,7 @@ class LogScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Log',
                             style: TextStyle(

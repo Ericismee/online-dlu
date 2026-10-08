@@ -118,7 +118,7 @@ class TieuDeTrang extends StatelessWidget {
       Expanded(
         child: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Display',
             fontWeight: FontWeight.w800,
             fontSize: 30,
@@ -319,7 +319,7 @@ class _BellState extends State<Bell>
                       ),
                       child: Text(
                         '$n',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Display',
                           fontWeight: FontWeight.w800,
                           fontSize: 12,
@@ -469,7 +469,7 @@ class _InboxState extends State<_Inbox> {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Thông báo',
                   style: TextStyle(
@@ -530,10 +530,7 @@ class _InboxState extends State<_Inbox> {
                   const _Muc('Hộp thư'),
                 ],
                 if (_moi.isEmpty)
-                  const Text(
-                    'Hộp thư trống.',
-                    style: TextStyle(color: Paper.ink2),
-                  ),
+                  Text('Hộp thư trống.', style: TextStyle(color: Paper.ink2)),
                 for (final (i, m) in _moi.indexed) ...[
                   if (i > 0) const SizedBox(height: 10),
                   _dong(m),
@@ -565,7 +562,7 @@ class _Muc extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'Display',
         fontWeight: FontWeight.w800,
         fontSize: 16,
@@ -590,7 +587,7 @@ class _NenXoa extends StatelessWidget {
       border: Paper.border,
       borderRadius: BorderRadius.all(Paper.radius),
     ),
-    child: const Icon(Icons.delete_rounded, color: Paper.ink),
+    child: Icon(Icons.delete_rounded, color: Paper.ink),
   );
 }
 
@@ -612,7 +609,7 @@ class _Message extends StatelessWidget {
         children: [
           Text(
             clean(subject),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: Paper.ink,
@@ -629,14 +626,11 @@ class _Message extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Pill('${t.nguon} · ${clean(sender)}', color: Paper.mint),
-              Text(
-                date,
-                style: const TextStyle(fontSize: 12, color: Paper.ink2),
-              ),
+              Text(date, style: TextStyle(fontSize: 12, color: Paper.ink2)),
               if (t.chuaXem)
-                const Pill('Chưa xem', color: Paper.sun)
+                Pill('Chưa xem', color: Paper.sun)
               else
-                const Pill('Đã xem', color: Paper.card),
+                Pill('Đã xem', color: Paper.card),
               if (onXem != null)
                 PaperButton(
                   label: 'Xem',
@@ -680,12 +674,12 @@ class _ChiTiet extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Pill('${t.nguon} · ${clean(t.sender)}', color: Paper.mint),
-          Text(t.date, style: const TextStyle(fontSize: 12, color: Paper.ink2)),
+          Text(t.date, style: TextStyle(fontSize: 12, color: Paper.ink2)),
         ],
       ),
       const SizedBox(height: 12),
       if (t.body.isEmpty)
-        const Text(
+        Text(
           'Thư này không có nội dung kèm theo.',
           style: TextStyle(fontSize: 14, color: Paper.ink2),
         )
@@ -696,11 +690,7 @@ class _ChiTiet extends StatelessWidget {
               padding: const EdgeInsets.all(14),
               child: Text(
                 clean(t.body),
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1.45,
-                  color: Paper.ink2,
-                ),
+                style: TextStyle(fontSize: 14, height: 1.45, color: Paper.ink2),
               ),
             ),
           ),

@@ -91,7 +91,7 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                 children: [
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Học phần',
                           style: TextStyle(
@@ -172,10 +172,7 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                   if (_error != null)
                     PaperBox(
                       color: Paper.rose,
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Paper.ink),
-                      ),
+                      child: Text(_error!, style: TextStyle(color: Paper.ink)),
                     )
                   else if (_list == null)
                     for (var i = 0; i < 4; i++)
@@ -185,7 +182,7 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                       )
                   else if (all.isNotEmpty && list.isEmpty)
                     PaperBox(
-                      child: const Text(
+                      child: Text(
                         'Không có học phần nào khớp.',
                         style: TextStyle(color: Paper.ink2),
                       ),
@@ -198,7 +195,7 @@ class _CoursesTabState extends State<CoursesTab> with Reloadable<CoursesTab> {
                           horizontal: 8,
                           vertical: 2,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Chưa đăng ký',
                           style: TextStyle(
                             fontFamily: 'Display',
@@ -238,7 +235,7 @@ class _Course extends StatelessWidget {
         children: [
           Text(
             subjectName(c['CurriculumName']),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Display',
               fontWeight: FontWeight.w800,
               fontSize: 18,

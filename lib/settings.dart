@@ -5,6 +5,7 @@ import 'cache.dart';
 import 'db.dart';
 import 'graph.dart';
 import 'lms.dart';
+import 'main.dart' show vienHeDieuHanh;
 import 'nhac.dart';
 import 'nhat_ky.dart';
 import 'paper.dart';
@@ -18,6 +19,7 @@ class Settings {
   static const _khoaNguyHiem = 'unlock_dangerous';
   static const _khoaLock = 'app_lock';
   static const _khoaLms = 'lms_enabled';
+  static const _khoaToi = 'dark_mode';
 
   /// Chưa khai bao giờ thì mặc định tắt.
   static Future<bool> _co(String khoa) async =>
@@ -34,6 +36,9 @@ class Settings {
 
   static Future<bool> nguyHiem() => _co(_khoaNguyHiem);
   static Future<void> datNguyHiem(bool v) => _datCo(_khoaNguyHiem, v);
+
+  static Future<bool> toi() => _co(_khoaToi);
+  static Future<void> datToi(bool v) => _datCo(_khoaToi, v);
 
   static Future<bool> khoaBat() => _co(_khoaLock);
   static Future<void> datKhoaBat(bool v) => _datCo(_khoaLock, v);
@@ -53,6 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool? _nguyHiem;
   bool? _khoa;
   bool? _lms;
+  bool _toi = Paper.toi;
 
   /// Tài khoản LMS đang nối, để nói rõ "đang nối với ai" chứ không chỉ bật/tắt.
   String? _lmsUser;
@@ -89,6 +95,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Đã làm mới dữ liệu')));
     }
+  }
+
+  Future<void> _doiToi(bool v) async {
+    await Settings.datToi(v);
+    // Đổi bảng màu trước rồi mới setState: cả cây vẽ lại từ [App], màn này
+    // chỉ cần công tắc gạt theo.
+    Paper.datToi(v);
+    vienHeDieuHanh();
+    if (mounted) setState(() => _toi = v);
   }
 
   Future<void> _doiKhoa(bool v) async {
@@ -171,7 +186,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Cài đặt',
                     style: TextStyle(
@@ -191,6 +206,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 20),
+            _CongTac(
+              icon: Icons.dark_mode_rounded,
+              label: 'Chế độ tối',
+              phu: 'Nền tối, giấy màu dịu lại cho đỡ chói mắt ban đêm',
+              color: Paper.sky,
+              value: _toi,
+              onChanged: _doiToi,
+            ),
+            const SizedBox(height: 10),
             NhacToggle(session: widget.session, portal: widget.portal),
             const SizedBox(height: 20),
             _CongTac(
@@ -208,9 +232,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: _dangLamMoi ? null : _lamMoiData,
               child: Row(
                 children: [
-                  const Icon(Icons.refresh_rounded, color: Paper.ink),
+                  Icon(Icons.refresh_rounded, color: Paper.ink),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Làm mới Data',
                       style: TextStyle(
@@ -327,7 +351,7 @@ class _LmsLoginDialogState extends State<LmsLoginDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'Tài khoản LMS riêng, không phải tài khoản Online DLU. '
               'Mật khẩu chỉ nằm trong máy bạn.',
               style: TextStyle(
@@ -381,7 +405,7 @@ class _LmsLoginDialogState extends State<LmsLoginDialog> {
               Expanded(
                 child: Text(
                   _loi!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: Paper.ink,
@@ -422,14 +446,15 @@ class _CongTac extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
-    this.color = Paper.card,
+    this.color,
     this.phu,
   });
   final IconData icon;
   final String label;
   final bool? value;
   final ValueChanged<bool> onChanged;
-  final Color color;
+  final Color? color;
+  Color get _mau => color ?? Paper.card;
 
   /// Dòng phụ dưới nhãn: nói rõ cờ này làm gì, hay đang nối với tài khoản nào.
   final String? phu;
@@ -440,7 +465,7 @@ class _CongTac extends StatelessWidget {
     if (v == null) return const Skeleton(height: 60, ink: true);
     final phu = this.phu;
     return PaperBox(
-      color: v ? color : Paper.card,
+      color: v ? _mau : Paper.card,
       child: Row(
         children: [
           Icon(icon, color: Paper.ink),
@@ -451,17 +476,14 @@ class _CongTac extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: Paper.ink,
                   ),
                 ),
                 if (phu != null) ...[
                   const SizedBox(height: 3),
-                  Text(
-                    phu,
-                    style: const TextStyle(fontSize: 12, color: Paper.ink2),
-                  ),
+                  Text(phu, style: TextStyle(fontSize: 12, color: Paper.ink2)),
                 ],
               ],
             ),
@@ -548,9 +570,9 @@ class _AppLockScreenState extends State<AppLockScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.lock_rounded, size: 56, color: Paper.ink),
+                Icon(Icons.lock_rounded, size: 56, color: Paper.ink),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'Ứng dụng đang khoá',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -592,7 +614,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
                         const SizedBox(height: 10),
                         Text(
                           _loi!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Paper.rose,
                             fontWeight: FontWeight.w700,
                           ),
@@ -699,7 +721,7 @@ class _NhacToggleState extends State<NhacToggle> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Nhắc trước giờ vào lớp',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
@@ -709,7 +731,7 @@ class _NhacToggleState extends State<NhacToggle> {
                     ),
                     Text(
                       bat ? 'Báo trước 15 phút' : 'Đang tắt',
-                      style: const TextStyle(fontSize: 13, color: Paper.ink2),
+                      style: TextStyle(fontSize: 13, color: Paper.ink2),
                     ),
                   ],
                 ),
@@ -731,7 +753,7 @@ class _NhacToggleState extends State<NhacToggle> {
               await Nhac.xinChinhXac();
               await _doc();
             },
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.alarm_rounded, color: Paper.ink),
                 SizedBox(width: 12),

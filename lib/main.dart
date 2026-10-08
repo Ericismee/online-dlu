@@ -28,20 +28,14 @@ import 'update_check.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Nền giấy luôn sáng, nên ép icon status bar / nav bar màu mực.
-  // Không đặt thì Android vẽ icon trắng, mất tiêu trên nền kem.
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      statusBarBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
+
   // Mở sổ của tài khoản đã lưu trước khi đụng tới dữ liệu: mỗi tài khoản một
   // tệp SQLite riêng, đọc nhầm sổ chung một lượt là app hiện số của người khác.
   await Db.moCho((await Vault.read())?.$1);
+  // Bảng màu phải xong trước khung hình đầu, không thì app loé sáng rồi mới tối.
+  Paper.datToi(await Settings.toi());
+  // Icon status bar / nav bar phải ngược màu nền, không thì mất tiêu.
+  vienHeDieuHanh();
   await Db.i.nhapTuPrefs();
   await Cache.init();
   // Cờ chế độ nhà phát triển phải có trước khung hình đầu: bật thì mọi lượt
@@ -51,17 +45,43 @@ Future<void> main() async {
   runApp(const App());
 }
 
+/// Màu icon của status bar và nav bar hệ thống, ngược lại với nền app.
+void vienHeDieuHanh() {
+  final sang = !Paper.toi;
+  SystemChrome.setSystemUIOverlayStyle(
+    SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: sang ? Brightness.dark : Brightness.light,
+      statusBarBrightness: sang ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: sang
+          ? Brightness.dark
+          : Brightness.light,
+    ),
+  );
+}
+
 class App extends StatelessWidget {
   const App({super.key});
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+    valueListenable: Paper.toiN,
+    builder: (context, _, _) => _app(),
+  );
+
+  // Khoá theo bảng màu để đổi chế độ là dựng lại cả cây từ đầu. Màu nằm trong
+  // biến tĩnh của [Paper] chứ không phải InheritedWidget, mà widget `const`
+  // thì Flutter thấy trùng instance là bỏ qua lượt vẽ lại — không đổi khoá
+  // thì nửa màn giữ màu cũ, nửa màn màu mới.
+  Widget _app() => MaterialApp(
+    key: ValueKey(Paper.toi),
     title: 'DLU Online',
     debugShowCheckedModeBanner: false,
     theme: Paper.theme(),
-    // App chỉ có một bộ màu giấy; khai báo hẳn để máy đang dark mode
-    // không bị Material tự chế biến thêm.
-    themeMode: ThemeMode.light,
+    // Chế độ do công tắc trong Cài đặt quyết định, không chạy theo hệ thống:
+    // khai báo hẳn để Material khỏi tự chế biến thêm một bộ màu nữa.
+    themeMode: Paper.toi ? ThemeMode.dark : ThemeMode.light,
     // Cỡ chữ hệ thống to quá thì thanh tab và lưới lịch vỡ hàng; chặn ở 1.3.
     builder: (context, child) =>
         MediaQuery.withClampedTextScaling(maxScaleFactor: 1.3, child: child!),
@@ -77,6 +97,10 @@ class Root extends StatefulWidget {
   @override
   State<Root> createState() => _RootState();
 }
+
+/// Phiên này đã qua cửa khoá chưa. Để ngoài [_RootState] vì đổi chế độ tối
+/// dựng lại cả cây: state mới mà quên mất thì màn khoá nhảy ra giữa chừng.
+bool daQuaKhoa = false;
 
 class _RootState extends State<Root> with WidgetsBindingObserver {
   Session? _session;
@@ -110,6 +134,7 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
       // và Moodle theo chu kỳ là ăn pin không để làm gì.
       PortalNhip.dung();
       LmsNhip.dung();
+      daQuaKhoa = false;
       unawaited(_khoaNeuBat());
       return;
     }
@@ -137,7 +162,10 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
 
     // Mở app lạnh cũng phải qua màn khoá: trước đây chỉ khoá lúc xuống nền,
     // nên tắt hẳn app rồi mở lại là vào thẳng, khoá coi như không có.
-    if (await Settings.khoaBat() && mounted) setState(() => _locked = true);
+    if (!daQuaKhoa && await Settings.khoaBat() && mounted) {
+      setState(() => _locked = true);
+    }
+    daQuaKhoa = true;
 
     // Có phiên cũ thì vào app ngay, đăng nhập lại chạy ngầm.
     final cached = Cache.read('session')?.$1;
@@ -188,7 +216,12 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     // Khoá chặn trước cả khung xương: đang đăng nhập lại ngầm thì vẫn phải
     // thấy màn khoá chứ không phải dữ liệu.
     if (_locked) {
-      return AppLockScreen(onUnlocked: () => setState(() => _locked = false));
+      return AppLockScreen(
+        onUnlocked: () {
+          daQuaKhoa = true;
+          setState(() => _locked = false);
+        },
+      );
     }
     if (_checking) {
       return Scaffold(
@@ -293,7 +326,7 @@ class _ShellState extends State<Shell> {
               ],
             ),
             // nội dung cuộn xuống dưới status bar, làm mờ cho mượt
-            const _TopBlur(),
+            _TopBlur(),
             Align(
               alignment: Alignment.bottomCenter,
               child: PaperBar(
@@ -333,7 +366,7 @@ class PaperBar extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   /// icon, ảnh (nếu có), nhãn, màu giấy, độ nghiêng.
-  static const _items = <(IconData?, String?, String, Color, double)>[
+  static final _items = <(IconData?, String?, String, Color, double)>[
     (Icons.calendar_month_rounded, null, 'Lịch', Paper.sun, -0.06),
     (Icons.edit_note_rounded, null, 'Thi', Paper.rose, 0.04),
     (null, 'assets/logo_icon.png', 'Trang chủ', Paper.peach, 0.0),
@@ -612,7 +645,7 @@ class _TienDoCardState extends State<TienDoCard> with Reloadable<TienDoCard> {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Tiến độ',
                 style: TextStyle(
                   fontFamily: 'Display',
@@ -676,7 +709,7 @@ class _Header extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Đại Học Đà Lạt',
               style: TextStyle(
                 fontFamily: 'Display',
@@ -689,7 +722,7 @@ class _Header extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '${dayNames[now.weekday]}, ${now.day}/${now.month}/${now.year}',
-              style: const TextStyle(color: Paper.ink2, fontSize: 14),
+              style: TextStyle(color: Paper.ink2, fontSize: 14),
             ),
             // Mất mạng thì app vẫn hiện số cũ; nói rõ cũ từ lúc nào.
             if (Cache.syncedAt != null) ...[
@@ -727,12 +760,12 @@ class StaleDataWarning extends StatelessWidget {
         color: Paper.accent,
         child: Row(
           children: [
-            const Icon(Icons.warning_rounded, color: Paper.ink),
-            const SizedBox(width: 12),
+            Icon(Icons.warning_rounded, color: Paper.ink),
+            SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Đã hơn 1 ngày chưa làm mới — kéo xuống để cập nhật dữ liệu mới',
-                style: const TextStyle(
+                style: TextStyle(
                   // Giấy trên cam chỉ 2.82:1, và đây đúng là câu cần đọc được
                   // nhất trên Trang chủ.
                   color: Paper.ink,
@@ -760,7 +793,7 @@ class _Me extends StatelessWidget {
       children: [
         Text(
           session.fullName,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Display',
             fontWeight: FontWeight.w800,
             fontSize: 22,
@@ -768,15 +801,15 @@ class _Me extends StatelessWidget {
             color: Paper.ink,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           'MSSV ${session.id}',
           style: Paper.mono.copyWith(fontSize: 15, color: Paper.ink),
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: 2),
         Text(
           'Lớp ${lop ?? '…'}',
-          style: const TextStyle(fontSize: 15, color: Paper.ink2),
+          style: TextStyle(fontSize: 15, color: Paper.ink2),
         ),
       ],
     ),
@@ -791,7 +824,7 @@ class ScheduleTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 940),
+      constraints: BoxConstraints(maxWidth: 940),
       child: PullRefresh(
         child: ListView(
           padding: EdgeInsets.fromLTRB(
@@ -802,7 +835,7 @@ class ScheduleTab extends StatelessWidget {
           ),
           children: [
             TieuDeTrang('Thời khoá biểu', session: session),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Ticker(
               builder: (_, now) => MonthGraph(session: session, now: now),
             ),
@@ -840,14 +873,14 @@ class _NextExamState extends State<_NextExam> with Reloadable<_NextExam> {
       final e = await Portal().exams(widget.session.token);
       if (mounted) setState(() => _exams = e);
     } on PortalError {
-      if (mounted) setState(() => _exams ??= const []);
+      if (mounted) setState(() => _exams ??= []);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_exams == null) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.only(bottom: 20),
         child: Skeleton(height: 120, ink: true),
       );
@@ -856,13 +889,13 @@ class _NextExamState extends State<_NextExam> with Reloadable<_NextExam> {
     final next = sortExams(_exams!, today)
         .where((e) => !parseDMY(e['NgayThi'] as String).isBefore(today))
         .firstOrNull;
-    if (next == null) return const SizedBox.shrink();
+    if (next == null) return SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Sắp thi',
             style: TextStyle(
               fontFamily: 'Display',
@@ -871,7 +904,7 @@ class _NextExamState extends State<_NextExam> with Reloadable<_NextExam> {
               color: Paper.ink,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           ExamCard(next, today: today),
         ],
       ),
@@ -897,7 +930,7 @@ class MenuCard extends StatelessWidget {
   final ValueChanged<int> onGo;
   final Session session;
 
-  static const danhMuc = <DanhMuc>[
+  static final danhMuc = <DanhMuc>[
     (
       Icons.menu_book_rounded,
       'Học tập',
@@ -962,7 +995,7 @@ class MenuCard extends StatelessWidget {
   Widget _than(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
+      Text(
         'Menu',
         style: TextStyle(
           fontFamily: 'Display',
@@ -988,7 +1021,7 @@ class MenuCard extends StatelessWidget {
             ),
             child: Text(
               d.$2,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 14,
@@ -1077,7 +1110,7 @@ class _MenuO extends StatelessWidget {
               label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Display',
                 fontSize: 13,
                 height: 1.15,

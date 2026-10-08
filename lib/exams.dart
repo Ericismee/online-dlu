@@ -136,10 +136,7 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
               if (_error != null)
                 PaperBox(
                   color: Paper.rose,
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(color: Paper.ink),
-                  ),
+                  child: Text(_error!, style: TextStyle(color: Paper.ink)),
                 )
               else if (_exams == null)
                 for (var i = 0; i < 4; i++)
@@ -154,7 +151,7 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
                     horizontal: 10,
                     vertical: 2,
                   ),
-                  child: const Text(
+                  child: Text(
                     'Không có lịch thi',
                     style: TextStyle(
                       fontFamily: 'Display',
@@ -196,7 +193,7 @@ class ExamCard extends StatelessWidget {
         children: [
           Text(
             clean(e['CurriculumName']),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: Paper.ink,

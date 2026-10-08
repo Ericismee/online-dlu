@@ -85,7 +85,7 @@ class _CurriculumScreenState extends State<CurriculumScreen>
                 children: [
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         // Tên dài nhất trong app, co lại cho vừa một dòng
                         // thay vì xuống dòng đè lên hàng pill bên dưới.
                         child: FittedBox(
@@ -141,10 +141,7 @@ class _CurriculumScreenState extends State<CurriculumScreen>
                   if (_error != null)
                     PaperBox(
                       color: Paper.rose,
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Paper.ink),
-                      ),
+                      child: Text(_error!, style: TextStyle(color: Paper.ink)),
                     )
                   else if (_rows == null)
                     for (var i = 0; i < 3; i++)
@@ -180,7 +177,7 @@ class _Term extends StatelessWidget {
           Expanded(
             child: Text(
               term,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
@@ -216,7 +213,7 @@ class _Subject extends StatelessWidget {
         children: [
           Text(
             subjectName(s['TenHP']),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
               color: Paper.ink,

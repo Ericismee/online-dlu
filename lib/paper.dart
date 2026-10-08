@@ -9,17 +9,47 @@ import 'cache.dart';
 /// Bảng màu và token lấy đúng theo neubrutalism.com: nền kem, mực đen tuyền,
 /// viền dày, bóng cứng không nhoè, góc vuông.
 class Paper {
-  static const paper = Color(0xFFFFFDF5); // --bg
-  static const ink = Color(0xFF000000); // --ink
-  static const ink2 = Color(0xFF444444);
-  static const ink3 = Color(0xFF666666);
-  static const card = Color(0xFFFFFFFF); // --surface
-  static const accent = Color(0xFFFF6B6B); // --pink
-  static const sun = Color(0xFFFFD23F); // --yellow
-  static const rose = Color(0xFFFF4444); // --red: hỏng, trượt, trùng giờ
-  static const sky = Color(0xFF74B9FF); // --blue
-  static const peach = Color(0xFFFFA552); // --orange
-  static const mint = Color(0xFF88D498); // --green
+  static Color paper = _sang.paper; // --bg
+  static Color ink = _sang.ink; // --ink
+  static Color ink2 = _sang.ink2;
+  static Color ink3 = _sang.ink3;
+  static Color card = _sang.card; // --surface
+  static Color accent = _sang.accent; // --pink
+  static Color sun = _sang.sun; // --yellow
+  static Color rose = _sang.rose; // --red: hỏng, trượt, trùng giờ
+  static Color sky = _sang.sky; // --blue
+  static Color peach = _sang.peach; // --orange
+  static Color mint = _sang.mint; // --green
+
+  /// Nền ô lịch ngày nghỉ và nền khung xương lúc đang tải.
+  static Color nghi = _sang.nghi;
+  static Color xuong = _sang.xuong;
+
+  /// Chế độ tối đang bật hay không. Dạng notifier để [App] vẽ lại cả cây
+  /// ngay khi gạt công tắc, khỏi mở lại app.
+  static final toiN = ValueNotifier(false);
+  static bool get toi => toiN.value;
+
+  /// Đổi bảng màu. Mực trong chế độ tối là kem chứ không phải đen, nên viền
+  /// và bóng cứng cũng phải dựng lại theo.
+  static void datToi(bool v) {
+    final b = v ? _toi : _sang;
+    paper = b.paper;
+    ink = b.ink;
+    ink2 = b.ink2;
+    ink3 = b.ink3;
+    card = b.card;
+    accent = b.accent;
+    sun = b.sun;
+    rose = b.rose;
+    sky = b.sky;
+    peach = b.peach;
+    mint = b.mint;
+    nghi = b.nghi;
+    xuong = b.xuong;
+    border = Border.all(color: ink, width: 3);
+    toiN.value = v;
+  }
 
   /// 'monospace' resolves to nothing on macOS — name real families first.
   static const mono = TextStyle(
@@ -30,7 +60,7 @@ class Paper {
   /// Neubrutalism gốc để góc vuông, nhưng trên màn điện thoại nhìn gắt và khó
   /// chịu — bo 12 như mặc định của app SaaS, mọi thứ khác vẫn giữ nguyên chất.
   static const radius = Radius.circular(12);
-  static final border = Border.all(color: ink, width: 3);
+  static Border border = Border.all(color: ink, width: 3);
 
   /// Bóng cứng, lệch hẳn, không nhoè — cả cái nhìn treo vào đây.
   /// Thang của neubrutalism.com: sm 3, md 5, lg 8, xl 12.
@@ -49,9 +79,66 @@ class Paper {
   /// cubic-bezier(.22, 1, .36, 1) — ra nhanh, dừng êm.
   static const easeOut = Cubic(0.22, 1, 0.36, 1);
 
+  /// Hai bảng màu. Giấy màu trong chế độ tối chỉ còn là một thoáng sắc trên
+  /// nền gần đen: giữ nguyên độ tươi thì mực kem đặt lên không đọc nổi, mà
+  /// hạ nửa chừng thì ra màu bùn, nhìn như ảnh âm bản.
+  static const _sang = (
+    paper: Color(0xFFFFFDF5),
+    ink: Color(0xFF000000),
+    ink2: Color(0xFF444444),
+    ink3: Color(0xFF666666),
+    card: Color(0xFFFFFFFF),
+    accent: Color(0xFFFF6B6B),
+    sun: Color(0xFFFFD23F),
+    rose: Color(0xFFFF4444),
+    sky: Color(0xFF74B9FF),
+    peach: Color(0xFFFFA552),
+    mint: Color(0xFF88D498),
+    nghi: Color(0xFFF2E7CE),
+    xuong: Color(0xFFF5F0E8),
+  );
+
+  static const _toi = (
+    paper: Color(0xFF121216),
+    ink: Color(0xFFF2EDE3),
+    ink2: Color(0xFFB0ABA3),
+    ink3: Color(0xFF86817A),
+    card: Color(0xFF1C1C23),
+    accent: Color(0xFF2E1E20),
+    sun: Color(0xFF2A2414),
+    rose: Color(0xFF4A1A1A),
+    sky: Color(0xFF18222F),
+    peach: Color(0xFF2C2218),
+    mint: Color(0xFF182A1E),
+    nghi: Color(0xFF17171C),
+    xuong: Color(0xFF24242C),
+  );
+
+  /// Giấy màu nguyên bản của [c]. Thẻ lớn trong chế độ tối chỉ còn sắc nhạt,
+  /// nhưng huy hiệu và nút thì vẫn dùng màu tươi — mảng nhỏ nên không chói,
+  /// mà thiếu nó thì cả màn xám ngoét.
+  static Color tuoi(Color c) => toi ? (_tuoi[c] ?? c) : c;
+
+  static final _tuoi = {
+    _toi.accent: _sang.accent,
+    _toi.sun: _sang.sun,
+    _toi.rose: _sang.rose,
+    _toi.sky: _sang.sky,
+    _toi.peach: _sang.peach,
+    _toi.mint: _sang.mint,
+    _toi.card: _toi.card,
+  };
+
+  /// Mực đọc được trên nền [nen]: giấy màu tươi thì mực đen, nền tối thì mực
+  /// sáng. Dùng cho mấy chỗ tự biết nền của mình (huy hiệu, nút).
+  static Color tren(Color nen) =>
+      nen.computeLuminance() > 0.4 ? const Color(0xFF000000) : ink;
+
   static ThemeData theme() {
     const display = 'Display';
-    final base = ThemeData.light(useMaterial3: true);
+    final base = toi
+        ? ThemeData.dark(useMaterial3: true)
+        : ThemeData.light(useMaterial3: true);
     return base.copyWith(
       scaffoldBackgroundColor: paper,
       colorScheme: base.colorScheme.copyWith(
@@ -91,20 +178,21 @@ class PaperBox extends StatelessWidget {
   const PaperBox({
     super.key,
     required this.child,
-    this.color = Paper.card,
+    this.color,
     this.padding = const EdgeInsets.all(16),
     this.onTap,
   });
 
   final Widget child;
-  final Color color;
+  final Color? color;
+  Color get _color => color ?? Paper.card;
   final EdgeInsets padding;
   final VoidCallback? onTap;
 
   Widget _box(bool down) => Container(
     padding: padding,
     decoration: BoxDecoration(
-      color: color,
+      color: _color,
       border: Paper.border,
       borderRadius: const BorderRadius.all(Paper.radius),
       boxShadow: Paper.shadow(down ? 0 : 4),
@@ -128,7 +216,7 @@ class PaperRing extends StatelessWidget {
     required this.center,
     required this.label,
     this.duoi,
-    this.color = Paper.sun,
+    this.color,
     this.size = 92,
     this.duration = const Duration(milliseconds: 900),
   });
@@ -140,7 +228,9 @@ class PaperRing extends StatelessWidget {
   final String center;
   final String? duoi;
   final String label;
-  final Color color;
+  final Color? color;
+  // Dải giấy của vòng là mảng nhỏ: giữ màu tươi để còn thấy nó chạy.
+  Color get _color => Paper.tuoi(color ?? Paper.sun);
   final double size;
 
   /// Thời gian dải giấy bò tới [value] mới. Để [Duration.zero] khi vòng đã
@@ -160,7 +250,7 @@ class PaperRing extends StatelessWidget {
           // thanh tiến trình trượt đều.
           curve: Paper.popCurve,
           builder: (_, v, con) =>
-              CustomPaint(painter: _RingPainter(v, color), child: con),
+              CustomPaint(painter: _RingPainter(v, _color), child: con),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -199,7 +289,7 @@ class PaperRing extends StatelessWidget {
       Text(
         label,
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
           color: Paper.ink2,
@@ -272,24 +362,21 @@ class _RingPainter extends CustomPainter {
 }
 
 class Pill extends StatelessWidget {
-  const Pill(
-    this.label, {
-    super.key,
-    this.color = Paper.sun,
-    this.ink = Paper.ink,
-  });
+  const Pill(this.label, {super.key, this.color, this.ink});
   final String label;
-  final Color color;
-  final Color ink;
+  final Color? color;
+  Color get _color => Paper.tuoi(color ?? Paper.sun);
+  final Color? ink;
+  Color get _ink => ink ?? Paper.tren(_color);
 
-  Pill withInk(Color c) => Pill(label, color: color, ink: c);
+  Pill withInk(Color c) => Pill(label, color: _color, ink: c);
 
   @override
   // .badge của neubrutalism.com: viền mảnh 2px, bóng cứng nhỏ, chữ giãn.
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
     decoration: BoxDecoration(
-      color: color,
+      color: _color,
       border: Border.all(color: Paper.ink, width: 2),
       borderRadius: BorderRadius.all(Paper.radius),
       boxShadow: Paper.shadow(3),
@@ -304,7 +391,7 @@ class Pill extends StatelessWidget {
         fontSize: 12,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.6,
-        color: ink,
+        color: _ink,
       ),
     ),
   );
@@ -316,18 +403,20 @@ class PaperButton extends StatefulWidget {
     super.key,
     required this.label,
     required this.onPressed,
-    this.color = Paper.accent,
+    this.color,
     // Mực trên cam đo được 4.9:1, kem trên cam chỉ 3.03:1 — chữ nhãn 14 đậm
     // vẫn phải đạt 4.5:1 nên mặc định là mực.
-    this.onColor = Paper.ink,
+    this.onColor,
     this.fontSize,
   });
   final String label;
 
   /// null là đang tắt: bạc màu, không bóng, không nhận chạm.
   final VoidCallback? onPressed;
-  final Color color;
-  final Color onColor;
+  final Color? color;
+  Color get _color => Paper.tuoi(color ?? Paper.accent);
+  final Color? onColor;
+  Color get _onColor => onColor ?? Paper.tren(_color);
 
   /// Nhãn dài thì truyền cỡ chữ nhỏ hơn cho khỏi vỡ hàng.
   final double? fontSize;
@@ -347,7 +436,7 @@ class _PaperButtonState extends State<PaperButton> {
         vertical: nho ? 8 : 12,
       ),
       decoration: BoxDecoration(
-        color: tat ? Paper.card : widget.color,
+        color: tat ? Paper.card : widget._color,
         border: Paper.border,
         borderRadius: BorderRadius.all(Paper.radius),
         // Nút tắt nằm bẹt xuống giấy: không bóng là thấy ngay nó không bấm
@@ -361,7 +450,7 @@ class _PaperButtonState extends State<PaperButton> {
           fontFamily: 'Display',
           fontWeight: FontWeight.w700,
           fontSize: widget.fontSize,
-          color: tat ? Paper.ink3 : widget.onColor,
+          color: tat ? Paper.ink3 : widget._onColor,
         ),
       ),
     );
@@ -441,7 +530,7 @@ class _SkeletonState extends State<Skeleton>
       width: widget.width,
       height: widget.height,
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F0E8),
+        color: Paper.xuong,
         border: widget.ink ? Paper.border : null,
         borderRadius: BorderRadius.all(Paper.radius),
       ),
@@ -455,11 +544,12 @@ class Choice extends StatelessWidget {
     super.key,
     required this.label,
     required this.onTap,
-    this.color = Paper.sun,
+    this.color,
   });
   final String label;
   final VoidCallback onTap;
-  final Color color;
+  final Color? color;
+  Color get _color => color ?? Paper.sun;
 
   @override
   Widget build(BuildContext context) => Pressable(
@@ -467,7 +557,7 @@ class Choice extends StatelessWidget {
     builder: (down) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: color,
+        color: _color,
         border: Paper.border,
         borderRadius: BorderRadius.all(Paper.radius),
         boxShadow: Paper.shadow(down ? 0 : 3),
@@ -477,14 +567,14 @@ class Choice extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Display',
               fontWeight: FontWeight.w800,
               fontSize: 14,
               color: Paper.ink,
             ),
           ),
-          const Icon(Icons.expand_more_rounded, size: 18, color: Paper.ink2),
+          Icon(Icons.expand_more_rounded, size: 18, color: Paper.ink2),
         ],
       ),
     ),
@@ -533,7 +623,7 @@ Future<String?> chooseOption(
                     ),
                     child: Text(
                       o,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Display',
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
@@ -557,7 +647,7 @@ Future<bool> confirmDialog(
   required String body,
   required String ok,
   IconData icon = Icons.event_available_rounded,
-  Color color = Paper.sun,
+  Color? color,
 }) async =>
     await showDialog<bool>(
       context: context,
@@ -572,7 +662,7 @@ Future<bool> confirmDialog(
             padding: const EdgeInsets.all(14),
             child: Text(
               body,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.45,
                 fontWeight: FontWeight.w500,
@@ -852,14 +942,15 @@ class PaperDialog extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.children,
-    this.color = Paper.sun,
+    this.color,
     this.maxWidth = 340,
   });
 
   final String title;
   final IconData icon;
   final List<Widget> children;
-  final Color color;
+  final Color? color;
+  Color get _color => color ?? Paper.sun;
   final double maxWidth;
 
   @override
@@ -886,7 +977,7 @@ class PaperDialog extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(9),
                 decoration: BoxDecoration(
-                  color: color,
+                  color: _color,
                   border: Paper.border,
                   borderRadius: BorderRadius.all(Paper.radius),
                   boxShadow: Paper.shadow(3),
@@ -897,7 +988,7 @@ class PaperDialog extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 20,
@@ -952,19 +1043,19 @@ class _SearchBoxState extends State<SearchBox> {
     ),
     child: Row(
       children: [
-        const Icon(Icons.search_rounded, size: 20, color: Paper.ink3),
+        Icon(Icons.search_rounded, size: 20, color: Paper.ink3),
         const SizedBox(width: 8),
         Expanded(
           child: TextField(
             controller: _c,
             onChanged: _set,
             textInputAction: TextInputAction.search,
-            style: const TextStyle(fontSize: 15, color: Paper.ink),
+            style: TextStyle(fontSize: 15, color: Paper.ink),
             decoration: InputDecoration(
               isDense: true,
               border: InputBorder.none,
               hintText: widget.hint,
-              hintStyle: const TextStyle(color: Paper.ink2, fontSize: 15),
+              hintStyle: TextStyle(color: Paper.ink2, fontSize: 15),
               // 12+20+12 = 44pt, đủ ngưỡng chạm mà không phình ô.
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
             ),
@@ -980,7 +1071,7 @@ class _SearchBoxState extends State<SearchBox> {
                 _c.clear();
                 _set('');
               },
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.all(8),
                 child: Icon(Icons.close_rounded, size: 18, color: Paper.ink2),
               ),

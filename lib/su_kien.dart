@@ -152,7 +152,7 @@ class BuoiDiemDanh extends StatelessWidget {
                     borderRadius: BorderRadius.all(Paper.radius),
                     boxShadow: Paper.shadow(3),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.how_to_reg_rounded,
                     size: 20,
                     color: Paper.ink,
@@ -162,7 +162,7 @@ class BuoiDiemDanh extends StatelessWidget {
                 Expanded(
                   child: Text(
                     clean(e.name),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 18,
@@ -193,7 +193,7 @@ class BuoiDiemDanh extends StatelessWidget {
               '${nhanNgay(DateTime(e.start.year, e.start.month, e.start.day), now)} · '
               '${gioPhut(e.start)}–${gioPhut(dong)} · '
               '${mo ? 'còn ${conLai(dong.difference(now))}' : 'mở sau ${conLai(e.start.difference(now))}'}',
-              style: const TextStyle(fontSize: 13, color: Paper.ink2),
+              style: TextStyle(fontSize: 13, color: Paper.ink2),
             ),
             const SizedBox(height: 14),
             PaperButton(
@@ -318,14 +318,14 @@ class _DemNguoc extends StatelessWidget {
                     borderRadius: BorderRadius.all(Paper.radius),
                     boxShadow: Paper.shadow(3),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.hourglass_bottom_rounded,
                     size: 20,
                     color: Paper.ink,
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Sắp tới',
                     style: TextStyle(
@@ -345,7 +345,7 @@ class _DemNguoc extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               clean(e.name),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 17,
@@ -366,7 +366,7 @@ class _DemNguoc extends StatelessWidget {
               '${nhanNgay(DateTime(e.start.year, e.start.month, e.start.day), now)}'
               ' · ${gioPhut(e.start)}'
               '${con > 0 ? ' · còn $con việc nữa' : ''}',
-              style: const TextStyle(fontSize: 13, color: Paper.ink2),
+              style: TextStyle(fontSize: 13, color: Paper.ink2),
             ),
           ],
         ),
@@ -410,7 +410,7 @@ class _SuKienNhomState extends State<SuKienNhom> {
                 if (n > 0) const SizedBox(height: 14),
                 Text(
                   nhanNgay(ngay, now),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
@@ -432,7 +432,7 @@ class _SuKienNhomState extends State<SuKienNhom> {
               children: [
                 Text(
                   _het ? 'Thu gọn' : 'Xem thêm $con sự kiện',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
                     color: Paper.ink2,
@@ -480,7 +480,7 @@ class SuKienHang extends StatelessWidget {
               width: 46,
               child: Text(
                 gioPhut(e.start),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
@@ -495,7 +495,7 @@ class SuKienHang extends StatelessWidget {
                 children: [
                   Text(
                     clean(e.name),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: Paper.ink,
@@ -505,7 +505,7 @@ class SuKienHang extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       clean(e.course),
-                      style: const TextStyle(fontSize: 13, color: Paper.ink2),
+                      style: TextStyle(fontSize: 13, color: Paper.ink2),
                     ),
                   ],
                 ],

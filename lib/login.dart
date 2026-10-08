@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
+                  Text(
                     'Đăng nhập bằng tài khoản portal DLU',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Paper.ink2),
@@ -189,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                         const SizedBox(height: 18),
                         _busy
-                            ? const Center(
+                            ? Center(
                                 child: Padding(
                                   padding: EdgeInsets.all(8),
                                   child: CircularProgressIndicator(
@@ -231,6 +231,6 @@ class _Check extends StatelessWidget {
       border: Paper.border,
       borderRadius: BorderRadius.all(Paper.radius),
     ),
-    child: on ? const Icon(Icons.check, size: 15, color: Paper.ink) : null,
+    child: on ? Icon(Icons.check, size: 15, color: Paper.ink) : null,
   );
 }

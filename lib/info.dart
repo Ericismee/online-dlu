@@ -24,7 +24,7 @@ class InfoScreen extends StatefulWidget {
 }
 
 /// Nhóm thông tin: tiêu đề, màu giấy, rồi (icon, nhãn, key).
-const _groups = <(String, Color, List<(IconData, String, String)>)>[
+final _groups = <(String, Color, List<(IconData, String, String)>)>[
   (
     'Học vụ',
     Paper.mint,
@@ -151,7 +151,7 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
             if (_error != null)
               PaperBox(
                 color: Paper.rose,
-                child: Text(_error!, style: const TextStyle(color: Paper.ink)),
+                child: Text(_error!, style: TextStyle(color: Paper.ink)),
               )
             else if (_info == null)
               PaperBox(
@@ -212,7 +212,7 @@ class _Card extends StatelessWidget {
               borderRadius: BorderRadius.all(Paper.radius),
               boxShadow: Paper.shadow(3),
             ),
-            child: const Icon(Icons.person_rounded, size: 30, color: Paper.ink),
+            child: Icon(Icons.person_rounded, size: 30, color: Paper.ink),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -224,7 +224,7 @@ class _Card extends StatelessWidget {
                   clean(info['HoTen']),
                   Text(
                     clean(info['HoTen']),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
                       fontSize: 22,
@@ -288,7 +288,7 @@ class _Group extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
@@ -328,13 +328,10 @@ class _Row extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(color: Paper.ink2, fontSize: 12),
-                ),
+                Text(label, style: TextStyle(color: Paper.ink2, fontSize: 12)),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Paper.ink,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -374,7 +371,7 @@ class _StudentCardState extends State<_StudentCard> {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Thẻ sinh viên',
                     style: TextStyle(
@@ -427,7 +424,7 @@ class _StudentCardState extends State<_StudentCard> {
             const SizedBox(height: 8),
             Text(
               '${clean(widget.info['HoTen'])} · ${field(widget.info, 'LopSinhVien')}',
-              style: const TextStyle(color: Paper.ink2, fontSize: 13),
+              style: TextStyle(color: Paper.ink2, fontSize: 13),
             ),
           ],
         ),

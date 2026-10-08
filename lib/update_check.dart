@@ -234,7 +234,7 @@ class _UpdateBannerState extends State<UpdateBanner>
         ),
         child: Row(
           children: [
-            const Icon(Icons.rocket_launch_rounded, color: Paper.ink),
+            Icon(Icons.rocket_launch_rounded, color: Paper.ink),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -242,7 +242,7 @@ class _UpdateBannerState extends State<UpdateBanner>
                 children: [
                   Text(
                     'Có bản mới v$v — bấm để tải',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Paper.ink,
                       fontWeight: FontWeight.w700,
                     ),
@@ -251,7 +251,7 @@ class _UpdateBannerState extends State<UpdateBanner>
                     const SizedBox(height: 4),
                     Text(
                       _notes!,
-                      style: const TextStyle(fontSize: 13, color: Paper.ink2),
+                      style: TextStyle(fontSize: 13, color: Paper.ink2),
                     ),
                   ],
                 ],
@@ -259,7 +259,7 @@ class _UpdateBannerState extends State<UpdateBanner>
             ),
             IconButton(
               onPressed: _dismiss,
-              icon: const Icon(Icons.close_rounded, color: Paper.ink2),
+              icon: Icon(Icons.close_rounded, color: Paper.ink2),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),
@@ -338,13 +338,13 @@ class _ChangelogState extends State<Changelog>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.new_releases_rounded, color: Paper.ink),
+            Icon(Icons.new_releases_rounded, color: Paper.ink),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Có gì mới',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
@@ -352,16 +352,13 @@ class _ChangelogState extends State<Changelog>
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    t,
-                    style: const TextStyle(fontSize: 13, color: Paper.ink2),
-                  ),
+                  Text(t, style: TextStyle(fontSize: 13, color: Paper.ink2)),
                 ],
               ),
             ),
             IconButton(
               onPressed: _dismiss,
-              icon: const Icon(Icons.close_rounded, color: Paper.ink2),
+              icon: Icon(Icons.close_rounded, color: Paper.ink2),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),
@@ -456,7 +453,7 @@ class _ChangelogScreenState extends State<ChangelogScreen>
                 children: [
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Cập nhật',
                           style: TextStyle(
@@ -482,10 +479,7 @@ class _ChangelogScreenState extends State<ChangelogScreen>
                       color: Paper.mint,
                       child: Row(
                         children: [
-                          const Icon(
-                            Icons.rocket_launch_rounded,
-                            color: Paper.ink,
-                          ),
+                          Icon(Icons.rocket_launch_rounded, color: Paper.ink),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -493,7 +487,7 @@ class _ChangelogScreenState extends State<ChangelogScreen>
                               children: [
                                 Text(
                                   'Có bản mới v$moi',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Paper.ink,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -503,7 +497,7 @@ class _ChangelogScreenState extends State<ChangelogScreen>
                                 // trang release trống.
                                 if (_tai == null) ...[
                                   const SizedBox(height: 2),
-                                  const Text(
+                                  Text(
                                     'Bản này chưa có file tải cho máy bạn',
                                     style: TextStyle(
                                       fontSize: 13,
@@ -546,7 +540,7 @@ class _ChangelogScreenState extends State<ChangelogScreen>
                         ),
                       ),
                   if (lichSu != null && lichSu.isEmpty)
-                    const Text(
+                    Text(
                       'Chưa đọc được lịch sử cập nhật.',
                       style: TextStyle(color: Paper.ink2),
                     ),
@@ -574,7 +568,7 @@ class _BanCard extends StatelessWidget {
           children: [
             Text(
               'v${ban.version}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Display',
                 fontWeight: FontWeight.w800,
                 fontSize: 20,
@@ -582,18 +576,15 @@ class _BanCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            if (dangDung) const Pill('Đang dùng', color: Paper.mint),
+            if (dangDung) Pill('Đang dùng', color: Paper.mint),
             const Spacer(),
-            Text(
-              ban.date,
-              style: const TextStyle(fontSize: 12, color: Paper.ink2),
-            ),
+            Text(ban.date, style: TextStyle(fontSize: 12, color: Paper.ink2)),
           ],
         ),
         const SizedBox(height: 6),
         Text(
           ban.text,
-          style: const TextStyle(fontSize: 13, color: Paper.ink2, height: 1.45),
+          style: TextStyle(fontSize: 13, color: Paper.ink2, height: 1.45),
         ),
       ],
     ),

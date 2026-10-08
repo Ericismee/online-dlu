@@ -207,10 +207,7 @@ class _MarksScreenState extends State<MarksScreen>
                   if (_error != null)
                     PaperBox(
                       color: Paper.rose,
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Paper.ink),
-                      ),
+                      child: Text(_error!, style: TextStyle(color: Paper.ink)),
                     )
                   else if (_years == null) ...[
                     const Skeleton(height: 110, ink: true),
@@ -224,7 +221,7 @@ class _MarksScreenState extends State<MarksScreen>
                           horizontal: 8,
                           vertical: 2,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Chưa có điểm',
                           style: TextStyle(
                             fontFamily: 'Display',
@@ -338,7 +335,7 @@ class TotalCard extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Tích luỹ toàn khoá',
           style: TextStyle(
             fontFamily: 'Display',
@@ -388,7 +385,7 @@ class _Term extends StatelessWidget {
             Expanded(
               child: Text(
                 '$year · $term',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
@@ -403,7 +400,7 @@ class _Term extends StatelessWidget {
         const SizedBox(height: 8),
         PaperBox(
           child: timKhongThay
-              ? const Text(
+              ? Text(
                   'Không có môn nào khớp.',
                   style: TextStyle(color: Paper.ink2),
                 )
@@ -417,7 +414,7 @@ class _Term extends StatelessWidget {
                     horizontal: 8,
                     vertical: 2,
                   ),
-                  child: const Text(
+                  child: Text(
                     'Chưa có điểm',
                     style: TextStyle(
                       fontFamily: 'Display',
@@ -449,7 +446,7 @@ class _Mark extends StatelessWidget {
             children: [
               Text(
                 subjectName(m['CurriculumName']),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: Paper.ink,
@@ -462,7 +459,7 @@ class _Mark extends StatelessWidget {
                 children: [
                   Pill('${toNum(m['Credits'])} TC', color: Paper.sun),
                   if (isCondition(m['CurriculumName']))
-                    const Pill('Không tính TB', color: Paper.card),
+                    Pill('Không tính TB', color: Paper.card),
                 ],
               ),
             ],
@@ -529,7 +526,7 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Thử GPA',
                         style: TextStyle(
@@ -552,7 +549,7 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '${widget.term} · số dự đoán, không phải điểm thật',
-                  style: const TextStyle(fontSize: 13, color: Paper.ink2),
+                  style: TextStyle(fontSize: 13, color: Paper.ink2),
                 ),
                 const SizedBox(height: 16),
                 PaperBox(
@@ -562,7 +559,7 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
                     children: [
                       Text(
                         'GPA dự kiến ${gpa.toStringAsFixed(2)}/4',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Display',
                           fontWeight: FontWeight.w800,
                           fontSize: 24,
@@ -604,7 +601,7 @@ class _WhatIfScreenState extends State<WhatIfScreen> {
                                   children: [
                                     Text(
                                       subjectName(m['CurriculumName']),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.w600,
                                         color: Paper.ink,
@@ -765,7 +762,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Cải thiện',
                         style: TextStyle(
@@ -786,7 +783,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Môn nào đang kéo GPA xuống nhiều nhất thì gợi ý trước — '
                   'số dự đoán, không phải điểm thật',
                   style: TextStyle(fontSize: 13, color: Paper.ink2),
@@ -795,10 +792,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                 if (_error != null)
                   PaperBox(
                     color: Paper.rose,
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Paper.ink),
-                    ),
+                    child: Text(_error!, style: TextStyle(color: Paper.ink)),
                   )
                 else if (_years == null) ...[
                   const Skeleton(height: 120, ink: true),
@@ -814,7 +808,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'Học lại được',
                         style: TextStyle(fontSize: 13, color: Paper.ink2),
                       ),
@@ -837,7 +831,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                   if (goiY.isEmpty)
                     PaperBox(
                       color: Paper.mint,
-                      child: const Text(
+                      child: Text(
                         'Không có môn nào dưới B — chưa cần cải thiện môn nào.',
                         style: TextStyle(
                           fontFamily: 'Display',
@@ -848,7 +842,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                       ),
                     )
                   else ...[
-                    const Text(
+                    Text(
                       'Nên ưu tiên',
                       style: TextStyle(
                         fontFamily: 'Display',
@@ -875,7 +869,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                     ],
                   ],
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Môn tự do',
                     style: TextStyle(
                       fontFamily: 'Display',
@@ -885,7 +879,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Môn chưa học, thêm vào xem có kéo GPA lên được không',
                     style: TextStyle(fontSize: 13, color: Paper.ink2),
                   ),
@@ -907,7 +901,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                                       children: [
                                         Text(
                                           m.$1,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                             color: Paper.ink,
@@ -934,7 +928,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                                   Pressable(
                                     onTap: () =>
                                         setState(() => _tuDo.removeAt(n)),
-                                    builder: (_) => const Padding(
+                                    builder: (_) => Padding(
                                       padding: EdgeInsets.all(6),
                                       child: Icon(
                                         Icons.close_rounded,
@@ -991,7 +985,7 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Thêm môn tự do',
                   style: TextStyle(
                     fontFamily: 'Display',
@@ -1005,12 +999,12 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                   child: TextField(
                     controller: ten,
                     autofocus: true,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Display',
                       fontWeight: FontWeight.w700,
                       color: Paper.ink,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
                       hintText: 'Tên môn (vd: Tiếng Anh 2)',
@@ -1028,8 +1022,8 @@ class _ImprovementScreenState extends State<ImprovementScreen> {
                   child: TextField(
                     controller: tc,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Paper.ink),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: Paper.ink),
+                    decoration: InputDecoration(
                       isDense: true,
                       border: InputBorder.none,
                       hintText: 'Số tín chỉ',
@@ -1127,14 +1121,14 @@ class _KeHoach extends StatelessWidget {
             children: [
               Text(
                 gpa.toStringAsFixed(2),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 24,
                   color: Paper.ink2,
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8),
                 child: Icon(
                   Icons.arrow_forward_rounded,
@@ -1144,7 +1138,7 @@ class _KeHoach extends StatelessWidget {
               ),
               Text(
                 '${moi.toStringAsFixed(2)}/4',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 30,
@@ -1221,7 +1215,7 @@ class _GoiYCard extends StatelessWidget {
                 ),
                 child: Text(
                   '$hang',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
@@ -1236,7 +1230,7 @@ class _GoiYCard extends StatelessWidget {
                   children: [
                     Text(
                       subjectName(goiY.mon['CurriculumName']),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: Paper.ink,
@@ -1292,7 +1286,7 @@ class _GoiYCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 '+${goiY.tang.toStringAsFixed(2)}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Display',
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
@@ -1311,9 +1305,9 @@ class _GoiYCard extends StatelessWidget {
                 color: goiY.he4 == 0 ? Paper.rose : Paper.paper,
               ),
               if (goiY.he4 == 0)
-                const Pill('Trượt, phải học lại', color: Paper.rose)
+                Pill('Trượt, phải học lại', color: Paper.rose)
               else if (keoXuong)
-                const Pill('Đang kéo GPA xuống', color: Paper.peach),
+                Pill('Đang kéo GPA xuống', color: Paper.peach),
             ],
           ),
         ],

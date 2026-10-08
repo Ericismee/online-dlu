@@ -99,7 +99,7 @@ class _BehaviorScreenState extends State<BehaviorScreen>
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Điểm rèn luyện',
                         style: TextStyle(
@@ -122,10 +122,7 @@ class _BehaviorScreenState extends State<BehaviorScreen>
                 if (_error != null)
                   PaperBox(
                     color: Paper.rose,
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Paper.ink),
-                    ),
+                    child: Text(_error!, style: TextStyle(color: Paper.ink)),
                   )
                 else if (_scores == null)
                   const Skeleton(height: 160, ink: true)
@@ -156,7 +153,7 @@ class _Score extends StatelessWidget {
         Expanded(
           child: Text(
             '${s['YearStudy']} · ${s['TermID']}',
-            style: const TextStyle(
+            style: TextStyle(
               color: Paper.ink,
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -243,7 +240,7 @@ class _BehaviorDetailScreenState extends State<BehaviorDetailScreen>
                 children: [
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
@@ -301,10 +298,7 @@ class _BehaviorDetailScreenState extends State<BehaviorDetailScreen>
                   if (_error != null)
                     PaperBox(
                       color: Paper.rose,
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Paper.ink),
-                      ),
+                      child: Text(_error!, style: TextStyle(color: Paper.ink)),
                     )
                   else if (_data == null) ...[
                     const Skeleton(height: 110, ink: true),
@@ -318,7 +312,7 @@ class _BehaviorDetailScreenState extends State<BehaviorDetailScreen>
                           horizontal: 8,
                           vertical: 2,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Kỳ này chưa chấm',
                           style: TextStyle(
                             fontFamily: 'Display',
@@ -361,7 +355,7 @@ class _Total extends StatelessWidget {
         children: [
           Text(
             '$diem',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Display',
               fontWeight: FontWeight.w800,
               fontSize: 42,
@@ -370,7 +364,7 @@ class _Total extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 12),
             child: Text(
               '/100',
@@ -402,7 +396,7 @@ class _Group extends StatelessWidget {
               Expanded(
                 child: Text(
                   g.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Display',
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
@@ -417,7 +411,7 @@ class _Group extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           if (co.isEmpty)
-            const Text(
+            Text(
               'Không có tiêu chí nào được tính điểm.',
               style: TextStyle(fontSize: 13, color: Paper.ink2),
             )
@@ -431,7 +425,7 @@ class _Group extends StatelessWidget {
                     Expanded(
                       child: Text(
                         clean(i['BehaviorDetailName']),
-                        style: const TextStyle(fontSize: 14, color: Paper.ink2),
+                        style: TextStyle(fontSize: 14, color: Paper.ink2),
                       ),
                     ),
                     const SizedBox(width: 8),
