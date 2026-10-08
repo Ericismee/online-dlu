@@ -672,22 +672,7 @@ Future<bool> confirmDialog(
         title: title,
         icon: icon,
         color: color,
-        children: [
-          // Lời dẫn nằm trong thẻ giấy: chữ xám trên nền kem trơn
-          // bị chìm, có viền với bóng thì đọc ra ngay.
-          PaperBox(
-            padding: const EdgeInsets.all(14),
-            child: Text(
-              body,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.45,
-                fontWeight: FontWeight.w500,
-                color: Paper.ink2,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+        nut: [
           Row(
             children: [
               Expanded(
@@ -708,6 +693,22 @@ Future<bool> confirmDialog(
             ],
           ),
         ],
+        children: [
+          // Lời dẫn nằm trong thẻ giấy: chữ xám trên nền kem trơn
+          // bị chìm, có viền với bóng thì đọc ra ngay.
+          PaperBox(
+            padding: const EdgeInsets.all(14),
+            child: Text(
+              body,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.45,
+                fontWeight: FontWeight.w500,
+                color: Paper.ink2,
+              ),
+            ),
+          ),
+        ],
       ),
     ) ??
     false;
@@ -726,20 +727,7 @@ Future<int?> chonDialog(
   builder: (_) => PaperDialog(
     title: title,
     icon: icon,
-    children: [
-      PaperBox(
-        padding: const EdgeInsets.all(14),
-        child: Text(
-          body,
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.45,
-            fontWeight: FontWeight.w500,
-            color: Paper.ink2,
-          ),
-        ),
-      ),
-      const SizedBox(height: 16),
+    nut: [
       for (final (n, l) in lua.indexed) ...[
         SizedBox(
           width: double.infinity,
@@ -757,6 +745,20 @@ Future<int?> chonDialog(
           color: Paper.card,
           onColor: Paper.ink,
           onPressed: () => Navigator.pop(context),
+        ),
+      ),
+    ],
+    children: [
+      PaperBox(
+        padding: const EdgeInsets.all(14),
+        child: Text(
+          body,
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.45,
+            fontWeight: FontWeight.w500,
+            color: Paper.ink2,
+          ),
         ),
       ),
     ],
@@ -1009,13 +1011,22 @@ class PaperDialog extends StatelessWidget {
     super.key,
     required this.title,
     required this.icon,
-    required this.children,
+    this.nut = const [],
     this.color,
     this.maxWidth = 340,
+    required this.children,
   });
 
   final String title;
   final IconData icon;
+
+  /// Nút bấm, dán dưới đáy và không cuộn theo thân: thân dài mà nút cũng
+  /// trôi theo thì phải cuộn mỏi tay mới thấy chỗ bấm.
+  final List<Widget> nut;
+
+  /// Thân hộp thoại. Dài hơn màn thì tự cuộn, nên cứ nhét thoải mái —
+  /// changelog mười dòng trên máy nhỏ mà cỡ chữ hệ thống phóng to thì cái gì
+  /// cũng dài hơn màn.
   final List<Widget> children;
   final Color? color;
   Color get _color => color ?? Paper.sun;
@@ -1033,43 +1044,73 @@ class PaperDialog extends StatelessWidget {
         borderRadius: BorderRadius.all(Paper.radius),
         boxShadow: Paper.shadow(8),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Huy hiệu cùng kiểu với các ô trong app, để hộp thoại
-              // trông như một thẻ giấy nữa chứ không phải popup hệ thống.
-              Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: _color,
-                  border: Paper.border,
-                  borderRadius: BorderRadius.all(Paper.radius),
-                  boxShadow: Paper.shadow(3),
+      child: LayoutBuilder(
+        builder: (context, con) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cuộn chứ không tràn: Column trần trong Dialog thì nội dung dài
+            // hơn màn là vỡ khung ngay — mà máy nhỏ cộng cỡ chữ hệ thống
+            // phóng to thì cái gì cũng dài hơn màn, kể cả cái tiêu đề.
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Huy hiệu cùng kiểu với các ô trong app, để hộp thoại
+                        // trông như một thẻ giấy nữa chứ không phải popup hệ thống.
+                        Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: _color,
+                            border: Paper.border,
+                            borderRadius: BorderRadius.all(Paper.radius),
+                            boxShadow: Paper.shadow(3),
+                          ),
+                          child: Icon(icon, size: 22, color: Paper.ink),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              fontFamily: 'Display',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 20,
+                              height: 1.15,
+                              color: Paper.ink,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    ...children,
+                  ],
                 ),
-                child: Icon(icon, size: 22, color: Paper.ink),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontFamily: 'Display',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                    height: 1.15,
-                    color: Paper.ink,
+            ),
+            // Nút dán đáy, không cuộn theo thân. Chặn ở 40% chiều cao hộp
+            // thoại phòng khi chính hàng nút cũng cao hơn màn (ba lựa chọn,
+            // chữ phóng to hết cỡ): lúc đó nút tự cuộn trong phần của nó chứ
+            // không đẩy cả hộp thoại tràn ra ngoài.
+            if (nut.isNotEmpty)
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: con.maxHeight * 0.4),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [const SizedBox(height: 16), ...nut],
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          ...children,
-        ],
+          ],
+        ),
       ),
     ),
   );

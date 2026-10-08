@@ -667,6 +667,14 @@ class _ChiTiet extends StatelessWidget {
     icon: t.laLms ? Icons.school_rounded : Icons.mail_rounded,
     color: Paper.mint,
     maxWidth: 420,
+    nut: [
+      PaperButton(
+        label: 'Đóng',
+        color: Paper.card,
+        onColor: Paper.ink,
+        onPressed: () => Navigator.pop(context),
+      ),
+    ],
     children: [
       Wrap(
         spacing: 6,
@@ -684,24 +692,13 @@ class _ChiTiet extends StatelessWidget {
           style: TextStyle(fontSize: 14, color: Paper.ink2),
         )
       else
-        Flexible(
-          child: SingleChildScrollView(
-            child: PaperBox(
-              padding: const EdgeInsets.all(14),
-              child: Text(
-                clean(t.body),
-                style: TextStyle(fontSize: 14, height: 1.45, color: Paper.ink2),
-              ),
-            ),
+        PaperBox(
+          padding: const EdgeInsets.all(14),
+          child: Text(
+            clean(t.body),
+            style: TextStyle(fontSize: 14, height: 1.45, color: Paper.ink2),
           ),
         ),
-      const SizedBox(height: 16),
-      PaperButton(
-        label: 'Đóng',
-        color: Paper.card,
-        onColor: Paper.ink,
-        onPressed: () => Navigator.pop(context),
-      ),
     ],
   );
 }
