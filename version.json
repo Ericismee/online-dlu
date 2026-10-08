@@ -1,6 +1,21 @@
 {
   "versions": [
     {
+      "version": "1.2.3",
+      "build": 15,
+      "date": "2026-10-08",
+      "changes": [
+        "Sửa lịch ở màn nào là mọi màn khác thấy ngay, không phải kéo làm mới hay mở lại app.",
+        "Nhắc trước giờ tự hẹn lại ngay sau khi bạn thêm, sửa hay xoá lịch tự đặt.",
+        "Đồng hồ đếm ngược tới giờ vào lớp chạy từng giây thay vì nhảy từng phút.",
+        "Gợi ý giờ đặt lịch học theo thói quen mới của bạn: giờ hay chọn gần đây có tiếng nói hơn giờ của học kỳ trước, đổi lịch là gợi ý đổi theo.",
+        "Gợi ý giờ né thêm 15 phút hai đầu mỗi tiết học, không còn xếp việc sát giờ tan lớp.",
+        "Hạn bài tập càng gần thì Xếp giờ làm càng đẩy buổi làm bài lên sớm; hạn còn xa thì xếp vào giờ bạn thường rảnh.",
+        "Lần đầu dùng, khi app chưa biết gì về bạn, gợi ý giờ theo khung hợp lý sẵn thay vì chọn ngẫu nhiên.",
+        "Bấm Đã xong hay xoá một mục lịch tự đặt cũng là góp ý cho gợi ý giờ: khung nào hay bỏ dở thì app thôi đề xuất."
+      ]
+    },
+    {
       "version": "1.2.2",
       "build": 14,
       "date": "2026-10-08",
