@@ -819,6 +819,7 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                   _Legend(color: mauTiet, label: 'Mỗi chấm một buổi'),
                   _Legend(color: mauTuDat, label: 'Tự đặt'),
                   _Legend(color: mauTrungGio, label: 'Trùng giờ'),
+                  _Legend(color: Paper.nghi, label: 'Nghỉ'),
                   if (_days == null)
                     const Skeleton(width: 48, height: 12)
                   else
@@ -1975,9 +1976,11 @@ class _Cell extends StatelessWidget {
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              // Hôm nay tô nền cho dễ tìm; còn lại để trắng, màu dành hết
-              // cho chấm.
-              color: today ? Paper.sun : Paper.card,
+              // Nền chỉ nói có lịch hay nghỉ, một màu cho mọi ngày có lịch —
+              // bận tới đâu thì đếm chấm. Hôm nay tô vàng cho dễ tìm.
+              color: today
+                  ? Paper.sun
+                  : (cham.isEmpty ? Paper.nghi : Paper.mint),
               border: Border.all(color: Paper.ink, width: picked ? 4 : 2),
               borderRadius: BorderRadius.all(Paper.radius),
               boxShadow: picked ? Paper.shadow(down ? 0 : 2) : null,
