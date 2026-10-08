@@ -107,6 +107,10 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
   String? _error;
   bool _checking = true;
 
+  /// App đã thật sự xuống nền (nhịp đã tắt), lượt `resumed` tới mới là lần
+  /// quay lại cần lấy số mới.
+  bool _duoiNen = false;
+
   /// Đang bị khoá (đã bật khoá sinh trắc học và vừa quay lại từ nền).
   bool _locked = false;
 
@@ -134,20 +138,30 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
       // và Moodle theo chu kỳ là ăn pin không để làm gì.
       PortalNhip.dung();
       LmsNhip.dung();
+      _duoiNen = true;
       daQuaKhoa = false;
       unawaited(_khoaNeuBat());
       return;
     }
     if (state != AppLifecycleState.resumed) return;
     if (_locked) return; // đợi mở khoá xong mới nạp lại số mới
+    // `resumed` còn nổ khi chỉ kéo Trung tâm điều khiển rồi thả ra (qua
+    // `inactive`, không qua `paused`). Chưa thật sự xuống nền thì nhịp vẫn
+    // đang chạy, gọi lại là gõ cửa trường thừa một lượt.
+    if (!_duoiNen) return;
+    _duoiNen = false;
     LmsNhip.chay();
-    if (_session != null) PortalNhip.chay();
     final s = _session;
     if (s == null || !s.valid) {
       _resume();
-    } else {
-      unawaited(_napSan(s));
+      return;
     }
+    PortalNhip.chay();
+    // Từ app khác chuyển qua là lấy số mới ngay, không đợi hết nhịp. Chỉ màn
+    // đang mở chứ không nạp sẵn lại cả 9 endpoint: phần còn lại đã nằm trong
+    // sổ từ lượt mở app, nạp lại mỗi lần đổi app chỉ làm nặng server trường.
+    unawaited(Cache.refreshAll());
+    unawaited(LmsNhip.ngay());
   }
 
   Future<void> _khoaNeuBat() async {
