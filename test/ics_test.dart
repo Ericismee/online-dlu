@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dlu_tkb/custom_lich.dart';
 import 'package:dlu_tkb/ics.dart';
 
 void main() {
@@ -68,5 +69,23 @@ void main() {
         .toList();
     expect(summary.first.length, lessThan(76));
     expect(summary[1], startsWith(' '));
+  });
+
+  test('lịch tự đặt cũng vào file, giờ về trống thì cho một tiếng', () {
+    final rieng = {
+      3: [
+        const CustomLich(tieuDe: 'Lên ATC', batDau: 7 * 60, viTri: 'P301'),
+        const CustomLich(tieuDe: 'Ôn thi', batDau: 19 * 60, ketThuc: 21 * 60),
+      ],
+    };
+    final s = icsMonth(DateTime(2026, 9), const {}, rieng: rieng);
+    expect(s, contains('SUMMARY:Lên ATC'));
+    expect(s, contains('DTSTART:20260903T070000'));
+    // Không khai giờ về -> một tiếng.
+    expect(s, contains('DTEND:20260903T080000'));
+    expect(s, contains('LOCATION:P301'));
+    expect(s, contains('DTSTART:20260903T190000'));
+    expect(s, contains('DTEND:20260903T210000'));
+    expect(icsCount(const {}, rieng), 2);
   });
 }

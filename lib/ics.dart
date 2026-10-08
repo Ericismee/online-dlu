@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'custom_lich.dart';
 import 'data.dart';
 import 'graph.dart';
 
@@ -8,7 +9,12 @@ import 'graph.dart';
 ///
 /// Giờ để dạng 'floating' (không kèm múi giờ): máy đọc theo giờ địa phương,
 /// khỏi phải nhét nguyên khối VTIMEZONE cho mỗi file.
-String icsMonth(DateTime month, Map<int, List<dynamic>> days, {DateTime? now}) {
+String icsMonth(
+  DateTime month,
+  Map<int, List<dynamic>> days, {
+  DateTime? now,
+  Map<int, List<CustomLich>> rieng = const {},
+}) {
   final out = StringBuffer()
     ..writeAll([
       'BEGIN:VCALENDAR',
@@ -53,15 +59,47 @@ String icsMonth(DateTime month, Map<int, List<dynamic>> days, {DateTime? now}) {
       ], '\r\n');
     }
   }
+  for (final day in rieng.keys.toList()..sort()) {
+    final d = DateTime(month.year, month.month, day);
+    for (final (n, c) in rieng[day]!.indexed) {
+      // Không biết giờ về thì cho một tiếng — app Lịch nào cũng cần DTEND,
+      // mà để 0 phút thì nhiều app vẽ thành vạch mỏng không bấm trúng.
+      final ket = c.ketThuc == null || c.ketThuc! <= c.batDau
+          ? c.batDau + 60
+          : c.ketThuc!;
+      final noi = c.viTri?.trim() ?? '';
+      out.writeAll([
+        'BEGIN:VEVENT',
+        'UID:${d.year}${_pad(d.month)}${_pad(day)}-rieng$n@dlu-online',
+        'DTSTAMP:$stamp',
+        'DTSTART:${_gioDia(d, c.batDau)}',
+        'DTEND:${_gioDia(d, ket)}',
+        _fold('SUMMARY:${_esc(c.tieuDe)}'),
+        if (noi.isNotEmpty) _fold('LOCATION:${_esc(noi)}'),
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        'TRIGGER:-PT15M',
+        _fold('DESCRIPTION:${_esc(c.tieuDe)}'),
+        'END:VALARM',
+        'END:VEVENT',
+        '',
+      ], '\r\n');
+    }
+  }
   out.write('END:VCALENDAR\r\n');
   return out.toString();
 }
 
 /// Số buổi sẽ được ghi vào file — để hỏi người dùng cho rõ trước khi xuất.
-int icsCount(Map<int, List<dynamic>> days) => days.values
-    .expand((e) => e)
-    .where((i) => batDauPhut(tietNo(i['BeginTime'])) != null)
-    .length;
+int icsCount(
+  Map<int, List<dynamic>> days, [
+  Map<int, List<CustomLich>> rieng = const {},
+]) =>
+    days.values
+        .expand((e) => e)
+        .where((i) => batDauPhut(tietNo(i['BeginTime'])) != null)
+        .length +
+    rieng.values.fold(0, (a, e) => a + e.length);
 
 String _pad(int n) => n.toString().padLeft(2, '0');
 

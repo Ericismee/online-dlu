@@ -225,10 +225,14 @@ const _sapToi = Duration(days: 2);
 /// Mẻ của lượt trước nằm trong cache nên mở app là thấy ngay; lượt hỏi LMS
 /// chạy ngầm theo [LmsNhip] rồi thay số sau.
 class SuKienCard extends StatefulWidget {
-  const SuKienCard({super.key, this.nguon});
+  const SuKienCard({super.key, this.nguon, this.onXepLich});
 
   /// Nguồn dữ liệu; để trống là lấy thật từ LMS. Chỉ test mới truyền vào.
   final Future<List<LmsEvent>> Function(DateTime now)? nguon;
+
+  /// Xếp một buổi làm bài cho hạn này. Để trống là không hiện nút — thẻ này
+  /// không tự biết lịch học, người đặt nó vào cây mới biết.
+  final Future<void> Function(LmsEvent e, DateTime now)? onXepLich;
 
   @override
   State<SuKienCard> createState() => _SuKienCardState();
@@ -280,7 +284,12 @@ class _SuKienCardState extends State<SuKienCard> with Reloadable<SuKienCard> {
       if (ds.isEmpty) return const SizedBox.shrink();
       return Column(
         children: [
-          _DemNguoc(ds.first, now, con: ds.length - 1),
+          _DemNguoc(
+            ds.first,
+            now,
+            con: ds.length - 1,
+            onXepLich: widget.onXepLich,
+          ),
           const SizedBox(height: 20),
         ],
       );
@@ -290,9 +299,10 @@ class _SuKienCardState extends State<SuKienCard> with Reloadable<SuKienCard> {
 
 /// Việc gần nhất: tên, môn, mốc và còn bao lâu. Bấm là mở nó trên LMS.
 class _DemNguoc extends StatelessWidget {
-  const _DemNguoc(this.e, this.now, {required this.con});
+  const _DemNguoc(this.e, this.now, {required this.con, this.onXepLich});
   final LmsEvent e;
   final DateTime now;
+  final Future<void> Function(LmsEvent e, DateTime now)? onXepLich;
 
   /// Số việc còn lại phía sau việc này.
   final int con;
@@ -374,6 +384,16 @@ class _DemNguoc extends StatelessWidget {
               '${con > 0 ? ' · còn $con việc nữa' : ''}',
               style: TextStyle(fontSize: 13, color: Paper.ink2),
             ),
+            if (onXepLich != null) ...[
+              const SizedBox(height: 12),
+              PaperButton(
+                label: 'Xếp giờ làm',
+                fontSize: 13,
+                color: Paper.mint,
+                onColor: Paper.ink,
+                onPressed: () => onXepLich!(e, now),
+              ),
+            ],
           ],
         ),
       ),

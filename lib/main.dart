@@ -8,6 +8,7 @@ import 'cache.dart';
 import 'clock.dart';
 import 'courses.dart';
 import 'curriculum.dart';
+import 'custom_lich.dart';
 import 'data.dart';
 import 'db.dart';
 import 'exams.dart';
@@ -477,6 +478,9 @@ class _Tab extends StatelessWidget {
   }
 }
 
+String _gioGon(int phut) =>
+    '${phut ~/ 60}h${(phut % 60).toString().padLeft(2, '0')}';
+
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key, required this.session, required this.onGo});
   final Session session;
@@ -506,6 +510,25 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
     } on PortalError {
       // giữ lớp cũ
     }
+  }
+
+  /// Hạn LMS kéo thành một buổi làm bài trong lịch tự đặt. Hỏi trước rồi mới
+  /// ghi: tự chen một mục vào lịch người ta mà không nói là hỗn.
+  Future<void> _xepGioLam(LmsEvent e, DateTime now) async {
+    final (ngay, viec) = await deXuatViec(e, now);
+    if (!mounted) return;
+    final ok = await confirmDialog(
+      context,
+      title: 'Xếp giờ làm bài?',
+      body:
+          '"${viec.tieuDe}" sẽ được thêm vào lịch hôm nay lúc '
+          '${_gioGon(viec.batDau)}–${_gioGon(viec.ketThuc!)}, '
+          'chen vào chỗ còn trống giữa các tiết.',
+      ok: 'Thêm',
+    );
+    if (!ok) return;
+    await CustomLichStore.add(ngay, viec);
+    await Cache.reloadAll();
   }
 
   @override
@@ -554,7 +577,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                 const SizedBox(height: 20),
                 // Việc LMS sắp đến hạn: chỉ hiện khi đã cận kề, nên nó đứng
                 // đây là đúng — thấy trước cả lịch hôm nay.
-                const SuKienCard(),
+                SuKienCard(onXepLich: _xepGioLam),
                 // Điểm danh nằm ngay trong dòng tiết của mục "Hôm nay":
                 // nó là việc của chính buổi học đó.
                 PopIn(

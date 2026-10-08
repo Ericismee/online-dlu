@@ -1,3 +1,4 @@
+import 'package:dlu_tkb/custom_lich.dart';
 import 'package:dlu_tkb/nhac.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,5 +65,42 @@ void main() {
       ],
     };
     expect(mocNhac(la, DateTime(2026, 9, 27)), isEmpty);
+  });
+
+  test('lịch tự đặt cũng được nhắc, không chỉ tiết chính quy', () {
+    final moc = mocNhac(
+      lich,
+      DateTime(2026, 9, 27),
+      rieng: {
+        DateTime(2026, 9, 28): [
+          const CustomLich(tieuDe: 'Lên ATC', batDau: 16 * 60),
+        ],
+      },
+    );
+    final atc = moc.firstWhere((m) => m.mon == 'Lên ATC');
+    expect(atc.luc, DateTime(2026, 9, 28, 15, 45));
+    // Không có tiết: thông báo phải nói kiểu khác, nên để trống chỗ này.
+    expect(atc.tiet, isNull);
+  });
+
+  test('đi chỗ khác thì nhắc sớm thêm, cùng phòng thì không', () {
+    // 28/9 tan tiết 4 lúc 11h10, ngay sau đó có hẹn.
+    Duration dem(String? noi) => demDuong(
+      CustomLich(tieuDe: 'Hẹn', batDau: 11 * 60 + 30, viTri: noi),
+      lich[DateTime(2026, 9, 28)]!,
+    );
+    expect(dem('C1.105'), const Duration(minutes: demDuongPhut));
+    // Vẫn ở đúng phòng vừa học xong thì khỏi cộng đường đi.
+    expect(dem('a1.203'), Duration.zero);
+    // Không ghi địa điểm thì không đoán bừa.
+    expect(dem(null), Duration.zero);
+    // Trước cả buổi học đầu tiên thì cũng chẳng có chặng nào để đi.
+    expect(
+      demDuong(
+        const CustomLich(tieuDe: 'Hẹn', batDau: 6 * 60, viTri: 'C1.105'),
+        lich[DateTime(2026, 9, 28)]!,
+      ),
+      Duration.zero,
+    );
   });
 }
