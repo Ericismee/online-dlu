@@ -97,10 +97,14 @@ void main() {
     expect(find.text('3.20'), findsOneWidget);
   });
 
-  testWidgets('chưa môn nào có điểm hệ 10 thì vòng không mời bấm', (t) async {
+  testWidgets('chưa môn nào có điểm hệ 10 thì bấm cũng không đổi được', (
+    t,
+  ) async {
     await dungThe(t, portalDiem(coDiem: false));
     expect(find.text('3.20'), findsOneWidget);
-    expect(find.text('GPA tích luỹ'), findsOneWidget);
-    expect(find.textContaining('chạm đổi thang'), findsNothing);
+    await t.tap(find.text('3.20'));
+    await t.pumpAndSettle();
+    expect(find.text('3.20'), findsOneWidget);
+    expect(find.text('trên 4.0'), findsOneWidget);
   });
 }

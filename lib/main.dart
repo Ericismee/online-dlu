@@ -772,7 +772,7 @@ class _VongGpa extends StatelessWidget {
       value: hien ? muoi / 10 : gpa / 4,
       center: (hien ? muoi : gpa).toStringAsFixed(2),
       duoi: hien ? 'trên 10' : 'trên 4.0',
-      label: muoi == null ? 'GPA tích luỹ' : 'GPA tích luỹ · chạm đổi thang',
+      label: 'GPA tích luỹ',
       color: Paper.accent,
       // Đổi thang là một cú bấm, dải giấy phải bò theo kịp ngón tay chứ
       // không lề mề như lúc thẻ mới hiện ra.
