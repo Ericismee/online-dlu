@@ -40,7 +40,15 @@ class LinUCB {
        _a = [for (var i = 0; i < soTay; i++) _donVi(soChieu, _lamBda)],
        _b = [for (var i = 0; i < soTay; i++) List.filled(soChieu, 0.0)];
 
-  LinUCB._(this._a, this._b, this.soChieu, this.alpha, this.gamma, this._ngau);
+  LinUCB._(
+    this._a,
+    this._b,
+    this.soChieu,
+    this.alpha,
+    this.gamma,
+    this._luot,
+    this._ngau,
+  );
 
   final int soChieu;
 
@@ -61,6 +69,12 @@ class LinUCB {
   /// `A⁻¹` tính sẵn, xoá mỗi khi `A` đổi. Nghịch đảo một ma trận 5×5 thì rẻ,
   /// nhưng mỗi lượt gợi ý hỏi điểm cả tám tay nên nhớ lại vẫn hơn.
   late final List<List<double>?> _nd = List.filled(soTay, null);
+
+  /// Đã học bao nhiêu lượt. Nơi gọi xem con số này để biết mô hình còn đang
+  /// khởi động hay đã đáng tin — tám tay bảy chiều mà có vài mẫu thì phần
+  /// thăm dò quyết hết, lúc ấy thà dùng ưu tiên dựng tay.
+  int get luot => _luot;
+  int _luot = 0;
 
   int get soTay => _b.length;
 
@@ -170,6 +184,7 @@ class LinUCB {
   /// được chơi mà vẫn giữ nguyên trọng số cũ thì nó mới là tay không bao giờ
   /// quên, và thói quen cũ lại đè được thói quen mới.
   void hoc(List<double> x, Map<int, double> thuong) {
+    _luot++;
     for (var tay = 0; tay < soTay; tay++) {
       final m = _a[tay];
       for (var i = 0; i < soChieu; i++) {
@@ -197,6 +212,7 @@ class LinUCB {
     'chieu': soChieu,
     'alpha': alpha,
     'gamma': gamma,
+    'luot': _luot,
     'a': _a,
     'b': _b,
   };
@@ -236,6 +252,10 @@ class LinUCB {
       soChieu,
       (j['alpha'] as num?)?.toDouble() ?? alphaMacDinh,
       (j['gamma'] as num?)?.toDouble() ?? gammaMacDinh,
+      // Sổ kiểu cũ không đếm lượt: đã có 'b' khác 0 nghĩa là học rồi, cho qua
+      // luôn phần khởi động chứ đừng bắt người dùng dạy lại từ đầu.
+      (j['luot'] as num?)?.toInt() ??
+          (b.any((r) => r.any((v) => v != 0)) ? 1 << 20 : 0),
       ngau ?? Random(),
     );
   }

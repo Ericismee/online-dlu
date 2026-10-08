@@ -272,7 +272,9 @@ Future<(DateTime, CustomLich)> deXuatViec(LmsEvent e, DateTime now) async {
     final kin = await ban(d);
     if (!GoiYGio.conCho(kin)) continue;
     final gio = await GoiYGio.goiY(
-      dacTrungNgay(d, lichNgayTuCache(d)),
+      // Hạn càng gấp thì ngữ cảnh càng khác: cùng một ngày rảnh, bài nộp tối
+      // nay và bài nộp tuần sau không nên rơi vào cùng một khung.
+      dacTrungNgay(d, lichNgayTuCache(d), hanConLai: e.start.difference(now)),
       ban: kin,
     );
     // Khung được chọn bắt đầu lúc 6h/8h/… nên có thể sớm hơn giờ hiện tại một
@@ -304,15 +306,26 @@ List<(int, int)> khoangBan(
   for (final c in rieng) (c.batDau, c.ketThuc ?? c.batDau + 60),
 ];
 
-/// Ngữ cảnh một ngày cho bộ gợi ý giờ: cuối tuần không, và hôm đó phải lên
-/// lớp buổi nào.
-List<double> dacTrungNgay(DateTime d, Iterable<dynamic> items) {
+/// Ngữ cảnh một ngày cho bộ gợi ý giờ: cuối tuần không, hôm đó phải lên lớp
+/// buổi nào, ngày học nặng tới đâu, và [hanConLai] là còn bao lâu tới hạn
+/// đang phải lo (null là không có hạn nào treo).
+List<double> dacTrungNgay(
+  DateTime d,
+  Iterable<dynamic> items, {
+  Duration? hanConLai,
+}) {
   final b = items.map((i) => buoi(toNum(i['PeriodID']).toInt())).toSet();
+  var phut = 0;
+  for (final i in items) {
+    if (_khoangChinhQuy(i) case (final dau, final cuoi)) phut += cuoi - dau;
+  }
   return dacTrungGoiY(
     cuoiTuan: d.weekday >= DateTime.saturday,
     sang: b.contains('Sáng'),
     chieu: b.contains('Chiều'),
     toi: b.contains('Tối'),
+    gap: gapHan(hanConLai),
+    tai: taiNgay(phut),
   );
 }
 
@@ -974,6 +987,12 @@ class _DayCardState extends State<_DayCard> with Reloadable<_DayCard> {
     } else {
       await CustomLichStore.remove(widget.day, id);
     }
+    // Xoá là phản hồi ngược: khung ấy hoá ra không làm được, đừng gợi ý nữa.
+    await GoiYGio.phanHoi(
+      x: dacTrungNgay(widget.day, widget.items),
+      phut: x.batDau,
+      xong: false,
+    );
   }
 
   /// Khung để chụp đúng thẻ ngày này — bấm chia sẻ là ra ảnh ngày đang xem,
@@ -2266,9 +2285,17 @@ class _TodayLessonsState extends State<TodayLessons>
 
   /// Đánh dấu một mục tự đặt chưa có giờ về là xong ngay bây giờ, thay vì
   /// chờ tự "xong" lúc 0h — gán luôn giờ về là giờ hiện tại.
+  ///
+  /// Làm xong là phản hồi thật: khung giờ đó đặt được, không phải chỉ nghe
+  /// hay lúc bấm Thêm. Bộ gợi ý học chuyện đã xảy ra chứ không chỉ ý định.
   Future<void> _danhDauXongRieng(DateTime homNay, CustomLich c) async {
     final id = c.id;
     if (id == null) return;
+    await GoiYGio.phanHoi(
+      x: dacTrungNgay(homNay, lichNgayTuCache(homNay)),
+      phut: c.batDau,
+      xong: true,
+    );
     final gio = DateTime.now();
     await CustomLichStore.update(
       homNay,

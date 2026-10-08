@@ -177,4 +177,85 @@ void main() {
     expect(m, isA<LinUCB>());
     expect(m!.diem(1, [1]), closeTo(cu.diem(1, [1]), 1e-9));
   });
+
+  test('đệm đi đường che luôn khung sát giờ tan tiết', () {
+    // Tiết chiều 12h–13h50: khung 10h và 14h không chồng giờ, nhưng dính 15
+    // phút đi đường nên cũng không đặt được.
+    expect(khungRanh([(12 * 60, 13 * 60 + 50)]), {0, 1, 5, 6, 7});
+    expect(khungRanh([(12 * 60, 13 * 60 + 50)], dem: 0), {0, 1, 2, 4, 5, 6, 7});
+  });
+
+  test('độ gấp của hạn suy giảm theo hàm mũ', () {
+    expect(gapHan(null), 0); // không có hạn nào treo
+    expect(gapHan(Duration.zero), 1);
+    expect(gapHan(const Duration(hours: -3)), 1); // quá hạn vẫn là gấp nhất
+    expect(gapHan(goiYNuaDoiHan), closeTo(0.5, 1e-9));
+    expect(gapHan(goiYNuaDoiHan * 2), closeTo(0.25, 1e-9));
+    // Xa thì chênh nhau không đáng kể, gần thì chênh hẳn — đó là lý do dùng
+    // hàm mũ chứ không chia tuyến tính.
+    final xa =
+        gapHan(const Duration(days: 10)) - gapHan(const Duration(days: 12));
+    final gan =
+        gapHan(const Duration(hours: 2)) - gapHan(const Duration(hours: 12));
+    expect(gan, greaterThan(xa * 100));
+  });
+
+  test('mức tải ngày bão hoà ở 1, ngày trống là 0', () {
+    expect(taiNgay(0), 0);
+    expect(taiNgay(goiYPhutKietSuc ~/ 2), closeTo(0.5, 1e-9));
+    expect(taiNgay(goiYPhutKietSuc * 3), 1);
+  });
+
+  test(
+    'lúc chưa có dữ liệu thì theo ưu tiên dựng tay, không bốc thăm',
+    () async {
+      // Mô hình trống: tám tay điểm bằng nhau, bốc ngẫu nhiên thì gợi ý mỗi lần
+      // một giờ khác nhau. Khởi động bằng giờ sinh viên hay làm việc riêng.
+      expect(await GoiYGio.goiY(ranhCaNgay), 18 * 60);
+      // Ràng buộc cứng vẫn thắng ưu tiên.
+      expect(
+        await GoiYGio.goiY(ranhCaNgay, ban: [(17 * 60, 22 * 60)]),
+        14 * 60,
+      );
+    },
+  );
+
+  test('hạn gấp thì khởi động bằng khung rảnh sớm nhất', () async {
+    final gap = dacTrungGoiY(
+      cuoiTuan: false,
+      sang: false,
+      chieu: false,
+      toi: false,
+      gap: gapHan(const Duration(hours: 3)),
+    );
+    expect(await GoiYGio.goiY(gap, ban: [(0, 9 * 60)]), 10 * 60);
+    // Hạn còn xa thì không có gì phải giành giờ sớm.
+    final xa = dacTrungGoiY(
+      cuoiTuan: false,
+      sang: false,
+      chieu: false,
+      toi: false,
+      gap: gapHan(const Duration(days: 5)),
+    );
+    expect(await GoiYGio.goiY(xa, ban: [(0, 9 * 60)]), 18 * 60);
+  });
+
+  test('dời một khung vẫn được tính công, dời xa thì không', () {
+    expect(thuongLech(0), 1);
+    expect(thuongLech(1), greaterThan(thuongLech(2)));
+    expect(thuongLech(2), greaterThan(0));
+    expect(thuongLech(6), lessThan(0.01));
+  });
+
+  test('bỏ dở hoài thì bộ gợi ý thôi đề xuất khung đó', () async {
+    for (var i = 0; i < 12; i++) {
+      await GoiYGio.ghiNhan(x: ranhCaNgay, goiYPhut: 8 * 60, chonPhut: 8 * 60);
+    }
+    expect(await GoiYGio.goiY(ranhCaNgay), 8 * 60);
+    // Đặt 8h thì đặt, nhưng lần nào cũng xoá đi — giờ chốt chỉ là ý định.
+    for (var i = 0; i < 25; i++) {
+      await GoiYGio.phanHoi(x: ranhCaNgay, phut: 8 * 60, xong: false);
+    }
+    expect(await GoiYGio.goiY(ranhCaNgay), isNot(8 * 60));
+  });
 }
