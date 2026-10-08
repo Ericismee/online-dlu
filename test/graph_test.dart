@@ -57,48 +57,36 @@ void main() {
     expect(yearTermFor(DateTime(2027, 7)), ('2026-2027', 'HK03'));
   });
 
-  test('màu ô theo số buổi học trong ngày', () {
+  test('mỗi buổi lên lớp một chấm, ngày trống thì không chấm nào', () {
+    expect(chamNgay(const []), isEmpty);
     expect(
-      dayColor(const []),
-      isNot(
-        dayColor(const [
-          {'PeriodID': 1},
-        ]),
-      ),
+      chamNgay(const [
+        {'PeriodID': 1},
+      ]),
+      [mauTiet],
     );
-    // hai tiết cùng buổi sáng vẫn là một buổi
+    // hai tiết cùng buổi sáng vẫn là một buổi, một chấm
     expect(
-      dayColor(const [
+      chamNgay(const [
         {'PeriodID': 1},
         {'PeriodID': 3},
       ]),
-      dayColor(const [
-        {'PeriodID': 5},
-      ]),
+      [mauTiet],
     );
     expect(
-      dayColor(const [
+      chamNgay(const [
         {'PeriodID': 1},
         {'PeriodID': 7},
       ]),
-      isNot(
-        dayColor(const [
-          {'PeriodID': 1},
-        ]),
-      ),
+      [mauTiet, mauTiet],
     );
     expect(
-      dayColor(const [
+      chamNgay(const [
         {'PeriodID': 1},
         {'PeriodID': 7},
         {'PeriodID': 12},
       ]),
-      isNot(
-        dayColor(const [
-          {'PeriodID': 1},
-          {'PeriodID': 7},
-        ]),
-      ),
+      [mauTiet, mauTiet, mauTiet],
     );
   });
 
@@ -257,21 +245,16 @@ void main() {
     expect(ketiepRieng([daXong], now), isNull);
   });
 
-  test('dayColor tính luôn lịch tự đặt', () {
+  test('lịch tự đặt thêm một chấm riêng, đụng giờ thì chấm đổi màu', () {
     final tiet1 = {'BeginTime': 'Tiết: 1', 'EndTime': 'Tiết: 2'}; // 7h30-9h10
     const somHon = CustomLich(tieuDe: 'ABC', batDau: 360, ketThuc: 420);
     const giuaBuoi = CustomLich(tieuDe: 'XYZ', batDau: 480, ketThuc: 500);
-    // Ngày trống lịch chính quy, chỉ có tự đặt: khác màu nghỉ và khác màu
-    // ngày có lịch chính quy.
-    final tuDat = dayColor(const [], [somHon]);
-    expect(tuDat, isNot(dayColor(const [])));
-    expect(tuDat, isNot(dayColor([tiet1])));
-    // Có cả chính quy lẫn tự đặt nhưng không đụng giờ: vẫn giữ màu theo buổi.
-    expect(dayColor([tiet1], [somHon]), dayColor([tiet1]));
-    // Tự đặt đụng giờ buổi chính quy: đè màu cảnh báo riêng.
-    final trung = dayColor([tiet1], [giuaBuoi]);
-    expect(trung, isNot(dayColor([tiet1])));
-    expect(trung, isNot(tuDat));
+    // Ngày trống lịch chính quy, chỉ có tự đặt: vẫn phải thấy là có lịch.
+    expect(chamNgay(const [], [somHon]), [mauTuDat]);
+    // Có cả hai mà không đụng giờ: chấm buổi học trước, chấm tự đặt sau.
+    expect(chamNgay([tiet1], [somHon]), [mauTiet, mauTuDat]);
+    // Đụng giờ buổi chính quy thì chấm tự đặt chuyển sang màu cảnh báo.
+    expect(chamNgay([tiet1], [giuaBuoi]), [mauTiet, mauTrungGio]);
   });
 
   test('trungGioChinhQuy báo đúng lúc lịch tự đặt đụng giờ buổi học', () {

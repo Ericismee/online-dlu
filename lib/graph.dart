@@ -459,35 +459,33 @@ bool trungGioChinhQuy(CustomLich c, Iterable<dynamic> items) {
   return false;
 }
 
-/// Màu ô lịch theo số buổi phải lên lớp trong ngày (sáng/chiều/tối), có tính
-/// luôn lịch tự đặt [rieng] của ngày đó: đụng giờ với buổi chính quy thì đè
-/// màu cảnh báo; không đụng giờ thì màu theo buổi chính quy vẫn giữ nguyên
-/// (quan trọng hơn); ngày trống lịch chính quy nhưng có lịch tự đặt thì tô
-/// màu riêng để biết ngày đó không hẳn là nghỉ.
-Color dayColor(
+/// Chấm của một ngày trên lịch tháng: mỗi buổi phải lên lớp (sáng/chiều/tối)
+/// một chấm, cộng một chấm nữa nếu hôm đó có lịch tự đặt [rieng] — đụng giờ
+/// buổi chính quy thì chấm ấy đổi sang màu cảnh báo. Rỗng = ngày trống.
+///
+/// Đếm chấm chứ không tô cả ô theo từng mức màu: sáu màu ô phải tra bảng chú
+/// thích mới đọc được, còn ba chấm thì liếc một cái là biết hôm đó bận tới
+/// đâu — có chấm là có lịch, không chấm là rảnh.
+List<Color> chamNgay(
   Iterable<dynamic> items, [
   Iterable<CustomLich> rieng = const [],
 ]) {
   final buoiTrongNgay = items
       .map((i) => buoi(toNum(i['PeriodID']).toInt()))
       .toSet();
-  if (rieng.any((c) => trungGioChinhQuy(c, items))) return _trungGio;
-  if (buoiTrongNgay.isEmpty) return rieng.isEmpty ? _nghi : _tuDat;
-  return switch (buoiTrongNgay.length) {
-    1 => _motBuoi,
-    2 => _haiBuoi,
-    _ => _baBuoi,
-  };
+  return [
+    for (var i = 0; i < buoiTrongNgay.length; i++) mauTiet,
+    if (rieng.isNotEmpty)
+      rieng.any((c) => trungGioChinhQuy(c, items)) ? mauTrungGio : mauTuDat,
+  ];
 }
 
-// nghỉ — không có tiết nào
-Color get _nghi => Paper.nghi;
-final _motBuoi = Paper.mint; // xanh lá — học 1 buổi
-final _haiBuoi = Paper.sky; // xanh dương — học 2 buổi
-final _baBuoi = Paper.rose; // đỏ — học cả 3 buổi
-final _tuDat = Paper.peach; // cam — chỉ có lịch tự đặt, không có tiết chính quy
-final _trungGio =
-    Paper.accent; // đỏ cam đậm — lịch tự đặt đụng giờ tiết chính quy
+/// Màu chấm. Lấy qua [Paper.tuoi] vì nền tối dùng bản màu trầm để tô mảng
+/// lớn, mà chấm 6px tô màu trầm trên nền tối thì coi như không có.
+Color get mauTiet => Paper.tuoi(Paper.sky); // xanh dương — một buổi lên lớp
+Color get mauTuDat => Paper.tuoi(Paper.peach); // cam — lịch tự đặt
+Color get mauTrungGio =>
+    Paper.tuoi(Paper.rose); // đỏ — tự đặt đụng giờ chính quy
 
 /// Năm học / học kỳ của một tháng. HK01 tháng 8-1, HK02 tháng 2-6, HK03 tháng 7.
 // ponytail: suy từ lịch chung của trường; nếu trường đổi mốc học kỳ thì sửa ở đây.
@@ -818,13 +816,9 @@ class _MonthGraphState extends State<MonthGraph> with Reloadable<MonthGraph> {
                 runSpacing: 6,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  _Legend(color: _motBuoi, label: '1 buổi'),
-                  _Legend(color: _haiBuoi, label: '2 buổi'),
-                  _Legend(color: _baBuoi, label: '3 buổi'),
-                  _Legend(color: _nghi, label: 'Nghỉ'),
-                  _Legend(color: _tuDat, label: 'Tự đặt'),
-                  _Legend(color: _trungGio, label: 'Trùng giờ'),
-                  _Legend(color: _tuDat, label: 'Có lịch tự đặt', dot: true),
+                  _Legend(color: mauTiet, label: 'Mỗi chấm một buổi'),
+                  _Legend(color: mauTuDat, label: 'Tự đặt'),
+                  _Legend(color: mauTrungGio, label: 'Trùng giờ'),
                   if (_days == null)
                     const Skeleton(width: 48, height: 12)
                   else
@@ -1929,25 +1923,21 @@ class _TietKeRieng extends StatelessWidget {
 
 /// Ô màu + tên buổi trong phần chú thích.
 class _Legend extends StatelessWidget {
-  const _Legend({required this.color, required this.label, this.dot = false});
+  const _Legend({required this.color, required this.label});
   final Color color;
   final String label;
-
-  /// Vẽ chấm tròn như badge thay vì ô vuông — khớp với chấm thật trên ô lịch.
-  final bool dot;
 
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        width: dot ? 10 : 14,
-        height: dot ? 10 : 14,
+        width: 12,
+        height: 12,
         decoration: BoxDecoration(
           color: color,
           border: Border.all(color: Paper.ink, width: 2),
-          borderRadius: dot ? null : BorderRadius.all(Paper.radius),
-          shape: dot ? BoxShape.circle : BoxShape.rectangle,
+          shape: BoxShape.circle,
         ),
       ),
       const SizedBox(width: 5),
@@ -1973,55 +1963,62 @@ class _Cell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mau = dayColor(items, rieng);
-    // Không đụng giờ thì màu ô vẫn ưu tiên buổi chính quy — chấm nhỏ góc
-    // trên để biết ngày đó còn có lịch tự đặt, không thì nhìn ô dễ tưởng
-    // chẳng có gì thêm ngoài giờ học.
-    final coChamRieng = rieng.isNotEmpty && mau != _trungGio;
+    final cham = chamNgay(items, rieng);
     return PopIn(
       // Lần lượt từng ngày cho ra hiệu ứng lướt qua tháng.
       delay: Duration(milliseconds: 8 * day),
       child: Pressable(
         onTap: onTap,
-        builder: (down) => Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: mau,
-                border: Border.all(color: Paper.ink, width: picked ? 4 : 2),
-                borderRadius: BorderRadius.all(Paper.radius),
-                boxShadow: picked ? Paper.shadow(down ? 0 : 2) : null,
-              ),
-              child: Text(
-                '$day',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Paper.ink,
-                  fontWeight: today ? FontWeight.w800 : FontWeight.w600,
-                ),
-              ),
+        builder: (down) => Semantics(
+          label:
+              '$day: ${cham.isEmpty ? 'không có lịch' : '${cham.length} buổi'}',
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              // Hôm nay tô nền cho dễ tìm; còn lại để trắng, màu dành hết
+              // cho chấm.
+              color: today ? Paper.sun : Paper.card,
+              border: Border.all(color: Paper.ink, width: picked ? 4 : 2),
+              borderRadius: BorderRadius.all(Paper.radius),
+              boxShadow: picked ? Paper.shadow(down ? 0 : 2) : null,
             ),
-            // Chấm như badge thông báo, đè ra ngoài góc ô — giống hẳn
-            // chấm đỏ trên icon chuông chứ không lẫn vào số ngày.
-            if (coChamRieng)
-              Positioned(
-                top: -3,
-                right: -3,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: _tuDat,
-                    shape: BoxShape.circle,
-                    border: Border.fromBorderSide(
-                      BorderSide(color: Paper.paper, width: 1.5),
-                    ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$day',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Paper.ink,
+                    fontWeight: today ? FontWeight.w800 : FontWeight.w600,
                   ),
                 ),
-              ),
-          ],
+                // Hàng chấm giữ chỗ cả lúc rỗng, không thì số ngày của ngày
+                // trống nhảy lệch so với ngày có lịch.
+                SizedBox(
+                  height: 8,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final c in cham)
+                        Container(
+                          width: 6,
+                          height: 6,
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          decoration: BoxDecoration(
+                            color: c,
+                            shape: BoxShape.circle,
+                            border: Border.fromBorderSide(
+                              BorderSide(color: Paper.ink, width: 1),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
