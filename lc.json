@@ -38,7 +38,7 @@
           "date": "2026-10-08",
           "localizedDescription": "• Sửa lịch ở màn nào là mọi màn khác thấy ngay, không phải kéo làm mới hay mở lại app.\n• Nhắc trước giờ tự hẹn lại ngay sau khi bạn thêm, sửa hay xoá lịch tự đặt.\n• Đồng hồ đếm ngược tới giờ vào lớp chạy từng giây thay vì nhảy từng phút.\n• Gợi ý giờ đặt lịch học theo thói quen mới của bạn: giờ hay chọn gần đây có tiếng nói hơn giờ của học kỳ trước, đổi lịch là gợi ý đổi theo.\n• Gợi ý giờ né thêm 15 phút hai đầu mỗi tiết học, không còn xếp việc sát giờ tan lớp.\n• Hạn bài tập càng gần thì Xếp giờ làm càng đẩy buổi làm bài lên sớm; hạn còn xa thì xếp vào giờ bạn thường rảnh.\n• Lần đầu dùng, khi app chưa biết gì về bạn, gợi ý giờ theo khung hợp lý sẵn thay vì chọn ngẫu nhiên.\n• Bấm Đã xong hay xoá một mục lịch tự đặt cũng là góp ý cho gợi ý giờ: khung nào hay bỏ dở thì app thôi đề xuất.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 12699528,
+          "size": 12705343,
           "minOSVersion": "15.0"
         }
       ],
