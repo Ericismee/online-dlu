@@ -1,3 +1,5 @@
+import 'package:dlu_tkb/db.dart';
+import 'package:dlu_tkb/paper.dart';
 import 'package:dlu_tkb/update_check.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +17,31 @@ Future<void> dongHopThoai(WidgetTester t) async {
 
 void main() {
   setUp(dungDbTam);
+
+  testWidgets('changelog dài không che trang chủ trên điện thoại', (t) async {
+    await Db.i.ghi(nhomMoc, 'shown_update', giaTri: '9.9.9');
+    final notes = List.filled(40, 'Cải thiện trải nghiệm sinh viên').join('. ');
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView(
+            children: [
+              SizedBox(
+                width: 320,
+                child: UpdateBanner(
+                  check: () async => '9.9.9',
+                  notes: (_) async => notes,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(t.widget<Text>(find.text(notes)).maxLines, 3);
+    expect(t.getSize(find.byType(PaperBox)).height, lessThan(200));
+  });
 
   testWidgets('vô app có bản mới thì hiện hộp thoại, chỉ một lần mỗi bản', (
     t,
@@ -184,4 +211,5 @@ void main() {
     expect(find.text('Tải xuống'), findsNothing);
     expect(find.textContaining('chưa có file tải'), findsOneWidget);
   });
+
 }

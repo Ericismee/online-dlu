@@ -1942,7 +1942,9 @@ class _Legend extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 5),
-      Text(label, style: TextStyle(color: Paper.ink2, fontSize: 12)),
+      Flexible(
+        child: Text(label, style: TextStyle(color: Paper.ink2, fontSize: 12)),
+      ),
     ],
   );
 }

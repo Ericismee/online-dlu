@@ -44,6 +44,7 @@ void main() {
             expire: DateTime(2030),
           ),
           onLogout: () {},
+          onGo: (_) {},
           portal: portal,
         ),
       ),

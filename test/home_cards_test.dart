@@ -139,6 +139,8 @@ void main() {
     // tiết nhường chỗ cho nó.
     expect(find.byType(BuoiDiemDanh), findsOneWidget);
     expect(find.byType(ChipDiemDanh), findsNothing);
+    expect(find.text('Mẫu Thiết kế CTK47'), findsOneWidget);
+    expect(find.text('Điểm danh'), findsOneWidget);
     final the = t.getTopLeft(find.byType(BuoiDiemDanh)).dy;
     expect(t.getTopLeft(find.text('Mẫu thiết kế').first).dy, greaterThan(the));
   });

@@ -265,6 +265,8 @@ class _UpdateBannerState extends State<UpdateBanner>
                     const SizedBox(height: 4),
                     Text(
                       _notes!,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 13, color: Paper.ink2),
                     ),
                   ],

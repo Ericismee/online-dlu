@@ -108,7 +108,9 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
             children: [
               TieuDeTrang('Lịch thi', session: widget.session),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   Choice(
                     label: _pick.$1,
@@ -117,7 +119,6 @@ class _ExamsTabState extends State<ExamsTab> with Reloadable<ExamsTab> {
                       if (y != null) setState(() => _pick = (y, _pick.$2));
                     },
                   ),
-                  const SizedBox(width: 8),
                   Choice(
                     label: _pick.$2,
                     color: Paper.mint,
