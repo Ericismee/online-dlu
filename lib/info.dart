@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'data.dart';
+import 'menu.dart';
 import 'news.dart';
 import 'paper.dart';
 import 'portal.dart';
@@ -13,10 +14,12 @@ class InfoScreen extends StatefulWidget {
     super.key,
     required this.session,
     required this.onLogout,
+    required this.onGo,
     this.portal,
   });
   final Session session;
   final VoidCallback onLogout;
+  final ValueChanged<int> onGo;
   final Portal? portal;
 
   @override
@@ -94,6 +97,7 @@ String field(Map<String, dynamic> info, String key) {
 }
 
 class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
+  bool _chiTietMo = false;
   @override
   Future<void> reload() => _load();
 
@@ -174,13 +178,33 @@ class _InfoScreenState extends State<InfoScreen> with Reloadable<InfoScreen> {
             else ...[
               _Card(info: _info!),
               _StudentCard(info: _info!),
-              for (final (title, color, fields) in _groups)
-                _Group(
-                  title: title,
-                  color: color,
-                  fields: fields,
-                  info: _info!,
-                ),
+            ],
+            const SizedBox(height: 16),
+            MenuCard(
+              session: widget.session,
+              onGo: (tab) {
+                if (tab == 4) {
+                  setState(() => _chiTietMo = true);
+                } else {
+                  widget.onGo(tab);
+                }
+              },
+            ),
+            if (_info != null) ...[
+              const SizedBox(height: 20),
+              PaperButton(
+                label: _chiTietMo ? 'Thu gọn thông tin' : 'Thông tin sinh viên',
+                color: Paper.card,
+                onPressed: () => setState(() => _chiTietMo = !_chiTietMo),
+              ),
+              if (_chiTietMo)
+                for (final (title, color, fields) in _groups)
+                  _Group(
+                    title: title,
+                    color: color,
+                    fields: fields,
+                    info: _info!,
+                  ),
             ],
             const SizedBox(height: 20),
             PaperButton(label: 'Đăng xuất', onPressed: widget.onLogout),

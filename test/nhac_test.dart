@@ -143,4 +143,15 @@ void main() {
     await Db.i.ghi(nhomCaiDat, 'nhac_truoc_phut', giaTri: 'x');
     expect(await Nhac.truocPhut(), Nhac.truoc.inMinutes);
   });
+
+  test('điểm danh mặc định bật và báo trước 15 phút', () async {
+    expect(await Nhac.diemDanhBat(), isTrue);
+    expect(await Nhac.truocDiemDanhPhut(), 15);
+
+    await Nhac.datDiemDanhBat(false);
+    await Nhac.datTruocDiemDanhPhut(30);
+
+    expect(await Nhac.diemDanhBat(), isFalse);
+    expect(await Nhac.truocDiemDanhPhut(), 30);
+  });
 }

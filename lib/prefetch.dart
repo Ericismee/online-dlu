@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'cache.dart';
 import 'graph.dart';
+import 'lms.dart';
 import 'nhac.dart';
 import 'portal.dart';
+import 'settings.dart';
 
 /// Nạp sẵn mọi thứ vào máy ngay khi mở app, để mất mạng vẫn mở được và các
 /// màn sau bấm vào là có ngay.
@@ -62,7 +64,23 @@ class Prefetch {
       }
       // Có lịch mới thì hẹn lại máy rung trước giờ vào lớp. Tháng trước nằm
       // trong đống này nhưng toàn ngày đã qua nên tự bị bỏ.
-      await Nhac.datLai(ngay);
+      var diemDanh = const <ViecDiemDanh>[];
+      if (await Nhac.diemDanhBat() &&
+          await Settings.lmsBat() &&
+          await LmsVault.read() != null) {
+        List<LmsEvent> suKien;
+        try {
+          suKien = await suKienSapToi(now);
+        } on PortalError {
+          suKien = suKienDaLuu(now);
+        }
+        diemDanh = [
+          for (final e in suKien)
+            if (e.loai == 'attendance')
+              (mo: e.start, ten: e.name.trim(), mon: e.course.trim()),
+        ];
+      }
+      await Nhac.datLai(ngay, diemDanh);
       xongLuc = DateTime.now();
     } finally {
       _dangChay = false;

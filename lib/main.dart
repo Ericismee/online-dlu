@@ -126,7 +126,18 @@ class _RootState extends State<Root> with WidgetsBindingObserver {
     _resume();
   }
 
-  void _henLaiNhac() => unawaited(Nhac.datLaiTuCache());
+  void _henLaiNhac() => unawaited(_henLaiNhacDaLuu());
+
+  Future<void> _henLaiNhacDaLuu() async {
+    final now = DateTime.now();
+    final daNoi = await Settings.lmsBat() && await LmsVault.read() != null;
+    await Nhac.datLaiTuCache(null, [
+      if (daNoi)
+        for (final e in suKienDaLuu(now))
+          if (e.loai == 'attendance')
+            (mo: e.start, ten: e.name.trim(), mon: e.course.trim()),
+    ]);
+  }
 
   @override
   void dispose() {
@@ -344,7 +355,11 @@ class _ShellState extends State<Shell> {
                   onGo: (i) => setState(() => _tab = i),
                 ),
                 MarksScreen(session: widget.session),
-                InfoScreen(session: widget.session, onLogout: widget.onLogout),
+                InfoScreen(
+                  session: widget.session,
+                  onLogout: widget.onLogout,
+                  onGo: (tab) => setState(() => _tab = tab),
+                ),
               ],
             ),
             // nội dung cuộn xuống dưới status bar, làm mờ cho mượt
@@ -412,7 +427,13 @@ class PaperBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           for (var i = 0; i < _items.length; i++)
-            _Tab(item: _items[i], on: i == index, onTap: () => onTap(i)),
+            Expanded(
+              child: _Tab(
+                item: _items[i],
+                on: i == index,
+                onTap: () => onTap(i),
+              ),
+            ),
         ],
       ),
     ),
@@ -441,7 +462,7 @@ class _Tab extends StatelessWidget {
                 angle: on ? tilt : 0,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 6,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
@@ -489,9 +510,9 @@ String _gioGon(int phut) =>
     '${phut ~/ 60}h${(phut % 60).toString().padLeft(2, '0')}';
 
 class HomeTab extends StatefulWidget {
-  const HomeTab({super.key, required this.session, required this.onGo});
+  const HomeTab({super.key, required this.session, this.onGo});
   final Session session;
-  final ValueChanged<int> onGo;
+  final ValueChanged<int>? onGo;
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -521,6 +542,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
 
   /// Hạn LMS kéo thành một buổi làm bài trong lịch tự đặt. Hỏi trước rồi mới
   /// ghi: tự chen một mục vào lịch người ta mà không nói là hỗn.
+  // ignore: unused_element
   Future<void> _xepGioLam(LmsEvent e, DateTime now) async {
     final (ngay, viec) = await deXuatViec(e, now);
     if (!mounted) return;
@@ -566,6 +588,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                 ),
                 const SizedBox(height: 16),
                 Ticker(builder: (_, now) => StaleDataWarning(now: now)),
+                _LmsGoiY(session: widget.session),
                 const UpdateBanner(),
                 const Changelog(),
                 // Dưới mấy lời nhắc của chính app (cập nhật, dữ liệu cũ, đổi
@@ -583,7 +606,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                 const SizedBox(height: 20),
                 // Việc LMS sắp đến hạn: chỉ hiện khi đã cận kề, nên nó đứng
                 // đây là đúng — thấy trước cả lịch hôm nay.
-                SuKienCard(onXepLich: _xepGioLam),
+                const SuKienCard(),
                 // Điểm danh nằm ngay trong dòng tiết của mục "Hôm nay":
                 // nó là việc của chính buổi học đó.
                 PopIn(
@@ -602,7 +625,7 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
                 // cuối cùng — ngay trên chữ "Menu".
                 PopIn(
                   delay: const Duration(milliseconds: 220),
-                  child: MenuCard(onGo: widget.onGo, session: widget.session),
+                  child: const SizedBox.shrink(),
                 ),
               ],
             ),
@@ -616,6 +639,97 @@ class _HomeTabState extends State<HomeTab> with Reloadable<HomeTab> {
 /// Hai vòng tiến độ trên Trang chủ: GPA tích luỹ và số tiết đã học trong
 /// tháng. Cả hai số đều đã nằm trong cache (prefetch kéo sẵn bảng điểm và lịch
 /// tháng), nên thẻ này gần như không đụng tới portal.
+class _LmsGoiY extends StatefulWidget {
+  const _LmsGoiY({required this.session});
+  final Session session;
+
+  @override
+  State<_LmsGoiY> createState() => _LmsGoiYState();
+}
+
+class _LmsGoiYState extends State<_LmsGoiY> {
+  bool _hien = false;
+  String get _khoa => 'lms_gioi_thieu_${widget.session.id}';
+
+  @override
+  void initState() {
+    super.initState();
+    _doc();
+  }
+
+  Future<void> _doc() async {
+    final hien =
+        !await Settings.lmsBat() &&
+        (await Db.i.dong(nhomCaiDat, _khoa))?.bat != true;
+    if (mounted) setState(() => _hien = hien);
+  }
+
+  Future<void> _deSau() async {
+    await Db.i.ghi(nhomCaiDat, _khoa, bat: true);
+    if (mounted) setState(() => _hien = false);
+  }
+
+  Future<void> _mo() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            SettingsScreen(session: widget.session, moDangNhapLms: true),
+      ),
+    );
+    await _doc();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_hien) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: PaperBox(
+        color: Paper.mint,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.school_rounded, color: Paper.ink),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Học cùng LMS nhé?',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: Paper.ink,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Để sau',
+                  onPressed: _deSau,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Kết nối LMS để app nhắc bài tập, quiz và điểm danh. Chưa muốn '
+              'thì để sau nhé — bạn luôn có thể đăng nhập ở Hồ sơ → Cài đặt.',
+              style: TextStyle(fontSize: 13, color: Paper.ink2),
+            ),
+            const SizedBox(height: 12),
+            PaperButton(
+              label: 'Kết nối LMS',
+              color: Paper.card,
+              onPressed: _mo,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class TienDoCard extends StatefulWidget {
   const TienDoCard({super.key, required this.session, this.portal});
   final Session session;
