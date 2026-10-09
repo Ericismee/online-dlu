@@ -1,6 +1,18 @@
 {
   "versions": [
     {
+      "version": "1.2.4",
+      "build": 16,
+      "date": "2026-10-09",
+      "changes": [
+        "Thêm Điểm danh ngay trong app và thẻ sự kiện sắp tới trong LMS.",
+        "Sắp xếp nhắc LMS gọn hơn, chuyển điều hướng vào Hồ sơ.",
+        "Cải thiện giao diện trên màn hình nhỏ, tránh vỡ khung và cắt gọn ghi chú cập nhật.",
+        "Sửa bản web để đóng gói worker Drift và tài nguyên SQLite đầy đủ.",
+        "Tách cài đặt Android bản debug và thêm biểu tượng thông báo nhắc lịch."
+      ]
+    },
+    {
       "version": "1.2.3",
       "build": 15,
       "date": "2026-10-08",
