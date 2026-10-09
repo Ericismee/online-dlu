@@ -51,6 +51,9 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+        }
         release {
             // Không có key.properties (máy khác, CI) thì rơi về debug key để
             // `flutter run --release` vẫn chạy; bản lên Play phải là key thật.
