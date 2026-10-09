@@ -17,6 +17,8 @@ typedef MocNhac = ({
   int? tiet,
 });
 
+typedef ViecDiemDanh = ({DateTime mo, String ten, String mon});
+
 /// Các mốc cần nhắc, lấy từ lịch đã nạp sẵn. Bỏ mốc đã qua so với [now], sắp
 /// theo thời gian rồi cắt còn [toiDa] — Android có trần số alarm chờ, mà nhắc
 /// xa cả tháng thì tới lúc đó lịch cũng đã đổi và được đặt lại rồi.
@@ -128,6 +130,8 @@ class Nhac {
   static const _khoa = 'nhac_truoc_gio';
   static const _khoaTruoc = 'nhac_truoc_phut';
   static const _khoaDem = 'nhac_dem_duong_phut';
+  static const _khoaDiemDanh = 'nhac_diem_danh';
+  static const _khoaTruocDiemDanh = 'nhac_diem_danh_phut';
   // Đổi id kênh vì Android khoá cấu hình kênh ngay lần tạo đầu: kênh cũ đã
   // đăng ký có tiếng thì sửa code cũng vô ích, phải là kênh mới.
   static const _kenh = 'sap_vao_lop_im';
@@ -142,7 +146,6 @@ class Nhac {
 
   static Future<void> datBat(bool v) async {
     await Db.i.ghi(nhomCaiDat, _khoa, bat: v);
-    if (!v) await _plugin.cancelAll();
   }
 
   /// Nhắc trước bao nhiêu phút, và đệm thêm bao nhiêu phút khi phải đi chỗ
@@ -157,6 +160,18 @@ class Nhac {
 
   static Future<void> datDemPhut(int v) =>
       Db.i.ghi(nhomCaiDat, _khoaDem, giaTri: '$v');
+
+  static Future<bool> diemDanhBat() async =>
+      (await Db.i.dong(nhomCaiDat, _khoaDiemDanh))?.bat ?? true;
+
+  static Future<void> datDiemDanhBat(bool v) =>
+      Db.i.ghi(nhomCaiDat, _khoaDiemDanh, bat: v);
+
+  static Future<int> truocDiemDanhPhut() =>
+      _soPhut(_khoaTruocDiemDanh, truoc.inMinutes);
+
+  static Future<void> datTruocDiemDanhPhut(int v) =>
+      Db.i.ghi(nhomCaiDat, _khoaTruocDiemDanh, giaTri: '$v');
 
   static Future<int> _soPhut(String khoa, int macDinh) async {
     final v = int.tryParse((await Db.i.doc(nhomCaiDat, khoa))?.giaTri ?? '');
@@ -217,21 +232,37 @@ class Nhac {
   /// Nuốt mọi lỗi: máy không cho thông báo, chưa cấp quyền, hay đang chạy
   /// trong test không có platform channel thì cũng không được phép làm hỏng
   /// lượt nạp dữ liệu đang gọi nó.
-  static Future<void> datLai(Map<DateTime, List<dynamic>> ngay) async {
+  static Future<void> datLai(
+    Map<DateTime, List<dynamic>> ngay, [
+    Iterable<ViecDiemDanh> diemDanh = const [],
+  ]) async {
     try {
-      if (!await bat()) return;
+      final nhacLichHoc = await bat();
+      if (!nhacLichHoc && !(await diemDanhBat() && diemDanh.isNotEmpty)) {
+        await _plugin.cancelAll();
+        return;
+      }
       await _moDau();
       await _plugin.cancelAll();
       var id = 0;
       final now = DateTime.now();
-      for (final m in mocNhac(
-        ngay,
-        now,
-        truoc: Duration(minutes: await truocPhut()),
-        demPhut: await demPhut(),
-        rieng: await _riengQuanh(now),
-      )) {
-        await _dat(id++, m);
+      if (nhacLichHoc) {
+        for (final m in mocNhac(
+          ngay,
+          now,
+          truoc: Duration(minutes: await truocPhut()),
+          demPhut: await demPhut(),
+          rieng: await _riengQuanh(now),
+        )) {
+          await _dat(id++, m);
+        }
+      }
+      if (await diemDanhBat()) {
+        final truoc = Duration(minutes: await truocDiemDanhPhut());
+        for (final viec in diemDanh) {
+          final luc = viec.mo.subtract(truoc);
+          if (luc.isAfter(now)) await _datDiemDanh(id++, viec, luc);
+        }
       }
     } catch (_) {
       // Không hẹn được thì thôi, app vẫn chạy bình thường.
@@ -241,7 +272,10 @@ class Nhac {
   /// Hẹn lại theo lịch đang có trong máy, không gọi portal. Dùng sau mỗi lần
   /// sổ lịch tự đặt đổi: mục vừa thêm phải được nhắc ngay, chứ không đợi lượt
   /// nạp sẵn kế tiếp — mà lịch chính quy thì đã nằm trong cache rồi.
-  static Future<void> datLaiTuCache([DateTime? luc]) {
+  static Future<void> datLaiTuCache([
+    DateTime? luc,
+    Iterable<ViecDiemDanh> diemDanh = const [],
+  ]) {
     final now = luc ?? DateTime.now();
     final hom = DateTime(now.year, now.month, now.day);
     final ngay = <DateTime, List<dynamic>>{};
@@ -250,7 +284,7 @@ class Nhac {
       final ds = lichNgayTuCache(d);
       if (ds.isNotEmpty) ngay[d] = ds;
     }
-    return datLai(ngay);
+    return datLai(ngay, diemDanh);
   }
 
   /// Lịch tự đặt của hai tuần tới; xa hơn thì tới lúc đó app đã đặt lại rồi.
@@ -263,23 +297,25 @@ class Nhac {
         ? ''
         : ' — ${tiet == null ? '' : 'phòng '}${m.phong}';
     final gio = '${m.vao.hour}h${m.vao.minute.toString().padLeft(2, '0')}';
+    final body = tiet == null ? 'Lúc $gio$phong' : 'Tiết $tiet lúc $gio$phong';
     Future<void> hen(AndroidScheduleMode che) => _plugin.zonedSchedule(
       id: id,
       title: tiet == null ? 'Sắp tới giờ: ${m.mon}' : 'Sắp vào lớp: ${m.mon}',
-      body: tiet == null ? 'Lúc $gio$phong' : 'Tiết $tiet lúc $gio$phong',
+      body: body,
       scheduledDate: tz.TZDateTime.from(m.luc, tz.local),
-      notificationDetails: const NotificationDetails(
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           _kenh,
           'Sắp vào lớp',
           channelDescription: 'Nhắc trước 15 phút khi tới giờ lên lớp',
           importance: Importance.high,
           priority: Priority.high,
+          styleInformation: BigTextStyleInformation(body),
           // Im tiếng, chỉ rung: nhắc trong giờ học hay giờ ngủ đều không nên
           // kêu lên.
           playSound: false,
         ),
-        iOS: DarwinNotificationDetails(presentSound: false),
+        iOS: const DarwinNotificationDetails(presentSound: false),
       ),
       androidScheduleMode: che,
     );
@@ -291,5 +327,53 @@ class Nhac {
       // nhắc, máy chỉ được phép dồn trễ vài phút.
       await hen(AndroidScheduleMode.inexactAllowWhileIdle);
     }
+  }
+
+  static Future<void> _datDiemDanh(
+    int id,
+    ViecDiemDanh viec,
+    DateTime luc,
+  ) async {
+    final gio = '${viec.mo.hour}h${viec.mo.minute.toString().padLeft(2, '0')}';
+    final mon = viec.mon.isEmpty ? '' : ' · ${viec.mon}';
+    final body = '${viec.ten}$mon mở lúc $gio. Chuẩn bị sẵn để không lỡ nhé.';
+    await _plugin.zonedSchedule(
+      id: id,
+      title: 'Nhớ ghé điểm danh nha 👋',
+      body: body,
+      scheduledDate: tz.TZDateTime.from(luc, tz.local),
+      notificationDetails: _chiTiet(body),
+      androidScheduleMode: await chinhXacDuoc()
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle,
+    );
+  }
+
+  static NotificationDetails _chiTiet(String body) => NotificationDetails(
+    android: AndroidNotificationDetails(
+      _kenh,
+      'Nhắc việc học',
+      channelDescription: 'Nhắc lịch học và điểm danh sắp tới',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: false,
+      styleInformation: BigTextStyleInformation(body),
+    ),
+    iOS: const DarwinNotificationDetails(presentSound: false),
+  );
+
+  static Future<void> thuDiemDanh() async {
+    await _moDau();
+    final truoc = await truocDiemDanhPhut();
+    final mo = DateTime.now().add(Duration(minutes: truoc));
+    final gio = '${mo.hour}h${mo.minute.toString().padLeft(2, '0')}';
+    final body =
+        'Điểm danh môn học thử · DLU mở lúc $gio. Chuẩn bị sẵn để không lỡ nhé.';
+    await _plugin.show(
+      id: 1000000,
+      title: 'Nhớ ghé điểm danh nha 👋',
+      body: body,
+      notificationDetails: _chiTiet(body),
+    );
   }
 }

@@ -45,9 +45,15 @@ class Settings {
 }
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.session, this.portal});
+  const SettingsScreen({
+    super.key,
+    required this.session,
+    this.portal,
+    this.moDangNhapLms = false,
+  });
   final Session session;
   final Portal? portal;
+  final bool moDangNhapLms;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -63,6 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// Tài khoản LMS đang nối, để nói rõ "đang nối với ai" chứ không chỉ bật/tắt.
   String? _lmsUser;
   bool _dangLamMoi = false;
+  bool _daMoDangNhapLms = false;
 
   @override
   void initState() {
@@ -84,6 +91,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _lms = lms;
         _lmsUser = tk?.$1;
       });
+      if (widget.moDangNhapLms && !lms && !_daMoDangNhapLms) {
+        _daMoDangNhapLms = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _doiLms(true);
+        });
+      }
     }
   }
 
@@ -138,12 +151,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!v) {
       await LmsVault.clear();
       await Settings.datLmsBat(false);
+      await luuSuKien([]);
       if (mounted) {
         setState(() {
           _lms = false;
           _lmsUser = null;
         });
       }
+      await Nhac.datLaiTuCache();
       return;
     }
     // Hộp thoại tự thử đăng nhập rồi mới đóng: sai mật khẩu thì báo ngay
@@ -168,6 +183,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // lượt đầu lúc LMS còn tắt, không gọi lại là quay về Trang chủ vẫn trống
     // và người dùng phải tự kéo làm mới.
     await LmsNhip.ngay();
+    try {
+      final suKien = await suKienSapToi(DateTime.now());
+      await Nhac.datLaiTuCache(null, [
+        for (final e in suKien)
+          if (e.loai == 'attendance')
+            (mo: e.start, ten: e.name.trim(), mon: e.course.trim()),
+      ]);
+    } catch (_) {
+      await Nhac.datLaiTuCache(null, [
+        for (final e in suKienDaLuu(DateTime.now()))
+          if (e.loai == 'attendance')
+            (mo: e.start, ten: e.name.trim(), mon: e.course.trim()),
+      ]);
+    }
   }
 
   @override
@@ -215,19 +244,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onChanged: _doiToi,
             ),
             const SizedBox(height: 10),
-            NhacToggle(session: widget.session, portal: widget.portal),
-            const SizedBox(height: 20),
             _CongTac(
               icon: Icons.school_rounded,
-              label: 'Thông báo từ LMS',
+              label: 'Kết nối LMS',
               phu: _lms == true && _lmsUser != null
-                  ? 'Đã nối tài khoản $_lmsUser'
-                  : 'Hạn nộp bài và thông báo từ lms.dlu.edu.vn',
+                  ? 'Đã nối tài khoản $_lmsUser · tắt sẽ ngắt kết nối và hủy nhắc điểm danh'
+                  : 'Đăng nhập để xem bài tập, quiz và điểm danh. Bạn có thể kết nối bất cứ lúc nào.',
               color: Paper.mint,
               value: _lms,
               onChanged: _doiLms,
             ),
-            const SizedBox(height: 10),
+            if (_lms == true) ...[
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: NhacToggle(
+                  session: widget.session,
+                  portal: widget.portal,
+                  lmsBat: true,
+                  lmsOnly: true,
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            NhacToggle(
+              session: widget.session,
+              portal: widget.portal,
+              lmsBat: _lms == true,
+            ),
+            const SizedBox(height: 20),
             PaperBox(
               onTap: _dangLamMoi ? null : _lamMoiData,
               child: Row(
@@ -452,7 +497,7 @@ class _CongTac extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool? value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
   final Color? color;
   Color get _mau => color ?? Paper.card;
 
@@ -693,11 +738,18 @@ class _OPhut extends StatelessWidget {
   );
 }
 
-/// Công tắc nhắc trước giờ vào lớp. Mặc định tắt, tự bật mới có. Tắt ở đây
-/// thì xoá hết lịch hẹn đang chờ, bật thì hẹn lại ngay từ lịch trong cache.
+/// Nhắc giờ học và nhắc điểm danh là hai công tắc độc lập.
 class NhacToggle extends StatefulWidget {
-  const NhacToggle({super.key, required this.session, this.portal});
+  const NhacToggle({
+    super.key,
+    required this.session,
+    required this.lmsBat,
+    this.lmsOnly = false,
+    this.portal,
+  });
   final Session session;
+  final bool lmsBat;
+  final bool lmsOnly;
   final Portal? portal;
 
   @override
@@ -706,8 +758,10 @@ class NhacToggle extends StatefulWidget {
 
 class _NhacToggleState extends State<NhacToggle> {
   bool? _bat;
+  bool? _diemDanh;
   int _truoc = Nhac.truoc.inMinutes;
   int _dem = demDuongPhut;
+  int _truocDiemDanh = Nhac.truoc.inMinutes;
 
   /// Máy có cho hẹn đúng phút không — không thì nhắc vẫn chạy nhưng được
   /// phép trễ, nên phải nói thẳng ra chứ đừng hứa suông 15 phút.
@@ -724,12 +778,16 @@ class _NhacToggleState extends State<NhacToggle> {
     final chinhXac = await Nhac.chinhXacDuoc();
     final truoc = await Nhac.truocPhut();
     final dem = await Nhac.demPhut();
+    final diemDanh = await Nhac.diemDanhBat();
+    final truocDiemDanh = await Nhac.truocDiemDanhPhut();
     if (mounted) {
       setState(() {
         _bat = bat;
         _chinhXac = chinhXac;
         _truoc = truoc;
         _dem = dem;
+        _diemDanh = diemDanh;
+        _truocDiemDanh = truocDiemDanh;
       });
     }
   }
@@ -737,8 +795,32 @@ class _NhacToggleState extends State<NhacToggle> {
   Future<void> _doi(bool v) async {
     setState(() => _bat = v);
     await Nhac.datBat(v);
-    if (!v) return;
     await _henLai();
+  }
+
+  Future<void> _doiDiemDanh(bool v) async {
+    setState(() => _diemDanh = v);
+    await Nhac.datDiemDanhBat(v);
+    await _henLai();
+  }
+
+  Future<void> _thuDiemDanh() async {
+    try {
+      await Nhac.thuDiemDanh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã gửi thông báo điểm danh mẫu.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Chưa gửi được. Hãy bật quyền thông báo.'),
+          ),
+        );
+      }
+    }
   }
 
   /// Chọn một trong [lua] (phút). Đổi xong là hẹn lại ngay, chứ không đợi
@@ -761,35 +843,83 @@ class _NhacToggleState extends State<NhacToggle> {
     if (i == null) return;
     await luu(lua[i]);
     await _doc();
-    if (_bat == true) await _henLai();
+    await _henLai();
   }
 
   Future<void> _henLai() async {
     // Hẹn ngay chứ không đợi lượt mở app sau. Lịch đã có trong cache nên
     // thường không đụng portal.
     final now = DateTime.now();
-    final p = widget.portal ?? Portal();
     final ngay = <DateTime, List<dynamic>>{};
-    for (final m in [
-      DateTime(now.year, now.month),
-      DateTime(now.year, now.month + 1),
-    ]) {
-      try {
-        final d = await fetchMonth(p, widget.session.token, m);
-        ngay.addAll({
-          for (final e in d.entries) DateTime(m.year, m.month, e.key): e.value,
-        });
-      } on PortalError {
-        // Thiếu một tháng thì vẫn hẹn được các buổi của tháng còn lại.
+    if (await Nhac.bat()) {
+      final p = widget.portal ?? Portal();
+      for (final m in [
+        DateTime(now.year, now.month),
+        DateTime(now.year, now.month + 1),
+      ]) {
+        try {
+          final d = await fetchMonth(p, widget.session.token, m);
+          ngay.addAll({
+            for (final e in d.entries)
+              DateTime(m.year, m.month, e.key): e.value,
+          });
+        } on PortalError {
+          // Thiếu một tháng thì vẫn hẹn được các buổi của tháng còn lại.
+        }
       }
     }
-    await Nhac.datLai(ngay);
+    final suKien = widget.lmsBat ? suKienDaLuu(now) : const <LmsEvent>[];
+    final diemDanh = [
+      for (final e in suKien)
+        if (e.loai == 'attendance')
+          (mo: e.start, ten: e.name.trim(), mon: e.course.trim()),
+    ];
+    await Nhac.datLai(ngay, diemDanh);
   }
 
   @override
   Widget build(BuildContext context) {
     final bat = _bat;
     if (bat == null) return const Skeleton(height: 64, ink: true);
+    if (widget.lmsOnly) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _CongTac(
+            icon: Icons.how_to_reg_rounded,
+            label: 'Nhắc điểm danh',
+            phu: 'Nhắc riêng, không phụ thuộc nhắc giờ học',
+            color: Paper.mint,
+            value: _diemDanh,
+            onChanged: _doiDiemDanh,
+          ),
+          if (_diemDanh == true) ...[
+            const SizedBox(height: 10),
+            _OPhut(
+              icon: Icons.schedule_send_rounded,
+              label: 'Báo trước',
+              value: '$_truocDiemDanh phút',
+              onTap: () => _chonPhut(
+                title: 'Nhắc điểm danh trước bao lâu?',
+                lua: nhacTruocLua,
+                dangDung: _truocDiemDanh,
+                nhan: (v) => '$v phút',
+                luu: Nhac.datTruocDiemDanhPhut,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Choice(
+                label: 'Thử thông báo',
+                color: Paper.sun,
+                onTap: _thuDiemDanh,
+              ),
+            ),
+          ],
+        ],
+      );
+    }
     return Column(
       children: [
         PaperBox(
@@ -808,7 +938,7 @@ class _NhacToggleState extends State<NhacToggle> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Nhắc trước giờ vào lớp',
+                      'Nhắc giờ học',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 15,
@@ -816,7 +946,9 @@ class _NhacToggleState extends State<NhacToggle> {
                       ),
                     ),
                     Text(
-                      bat ? 'Báo trước $_truoc phút' : 'Đang tắt',
+                      bat
+                          ? 'Báo trước $_truoc phút · chỉ nhắc giờ học'
+                          : 'Đang tắt nhắc giờ học · điểm danh tùy cài đặt LMS',
                       style: TextStyle(fontSize: 13, color: Paper.ink2),
                     ),
                   ],
@@ -845,6 +977,7 @@ class _NhacToggleState extends State<NhacToggle> {
               luu: Nhac.datTruocPhut,
             ),
           ),
+          const SizedBox(height: 10),
           const SizedBox(height: 10),
           _OPhut(
             icon: Icons.directions_walk_rounded,

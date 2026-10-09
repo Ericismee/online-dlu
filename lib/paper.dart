@@ -581,13 +581,15 @@ class Choice extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Display',
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: Paper.ink,
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Display',
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: Paper.ink,
+              ),
             ),
           ),
           if (chon == null)

@@ -3,12 +3,13 @@ import 'dart:convert';
 import 'dart:io' show HttpClient, SecurityContext;
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart' show IOClient;
 
 import 'cache.dart';
+import 'data.dart' show clean;
 import 'db.dart';
 import 'nhat_ky.dart';
 import 'luong.dart';
@@ -17,6 +18,9 @@ import 'settings.dart' show Settings;
 
 /// Một phiên Moodle đã đăng nhập: cookie kèm token CSRF gắn với nó.
 typedef LmsSession = ({String cookie, String sesskey, int userId});
+
+typedef LmsAttendanceStatus = ({String id, String label});
+typedef LmsAttendanceForm = ({Uri action, List<LmsAttendanceStatus> statuses});
 
 typedef LmsNotification = ({
   /// Id Moodle, dùng làm khoá trong SQLite nên phải là của server, không
@@ -357,9 +361,13 @@ MntHWpdLgtJmwsQt6j8k9Kf5qLnjatkYYaA7jBU=
 /// 4. `POST /lib/ajax/service.php?sesskey=…&info=…` — dữ liệu.
 class Lms {
   Lms({http.Client? client, this._base = 'https://lms.dlu.edu.vn'})
-    : _client = client ?? IOClient(HttpClient(context: _tinCay));
+    : _browserWithoutProxy = kIsWeb && client == null,
+      _client =
+          client ??
+          (kIsWeb ? http.Client() : IOClient(HttpClient(context: _tinCay)));
 
   final http.Client _client;
+  final bool _browserWithoutProxy;
   final String _base;
 
   /// Moodle tự nhận ra đăng nhập hỏng bằng mấy dấu này trong trang trả về.
@@ -436,7 +444,22 @@ class Lms {
   @visibleForTesting
   static void boPhienTrongRam() => _phien = null;
 
-  Future<LmsSession> login(String username, String password) async {
+  Future<LmsSession> login(String username, String password) {
+    if (_browserWithoutProxy) {
+      throw PortalError(
+        'LMS chưa cho phép đăng nhập từ trình duyệt. Hãy dùng app trên Android hoặc iOS để đăng nhập và điểm danh.',
+      );
+    }
+    return _login(username, password).timeout(
+      const Duration(seconds: 25),
+      onTimeout: () => throw PortalError(
+        'LMS phản hồi quá lâu. Kiểm tra kết nối rồi thử lại.',
+        offline: true,
+      ),
+    );
+  }
+
+  Future<LmsSession> _login(String username, String password) async {
     final url = Uri.parse('$_base/login/index.php');
 
     final form = await _send(http.Request('GET', url));
@@ -564,6 +587,101 @@ class Lms {
     return con <= 0 || (action['actionable'] as bool? ?? true) == false;
   }
 
+  /// Tải đúng form của buổi điểm danh đang mở. Moodle không đưa `sessid` và
+  /// các trạng thái vào API lịch, nên phải đi qua trang activity như browser.
+  Future<LmsAttendanceForm> attendanceForm(
+    LmsSession session,
+    int instance,
+  ) async {
+    if (instance <= 0) throw PortalError('Buổi điểm danh không hợp lệ');
+    final view = await _send(
+      http.Request(
+        'GET',
+        Uri.parse('$_base/mod/attendance/view.php?id=$instance'),
+      )..headers['cookie'] = session.cookie,
+    );
+    if (view.statusCode != 200) {
+      throw PortalError('Không mở được buổi điểm danh');
+    }
+    final href = RegExp(
+      r'''href\s*=\s*["']([^"']*/mod/attendance/attendance\.php\?[^"']+)["']''',
+      caseSensitive: false,
+    ).firstMatch(_text(view))?.group(1);
+    if (href == null) {
+      throw PortalError('Buổi điểm danh chưa mở hoặc đã được ghi nhận');
+    }
+    final action = Uri.parse(_base).resolve(clean(href));
+    final base = Uri.parse(_base);
+    if (action.scheme != base.scheme || action.host != base.host) {
+      throw PortalError('Đường dẫn điểm danh không hợp lệ');
+    }
+
+    final page = await _send(
+      http.Request('GET', action)..headers['cookie'] = session.cookie,
+    );
+    if (page.statusCode != 200) {
+      throw PortalError('Không tải được lựa chọn điểm danh');
+    }
+    final html = _text(page);
+    final statuses = <LmsAttendanceStatus>[];
+    for (final match in RegExp(
+      r'''<input\b[^>]*\bname\s*=\s*["']status["'][^>]*>''',
+      caseSensitive: false,
+    ).allMatches(html)) {
+      final input = match.group(0)!;
+      final id = _attribute(input, 'id');
+      final value = _attribute(input, 'value');
+      if (id == null || value == null) continue;
+      final label = RegExp(
+        '''<label\\b[^>]*\\bfor\\s*=\\s*["']${RegExp.escape(id)}["'][^>]*>([\\s\\S]*?)</label>''',
+        caseSensitive: false,
+      ).firstMatch(html)?.group(1);
+      if (label != null) statuses.add((id: value, label: clean(label)));
+    }
+    if (statuses.isEmpty) {
+      throw PortalError('LMS không trả về trạng thái điểm danh');
+    }
+    return (action: action, statuses: statuses);
+  }
+
+  /// Gửi trạng thái người dùng vừa chọn. Chỉ redirect về trang activity mới
+  /// được coi là thành công; trang 200 thường là form báo lỗi của Moodle.
+  Future<void> submitAttendance(
+    LmsSession session,
+    LmsAttendanceForm form,
+    String status,
+  ) async {
+    if (!form.statuses.any((item) => item.id == status)) {
+      throw PortalError('Trạng thái điểm danh không hợp lệ');
+    }
+    final sessid = form.action.queryParameters['sessid'];
+    if (sessid == null || sessid.isEmpty) {
+      throw PortalError('Buổi điểm danh thiếu mã phiên');
+    }
+    final request = http.Request('POST', form.action.replace(query: null))
+      ..followRedirects = false
+      ..headers['content-type'] = 'application/x-www-form-urlencoded'
+      ..headers['cookie'] = session.cookie
+      ..bodyFields = {
+        'sessid': sessid,
+        'sesskey': session.sesskey,
+        '_qf__mod_attendance_form_studentattendance': '1',
+        'mform_isexpanded_id_session': '1',
+        'status': status,
+        'submitbutton': 'Lưu những thay đổi',
+      };
+    final response = await _send(request);
+    final location = response.headers['location'];
+    final destination = location == null
+        ? null
+        : Uri.parse(_base).resolve(location);
+    if (response.statusCode != 303 ||
+        destination?.path != '/mod/attendance/view.php') {
+      if (destination?.path == '/login/index.php') boPhien();
+      throw PortalError('LMS chưa ghi nhận điểm danh, vui lòng thử lại');
+    }
+  }
+
   Future<List<LmsNotification>> notifications(LmsSession session) async {
     final data = await _ajax(
       s: session,
@@ -648,6 +766,11 @@ class Lms {
     final i = popupname?.indexOf(': ') ?? -1;
     return i > 0 ? popupname!.substring(0, i) : '';
   }
+
+  static String? _attribute(String tag, String name) => RegExp(
+    '''\\b${RegExp.escape(name)}\\s*=\\s*["']([^"']*)["']''',
+    caseSensitive: false,
+  ).firstMatch(tag)?.group(1);
 
   PortalError _sai() =>
       PortalError('Sai tài khoản hoặc mật khẩu LMS', saiMatKhau: true);

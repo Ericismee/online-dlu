@@ -158,11 +158,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: [
                                   _Check(on: _remember),
                                   const SizedBox(width: 10),
-                                  const Text(
-                                    'Nhớ tài khoản',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 14,
+                                  const Flexible(
+                                    child: Text(
+                                      'Nhớ tài khoản',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ),
                                 ],
