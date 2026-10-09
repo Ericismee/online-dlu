@@ -199,3 +199,7 @@ jobs:
             - `.aab` — bản nộp Google Play
             - `.ipa` — iOS 15 trở lên; bản `unsigned` phải tự ký bằng
               Sideloadly hoặc AltStore
+
+            ## Collaborator
+            @dopaemon, @0Yaam
+            
