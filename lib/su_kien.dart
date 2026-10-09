@@ -28,18 +28,12 @@ String nhanNgay(DateTime ngay, DateTime now) {
 String gioPhut(DateTime t) =>
     '${t.hour}h${t.minute.toString().padLeft(2, '0')}';
 
-/// Đếm ngược ngắn gọn: "4:12", "1h20", "3 ngày 4h". Quá một ngày thì đếm theo
-/// ngày — hạn nộp bài tuần sau mà ghi "168h00" thì phải ngồi chia mới biết là
-/// bao lâu.
-///
-/// Dưới một tiếng thì có cả giây: số này nằm cạnh một hạn thật, mà đứng im cả
-/// phút thì trông như app treo chứ không như đang đếm.
+/// Đếm ngược ngắn gọn, làm tròn lên phút: "4 phút", "1h20", "3 ngày 4h".
+/// Quá một ngày thì đếm theo ngày: hạn nộp bài tuần sau mà ghi "168h00" thì
+/// phải ngồi chia mới biết là bao lâu.
 String conLai(Duration d) {
-  final giay = d.inSeconds < 0 ? 0 : d.inSeconds;
-  if (giay < 3600) {
-    return '${giay ~/ 60}:${(giay % 60).toString().padLeft(2, '0')}';
-  }
-  final phut = (giay / 60).ceil();
+  final phut = (d.inSeconds / 60).ceil();
+  if (phut < 60) return '$phut phút';
   final gio = phut ~/ 60;
   if (gio < 24) return '${gio}h${(phut % 60).toString().padLeft(2, '0')}';
   final ngay = gio ~/ 24;
@@ -85,20 +79,10 @@ DateTime _dong(LmsEvent e) =>
 Future<List<LmsEvent>> diemDanhHomNay(DateTime now, {Lms? lms}) async {
   final s = await Lms.phien(lms: lms);
   if (s == null) return const [];
-  // Lượt gọi hỏng thì lấy lịch tháng trong sổ: thà buổi điểm danh cũ còn hơn
-  // mục trống trơn đúng lúc sắp tới giờ.
-  try {
-    return diemDanh(await (lms ?? Lms()).calendar(s, now.year, now.month), now);
-  } on PortalError {
-    return diemDanh(await lichDaLuu(now.year, now.month), now);
-  }
+  return diemDanh(await (lms ?? Lms()).calendar(s, now.year, now.month), now);
 }
 
-/// Vào buổi điểm danh. Hiện tại là mở Moodle; sau này điểm thẳng trong app
-/// thì sửa đúng một chỗ này, mọi nút điểm danh đều đi qua đây.
-/// Lịch tháng không kèm link tới buổi điểm danh, nhưng trang ngày của Moodle
-/// mở được bằng mốc giờ, và trong đó có đường vào buổi đó.
-Future<void> moDiemDanh(LmsEvent e) => launchUrl(
+Future<void> _moTrenLms(LmsEvent e) => launchUrl(
   Uri.parse(
     e.url ??
         'https://lms.dlu.edu.vn/calendar/view.php?view=day'
@@ -106,6 +90,192 @@ Future<void> moDiemDanh(LmsEvent e) => launchUrl(
   ),
   mode: LaunchMode.externalApplication,
 ).then((_) {});
+
+String _monDiemDanh(LmsEvent e) =>
+    e.course.isEmpty ? clean(e.name) : clean(e.course);
+
+Future<LmsAttendanceStatus?> _chonTrangThai(
+  BuildContext context,
+  LmsEvent event,
+  LmsAttendanceForm form,
+) => showDialog<LmsAttendanceStatus>(
+  context: context,
+  builder: (_) {
+    LmsAttendanceStatus? selected;
+    return StatefulBuilder(
+      builder: (context, setState) => PaperDialog(
+        title: _monDiemDanh(event),
+        icon: Icons.how_to_reg_rounded,
+        color: Paper.mint,
+        maxWidth: 390,
+        children: [
+          PaperBox(
+            color: Paper.sun,
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(Icons.schedule_rounded, color: Paper.ink),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Phiếu điểm danh đang mở',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: Paper.ink,
+                        ),
+                      ),
+                      Text(
+                        '${gioPhut(event.start)}–${gioPhut(_dong(event))} · '
+                        '${clean(event.name)}',
+                        style: TextStyle(fontSize: 13, color: Paper.ink2),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Chọn trạng thái của bạn',
+            style: TextStyle(
+              fontFamily: 'Display',
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: Paper.ink,
+            ),
+          ),
+          SizedBox(height: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 240),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  for (final status in form.statuses)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Semantics(
+                        button: true,
+                        selected: selected?.id == status.id,
+                        label: status.label,
+                        child: Pressable(
+                          onTap: () => setState(() => selected = status),
+                          builder: (down) {
+                            final active = selected?.id == status.id;
+                            return Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: active ? Paper.mint : Paper.card,
+                                border: Paper.border,
+                                borderRadius: BorderRadius.all(Paper.radius),
+                                boxShadow: Paper.shadow(down ? 0 : 3),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    active
+                                        ? Icons.check_circle_rounded
+                                        : Icons.radio_button_unchecked_rounded,
+                                    color: Paper.ink,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      status.label,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                        color: Paper.ink,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: PaperButton(
+                  label: 'Huỷ',
+                  color: Paper.card,
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: PaperButton(
+                  label: 'Gửi điểm danh',
+                  color: Paper.accent,
+                  onPressed: selected == null
+                      ? null
+                      : () => Navigator.pop(context, selected),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  },
+);
+
+/// Điểm danh ngay trong app, nhưng trạng thái vẫn do người dùng chọn và xác
+/// nhận. Trước giờ mở thì giữ đường lui sang Moodle để xem thông tin buổi đó.
+Future<void> moDiemDanh(BuildContext context, LmsEvent e, {Lms? lms}) async {
+  if (e.start.isAfter(DateTime.now())) return _moTrenLms(e);
+  final messenger = ScaffoldMessenger.of(context);
+  messenger.showSnackBar(
+    const SnackBar(content: Text('Đang mở phiếu điểm danh…')),
+  );
+  try {
+    final client = lms ?? Lms();
+    final session = await Lms.phien(lms: client);
+    if (session == null) throw PortalError('Bạn chưa bật tài khoản LMS');
+    final form = await client.attendanceForm(session, e.instance);
+    if (!context.mounted) return;
+    messenger.hideCurrentSnackBar();
+    final status = await _chonTrangThai(context, e, form);
+    if (status == null || !context.mounted) return;
+    await client.submitAttendance(session, form, status.id);
+    if (context.mounted) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Đã gửi ${status.label} cho ${_monDiemDanh(e)} ✨'),
+        ),
+      );
+    }
+  } on PortalError catch (error) {
+    if (!context.mounted) return;
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(error.message),
+        action: SnackBarAction(
+          label: 'Mở LMS',
+          onPressed: () {
+            _moTrenLms(e);
+          },
+        ),
+      ),
+    );
+  }
+}
 
 /// Gần giờ điểm chừng này thì thẻ điểm danh leo lên đầu mục "Hôm nay": huy
 /// hiệu nằm trong dòng tiết quá nhỏ, lướt qua là không ai thấy có điểm danh.
@@ -131,7 +301,7 @@ class ChipDiemDanh extends StatelessWidget {
       label: 'Điểm danh ngay',
       fontSize: 13,
       color: Paper.accent,
-      onPressed: () => moDiemDanh(e),
+      onPressed: () => moDiemDanh(context, e),
     );
   }
 }
@@ -141,16 +311,10 @@ class ChipDiemDanh extends StatelessWidget {
 class BuoiDiemDanh extends StatelessWidget {
   const BuoiDiemDanh(this.e, this.now, {super.key});
   final LmsEvent e;
-
-  /// Giờ của khung hình gọi tới. Cửa sổ điểm danh đóng trong vài phút nên thẻ
-  /// này tự bắt nhịp giây, khỏi phụ thuộc nơi gọi dựng lại mỗi phút.
   final DateTime now;
 
   @override
-  Widget build(BuildContext context) =>
-      Ticker(giay: true, builder: (context, luc) => _than(luc));
-
-  Widget _than(DateTime now) {
+  Widget build(BuildContext context) {
     final mo = !e.start.isAfter(now);
     final dong = _dong(e);
     return Padding(
@@ -176,10 +340,10 @@ class BuoiDiemDanh extends StatelessWidget {
                     color: Paper.ink,
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    clean(e.name),
+                    _monDiemDanh(e),
                     style: TextStyle(
                       fontFamily: 'Display',
                       fontWeight: FontWeight.w800,
@@ -195,16 +359,13 @@ class BuoiDiemDanh extends StatelessWidget {
               ],
             ),
             if (e.course.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              // Tên môn là huy hiệu như mọi chỗ khác: để chữ chạy thì nó lẫn
-              // vào dòng ngày giờ ngay bên dưới.
-              Row(
-                children: [
-                  Flexible(child: Pill(clean(e.course), color: Paper.sky)),
-                ],
+              SizedBox(height: 5),
+              Text(
+                clean(e.name),
+                style: TextStyle(fontSize: 13, color: Paper.ink2),
               ),
             ],
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             // Đủ cả ngày, khung giờ và còn bao lâu: nhìn một lần là biết có
             // phải chạy ngay hay không.
             Text(
@@ -213,11 +374,11 @@ class BuoiDiemDanh extends StatelessWidget {
               '${mo ? 'còn ${conLai(dong.difference(now))}' : 'mở sau ${conLai(e.start.difference(now))}'}',
               style: TextStyle(fontSize: 13, color: Paper.ink2),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             PaperButton(
               label: mo ? 'Điểm danh ngay' : 'Mở trên LMS',
               color: mo ? Paper.accent : Paper.card,
-              onPressed: () => moDiemDanh(e),
+              onPressed: () => moDiemDanh(context, e),
             ),
           ],
         ),
@@ -237,14 +398,10 @@ const _sapToi = Duration(days: 2);
 /// Mẻ của lượt trước nằm trong cache nên mở app là thấy ngay; lượt hỏi LMS
 /// chạy ngầm theo [LmsNhip] rồi thay số sau.
 class SuKienCard extends StatefulWidget {
-  const SuKienCard({super.key, this.nguon, this.onXepLich});
+  const SuKienCard({super.key, this.nguon});
 
   /// Nguồn dữ liệu; để trống là lấy thật từ LMS. Chỉ test mới truyền vào.
   final Future<List<LmsEvent>> Function(DateTime now)? nguon;
-
-  /// Xếp một buổi làm bài cho hạn này. Để trống là không hiện nút — thẻ này
-  /// không tự biết lịch học, người đặt nó vào cây mới biết.
-  final Future<void> Function(LmsEvent e, DateTime now)? onXepLich;
 
   @override
   State<SuKienCard> createState() => _SuKienCardState();
@@ -282,9 +439,6 @@ class _SuKienCardState extends State<SuKienCard> with Reloadable<SuKienCard> {
 
   @override
   Widget build(BuildContext context) => Ticker(
-    // Nhịp giây: thẻ này chỉ là một hạn và một số đếm ngược, dựng lại mỗi
-    // giây cũng chẳng tốn gì, mà số thì phải chạy.
-    giay: true,
     builder: (_, now) {
       // Lọc lại theo giờ hiện tại chứ không theo lúc tải: việc qua mốc là tự
       // rụng, khỏi chờ lượt sau.
@@ -299,13 +453,8 @@ class _SuKienCardState extends State<SuKienCard> with Reloadable<SuKienCard> {
       if (ds.isEmpty) return const SizedBox.shrink();
       return Column(
         children: [
-          _DemNguoc(
-            ds.first,
-            now,
-            con: ds.length - 1,
-            onXepLich: widget.onXepLich,
-          ),
-          const SizedBox(height: 20),
+          _DemNguoc(ds.first, now, con: ds.length - 1),
+          SizedBox(height: 20),
         ],
       );
     },
@@ -314,10 +463,9 @@ class _SuKienCardState extends State<SuKienCard> with Reloadable<SuKienCard> {
 
 /// Việc gần nhất: tên, môn, mốc và còn bao lâu. Bấm là mở nó trên LMS.
 class _DemNguoc extends StatelessWidget {
-  const _DemNguoc(this.e, this.now, {required this.con, this.onXepLich});
+  const _DemNguoc(this.e, this.now, {required this.con});
   final LmsEvent e;
   final DateTime now;
-  final Future<void> Function(LmsEvent e, DateTime now)? onXepLich;
 
   /// Số việc còn lại phía sau việc này.
   final int con;
@@ -355,7 +503,7 @@ class _DemNguoc extends StatelessWidget {
                     color: Paper.ink,
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Sắp tới',
@@ -373,7 +521,7 @@ class _DemNguoc extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(
               clean(e.name),
               style: TextStyle(
@@ -385,30 +533,20 @@ class _DemNguoc extends StatelessWidget {
               ),
             ),
             if (e.course.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Row(
                 children: [
                   Flexible(child: Pill(clean(e.course), color: Paper.sky)),
                 ],
               ),
             ],
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               '${nhanNgay(DateTime(e.start.year, e.start.month, e.start.day), now)}'
               ' · ${gioPhut(e.start)}'
               '${con > 0 ? ' · còn $con việc nữa' : ''}',
               style: TextStyle(fontSize: 13, color: Paper.ink2),
             ),
-            if (onXepLich != null) ...[
-              const SizedBox(height: 12),
-              PaperButton(
-                label: 'Xếp giờ làm',
-                fontSize: 13,
-                color: Paper.mint,
-                onColor: Paper.ink,
-                onPressed: () => onXepLich!(e, now),
-              ),
-            ],
           ],
         ),
       ),
@@ -448,7 +586,7 @@ class _SuKienNhomState extends State<SuKienNhom> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (final (n, ngay) in nhom.keys.indexed) ...[
-                if (n > 0) const SizedBox(height: 14),
+                if (n > 0) SizedBox(height: 14),
                 Text(
                   nhanNgay(ngay, now),
                   style: TextStyle(
@@ -458,14 +596,14 @@ class _SuKienNhomState extends State<SuKienNhom> {
                     color: Paper.ink2,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 for (final e in nhom[ngay]!) SuKienHang(e),
               ],
             ],
           ),
         ),
         if (con > 0) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Pressable(
             onTap: () => setState(() => _het = !_het),
             builder: (_) => Row(
@@ -529,7 +667,7 @@ class SuKienHang extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,7 +681,7 @@ class SuKienHang extends StatelessWidget {
                     ),
                   ),
                   if (e.course.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       clean(e.course),
                       style: TextStyle(fontSize: 13, color: Paper.ink2),

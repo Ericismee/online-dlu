@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:dlu_tkb/lms.dart';
 import 'package:dlu_tkb/portal.dart';
@@ -319,6 +319,66 @@ void main() {
       expect(e.course, 'DPctk47');
       expect(e.keoDai, const Duration(minutes: 5));
       expect(e.url, isNull);
+    },
+  );
+
+  test(
+    'điểm danh tải trạng thái động rồi chỉ nhận redirect thành công',
+    () async {
+      Map<String, String>? submitted;
+      final client = MockClient((req) async {
+        if (req.url.path == '/mod/attendance/view.php') {
+          return http.Response.bytes(
+            utf8.encode(
+              '<a href="/mod/attendance/attendance.php?sessid=91&amp;sesskey=KEY123">Điểm danh</a>',
+            ),
+            200,
+            headers: {'content-type': 'text/html; charset=utf-8'},
+          );
+        }
+        if (req.url.path == '/mod/attendance/attendance.php' &&
+            req.method == 'GET') {
+          return http.Response.bytes(
+            utf8.encode(
+              '<input id="id_status_1" name="status" value="22738">'
+              '<label for="id_status_1"><span>Có mặt</span></label>'
+              '<input name="status" value="22739" id="id_status_2">'
+              '<label for="id_status_2">Vắng</label>',
+            ),
+            200,
+            headers: {'content-type': 'text/html; charset=utf-8'},
+          );
+        }
+        if (req.url.path == '/mod/attendance/attendance.php' &&
+            req.method == 'POST') {
+          submitted = req.bodyFields;
+          return http.Response(
+            '',
+            303,
+            headers: {'location': '/mod/attendance/view.php?id=159503'},
+          );
+        }
+        return http.Response('', 404);
+      });
+      final lms = Lms(client: client);
+      const session = (
+        cookie: 'MoodleSession=that',
+        sesskey: 'KEY123',
+        userId: 7,
+      );
+
+      final form = await lms.attendanceForm(session, 159503);
+      expect(form.statuses.map((item) => item.label), ['Có mặt', 'Vắng']);
+      expect(
+        () => lms.submitAttendance(session, form, 'khong-co'),
+        throwsA(isA<PortalError>()),
+      );
+      await lms.submitAttendance(session, form, form.statuses.first.id);
+
+      expect(submitted?['sessid'], '91');
+      expect(submitted?['sesskey'], 'KEY123');
+      expect(submitted?['status'], '22738');
+      expect(submitted?['_qf__mod_attendance_form_studentattendance'], '1');
     },
   );
 
