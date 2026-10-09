@@ -38,7 +38,7 @@
           "date": "2026-10-09",
           "localizedDescription": "• Thêm Điểm danh ngay trong app và thẻ sự kiện sắp tới trong LMS.\n• Sắp xếp nhắc LMS gọn hơn, chuyển điều hướng vào Hồ sơ.\n• Cải thiện giao diện trên màn hình nhỏ, tránh vỡ khung và cắt gọn ghi chú cập nhật.\n• Sửa bản web để đóng gói worker Drift và tài nguyên SQLite đầy đủ.\n• Tách cài đặt Android bản debug và thêm biểu tượng thông báo nhắc lịch.",
           "downloadURL": "https://github.com/dopaemon/online-dlu/releases/latest/download/Online-DLU-unsigned.ipa",
-          "size": 12705343,
+          "size": 12740378,
           "minOSVersion": "15.0"
         }
       ],
