@@ -86,7 +86,15 @@ class Db extends _$Db {
 
   /// Một kết nối dùng chung cả app. Test gọi [dungTam] để thay bằng bộ nhớ.
   static Db? _i;
-  static Db get i => _i ??= Db(driftDatabase(name: ten(_chu)));
+  static QueryExecutor _mo(String name) => driftDatabase(
+    name: name,
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
+  );
+
+  static Db get i => _i ??= Db(_mo(ten(_chu)));
 
   static void dungTam(Db db) {
     _i = db;
@@ -132,7 +140,7 @@ class Db extends _$Db {
   /// dấu đã có người nhận để tài khoản thứ hai không nhận lại lần nữa.
   Future<void> _nhanSoChung(String chu) async {
     if (await dong(nhomMoc, _khoaNhanSo) != null) return;
-    final chung = Db(driftDatabase(name: ten(null)));
+    final chung = Db(_mo(ten(null)));
     try {
       if (await chung.dong(nhomMoc, _khoaDaBiNhan) == null) {
         final khoCu = await chung.select(chung.kho).get();
